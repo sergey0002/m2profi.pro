@@ -1,0 +1,1 @@
+<div style="width:100%; max-width:100vw; text-align:center; padding:10px; " class="loader"  ><img src="loader.gif" height=50/></div>

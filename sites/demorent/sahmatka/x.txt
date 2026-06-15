@@ -1,0 +1,1 @@
+home_id;image;section_id;plan_code;rooms;area;price;apartments_num;status;floor

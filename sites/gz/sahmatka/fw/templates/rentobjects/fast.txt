@@ -1,0 +1,86 @@
+<section>
+			<div class="container rent_p">
+				<h1 class="rent_h3" style="margin-top: 35px; font-family: 'Exo 2';">БЫСТРАЯ ЗАЯВКА</h1>
+				<p class="form_rz_p" style="font-size: 16px; line-height: 20px;">Перед отправкой пожалуйста проверьте корректность внесенных данных</p>
+				<form name="rent_zayavka2" method="post" action="">
+					<div class="row">
+						<div class="col-sm-6">
+							<p class="form_rz">Площадь</p>
+							<input name="area_min" type="От" placeholder="От" required class="form_rz_text form_rent_z" style="width: 40%;">
+							<input name="area_max" type="До" placeholder="До" required class="form_rz_text form_rent_z" style="width: 40%;"> </div>
+						<div class="col-sm-6">
+							<div class=" rbzcb"></div>
+							<input name="otd" type="checkbox" name="a" value="1" class="form_checkbox_big" id="rbz1">
+							<label for="rbz1" class="form_rz_text rbzl"> Отдельно стоящее здание </label>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-sm-6">
+							<p class="form_rz">Назначение</p>
+							<input name="appointment" class="form_rent_z form_rz_text" type="text" placeholder="Под офис" required=""> </div>
+						<div class="col-sm-6">
+							<div class=" rbzcb"></div>
+							<input name="live" type="checkbox" name="a" value="Жилое здание" class="form_checkbox_big" id="rbz2">
+							<label for="rbz2" class="form_rz_text rbzl">Жилое здание </label>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-sm-6">
+							<label for="name" class="form_rz">Этаж</label>
+							<br>
+							<select name="floor" class="form_rz_text form_rent_z" name="" required="required">
+								<option value="Цоколь">Цоколь</option>
+								<option value="1">1</option>
+								<option value="2">2</option>
+								<option value="3">3</option>
+								<option value="4">4</option>
+								<option value="5">5</option>
+							</select>
+						</div>
+						<div class="col-sm-6">
+							<div class=" rbzcb"></div>
+							<input name="place_for_unloading" type="checkbox" name="a" value="да" class="form_checkbox_big" id="rbz3">
+							<label for="rbz3" class="form_rz_text rbzl">Место под разгрузку </label>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-sm-6">
+							<label for="name" class="form_rz">Вход</label>
+							<br>
+							<select name="separate_entrance" class="form_rz_text form_rent_z" name="" required="required">
+								<option value="Любой">Любой</option>
+								<option value="Отдельный">Отдельный</option>
+								<option value="Коридорный">Коридорный</option>
+							</select>
+						</div>
+						 
+					</div>
+					<div class="row">
+						<div class="col-sm-6">
+							<p class="form_rz">Кол-во комнат</p>
+							<input name="rooms" class="form_rent_z form_rz_text" type="number" placeholder="2" required="" min="1" max="20"> </div>
+					</div>
+					
+					<div class="row">
+						<div class="col-sm-12">
+							<p class="form_rz">Имя</p>
+							<input name="name" class="form_rent_z form_rz_text" type="text"  required="required"  > </div>
+					</div>
+					
+					<div class="row">
+						<div class="col-sm-12">
+							<p class="form_rz">Телефон</p>
+							<input name="phone" class="form_rent_z form_rz_text" type="text"   required="required"  > </div>
+					</div>
+					
+					
+					
+					<div style="margin: 40px 0px 35px 0px; text-align: center;">
+						<button type="submit" class="btn_bg_border">
+							<div class="btn_bg_text p20"> ОТПРАВИТЬ ЗАЯВКУ <i class="btn_arrowx"></i> </div>
+						</button>
+					</div>
+					<p class="form_rz_p"> Отправляя заявку вы автоматически даете свое <a href="https://em-nsk.ru/politics.docx">согласие на обработку персональных данных</a> </p>
+				</form>
+			</div>
+		</section>

@@ -1,0 +1,761 @@
+/* ============================================================================
+   FWE Online Editor — style.css (classic panels, icons, no Bootstrap)
+   ============================================================================ */
+
+/* --- 1. Базовые переменные темы --- */
+:root {
+  --bg-main:        #232323;
+  --bg-content:     #222;
+  --bg-header:      #383838;
+  --bg-editor:      #1e1e1e;
+  --bg-progress:    rgba(20,24,34,.86);
+
+  --border-main:    #353535;
+  --border-unsaved: #ff8888;
+  --border-opened:  #42a5f5;
+
+  --color-main:     #e0e0e0;
+  --color-accent:   #33c9ff;
+  --color-link:     #21d4fd;
+  --color-unsaved:  #ff5252;
+  --color-log:      #8be9fd;
+  --color-muted:    #bbb;
+
+  --font-main:      Arial, "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-mono:      "Fira Mono", "JetBrains Mono", monospace;
+
+  --radius-main:    9px;
+  --radius-editor:  8px;
+
+  --panel-w:        250px;
+  --panel-w-m:      90vw;
+  --panel-border:   #2a2a2a;
+
+  --nav-w:          30px;
+  --nav-h:          50px;
+  --nav-bg:         #000;
+  --nav-color:      #fff;
+  --nav-op:         .5;
+
+  --close-w:        20px;
+  --close-bg:       #555;
+  --close-hover:    #ff5252;
+
+  --z-panels:       1200;
+  --z-nav:          2001;
+  --z-cross:        2200;
+}
+
+/* --- 2. Общая разметка --- */
+html, body {
+  margin: 0; padding: 0;
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+  background: var(--bg-main);
+  color: var(--color-main);
+  font-family: var(--font-main);
+}
+
+/* --- 3. Лейаут --- */
+#layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.content-panel, .content {
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--bg-content);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* --- 4. Боковые панели --- */
+.side-panel, .panel {
+  width: var(--panel-w);
+  min-width: var(--panel-w);
+  height: 100vh;
+  background: var(--bg-main);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  position: relative;
+  z-index: var(--z-panels);
+  transition: left 0.3s, right 0.3s;
+}
+.side-panel1, .panel.left  { border-right: 1px solid var(--panel-border); }
+.side-panel2, .panel.right { border-left:  1px solid var(--panel-border); }
+
+.sp_nav, .sp_nav1, .sp_nav2 { display: none; } /* на десктопе — всегда открыты, кнопок нет */
+
+/* --- 5. Закрывающая вертикальная полоса --- */
+.spp_nav {
+  display: none;
+}
+@media (max-width: 999px) {
+  .side-panel, .panel {
+    position: fixed;
+    top: 0;
+    height: 100vh;
+    width: var(--panel-w-m);
+    max-width: 99vw;
+    box-shadow: 5px 0 12px #0008;
+    transition: left .3s, right .3s;
+    z-index: var(--z-panels);
+  }
+  .side-panel1, .panel.left  { left: -100vw; padding-left: 0; }
+  .side-panel2, .panel.right { right: -100vw; padding-right: 0; }
+
+  /* открытие панели смещает её на ширину полосы закрытия */
+  #side-checkbox1:checked + .side-panel1,
+  .panel.left.open  { left:  var(--close-w) !important; }
+  #side-checkbox2:checked + .side-panel2,
+  .panel.right.open { right: var(--close-w) !important; }
+
+  /* отменить transform, только left/right */
+  .side-panel1, .panel.left,
+  .side-panel1.open, .panel.left.open,
+  .side-panel2, .panel.right,
+  .side-panel2.open, .panel.right.open {
+    transform: none !important;
+  }
+
+  /* Вертикальные полосы-закрыватели */
+  .spp_nav {
+    display: block;
+    position: fixed;
+    top: 0; left: auto; right: auto;
+    width: var(--close-w);
+    height: 100vh;
+    background: var(--close-bg);
+    opacity: .9;
+    z-index: var(--z-cross);
+    cursor: pointer;
+    transition: background .2s, opacity .2s;
+  }
+  .spp_nav1 { left: 0;         border-right:solid 1px #000; }
+  .spp_nav2 { right: 0;        border-left:solid 1px #000;  }
+  .spp_nav.hidden { display: none; }
+  .spp_nav::after {
+    content: "×";
+    color: #fff;
+    font-size: 21px;
+    font-weight: bold;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .spp_nav:hover {
+    background: var(--close-hover);
+    opacity: 1;
+  }
+}
+@media (min-width: 1000px) {
+  .spp_nav { display: none !important; }
+}
+
+/* --- 6. Панели всегда открыты на десктопе --- */
+@media (min-width: 1000px) {
+  .side-panel, .panel { position: static; box-shadow: none; }
+  .close-inside, .sp_nav, .sp_nav1, .sp_nav2, .spp_nav { display: none !important; }
+}
+
+/* --- 7. Хедеры --- */
+.spanel_heder, .header {
+  background: var(--bg-header);
+  color: #fff;
+  padding: 7px 12px;
+  font-weight: bold;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  opacity: 0.97;
+  width: 100%;
+  border-bottom: 1px solid #222;
+}
+.spanel_content { padding: 7px 7px 5px 7px; }
+
+/* --- 8. jsTree иконки — КЛАССИЧЕСКИЙ СТИЛЬ --- */
+#filesajaxtree .folder {
+  background: url('file_sprite.png') right bottom no-repeat;
+}
+#filesajaxtree .file { background: url('file_sprite.png') 0 0 no-repeat; }
+#filesajaxtree .file-pdf { background-position: -32px 0 }
+#filesajaxtree .file-as { background-position: -36px 0 }
+#filesajaxtree .file-c { background-position: -72px 0 }
+#filesajaxtree .file-iso { background-position: -108px 0 }
+#filesajaxtree .file-htm,
+#filesajaxtree .file-html,
+#filesajaxtree .file-xml,
+#filesajaxtree .file-xsl { background-position: -126px 0 }
+#filesajaxtree .file-cf { background-position: -162px 0 }
+#filesajaxtree .file-cpp { background-position: -216px 0 }
+#filesajaxtree .file-cs { background-position: -236px 0 }
+#filesajaxtree .file-sql { background-position: -272px 0 }
+#filesajaxtree .file-xls,
+#filesajaxtree .file-xlsx { background-position: -362px 0 }
+#filesajaxtree .file-h { background-position: -488px 0 }
+#filesajaxtree .file-crt,
+#filesajaxtree .file-pem,
+#filesajaxtree .file-cer { background-position: -452px -18px }
+#filesajaxtree .file-php { background-position: -108px -18px }
+#filesajaxtree .file-jpg,
+#filesajaxtree .file-jpeg,
+#filesajaxtree .file-png,
+#filesajaxtree .file-gif,
+#filesajaxtree .file-bmp { background-position: -126px -18px }
+#filesajaxtree .file-ppt,
+#filesajaxtree .file-pptx { background-position: -144px -18px }
+#filesajaxtree .file-rb { background-position: -180px -18px }
+#filesajaxtree .file-text,
+#filesajaxtree .file-txt,
+#filesajaxtree .file-md,
+#filesajaxtree .file-log,
+#filesajaxtree .file-htaccess { background-position: -254px -18px }
+#filesajaxtree .file-doc,
+#filesajaxtree .file-docx { background-position: -362px -18px }
+#filesajaxtree .file-zip,
+#filesajaxtree .file-gz,
+#filesajaxtree .file-tar,
+#filesajaxtree .file-rar { background-position: -416px -18px }
+#filesajaxtree .file-js { background-position: -434px -18px }
+#filesajaxtree .file-css { background-position: -144px 0 }
+#filesajaxtree .file-fla { background-position: -398px 0; }
+
+/* --- 9. jsTree оформление --- */
+.jstree-default-dark .jstree-hovered { color: #EEE; font-size: 12px; background: #333; }
+.jstree-default-dark .jstree-clicked { background: #333; border-radius: 2px; box-shadow: inset 0 0 1px #999; }
+.jstree-default-dark .jstree-icon:empty { width: 19px; height:20px; margin-top: 2px; }
+.jstree-default-dark .jstree-anchor { color: #EEE; font-size: 12px; }
+.opened_file { background: #202e3b !important; border: 1px solid var(--border-opened) !important; }
+.opened_file_unsave { color: var(--color-unsaved) !important; border-color: var(--border-unsaved) !important; }
+
+/* --- 10. Вкладки --- */
+#tabs_headers {
+  background: var(--bg-main);
+  border-bottom: 1px solid var(--border-main);
+  padding-left: 5px;
+  min-height: 38px;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+.fwe_tabhead_link {
+    display: inline-block;
+    position: relative;
+    padding: 5px 28px 5px 5px;
+    margin: 2px 2px 0 0;
+    background: #3c3c3c;
+    color: #a1a1a1;
+    font-size: 12px;
+    border: 1px solid #333;
+    border-radius: var(--radius-main) var(--radius-main) 0 0;
+    cursor: pointer;
+}
+.fwe_tabhead_link_active {
+  background: #222;
+  color: #fff;
+  border-bottom: 2px solid var(--color-accent);
+}
+.tabclose {
+  position: absolute;
+  right: 6px;
+  top: 4px;
+  background: none;
+  border: none;
+  color: #ff7676;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+/* --- 11. ACE-редактор --- */
+.fwe_data {
+  width: 100%;
+  min-height: 80vh;
+  margin-bottom: 12px;
+  background: var(--bg-editor);
+  border: 1px solid #373737;
+  border-radius: var(--radius-editor);
+}
+.ace_editor, .ace_content, .ace_scroller {
+  background: var(--bg-editor) !important;
+  color: #e8e8e8 !important;
+  font-family: var(--font-mono) !important;
+  font-size: 13px !important;
+  border: none;
+  border-radius: var(--radius-editor);
+}
+
+/* --- 12. Прогресс-бар --- */
+#progress-bar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--bg-progress);
+  z-index: 9999;
+  text-align: center;
+}
+#progress-bar-text {
+  margin-top: 24vh;
+  font-size: 1.2rem;
+  color: #fff;
+  font-weight: bold;
+}
+.progress {
+  width: 240px;
+  margin: 28px auto 0;
+  height: 18px;
+  background: #262f38;
+  border-radius: 9px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #1de9b6, #2196f3);
+  transition: width .4s;
+}
+
+/* --- 13. Панель инструментов --- */
+.toolbar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: var(--bg-header);
+  padding: 4px;
+  border-bottom: 1px solid var(--border-main);
+}
+.toolbar input[type="text"] {
+  background: #161616;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 13px;
+}
+
+/* --- 14. Лог редактора --- */
+#editorstatus {
+  background: #161616;
+  color: var(--color-log);
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  height: 220px;
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+/* --- 15. Скроллбары --- */
+::-webkit-scrollbar { width: 7px; background: #202b33; }
+::-webkit-scrollbar-thumb { background: #485563; border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: #1de9b6; }
+
+/* --- 16. Утилиты --- */
+.hidden { display: none !important; }
+
+/* --- 17. Скрыть чекбоксы --- */
+#side-checkbox1, #side-checkbox2 { display: none; }
+
+
+
+
+
+
+
+
+
+
+
+.panel-btn {
+  display: none;
+}
+
+@media (max-width: 999px) {
+  .panel-btn {
+    display: block;
+    position: fixed;
+    width: var(--nav-w);
+    height: var(--nav-h);
+    background: var(--nav-bg);
+    color: var(--nav-color);
+    font-size: 23px;
+    font-weight: bold;
+    text-align: center;
+    line-height: var(--nav-h);
+    top: 25vh;
+    z-index: var(--z-nav);
+    opacity: var(--nav-op);
+    border: none;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity .2s, background .2s;
+  }
+  .panel-btn.left {
+    left: 0;
+    border-top-right-radius: 18px;
+    border-bottom-right-radius: 18px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  .panel-btn.right {
+    right: 0;
+    border-top-left-radius: 18px;
+    border-bottom-left-radius: 18px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .panel-btn.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .panel-btn:active, .panel-btn:hover {
+    opacity: 0.95;
+    background: #181818;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+ /* ====================================================================
+   FWE Online Editor — toolbar (для tpl.php)
+   ==================================================================== */
+
+/* ====================================================================
+   FWE Online Editor — лаконичный toolbar
+   ==================================================================== */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px 10px;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border-main);
+  padding: 6px 10px;
+  min-height: 38px;
+  border-radius: var(--radius-main);
+}
+
+.toolbar form {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+}
+
+.toolbar input[type="text"] {
+  background: #191e23;
+  color: var(--color-main);
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 13px;
+  min-width: 98px;
+  outline: none;
+  transition: border 0.15s, background 0.2s;
+}
+.toolbar input[type="text"]:focus {
+  border-color: var(--color-accent);
+  background: #232933;
+}
+
+.toolbar button,
+.toolbar .btn {
+  background: none;
+  color: var(--color-main);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-size: 15px;
+  padding: 4px 10px;
+  font-family: var(--font-main);
+  cursor: pointer;
+  transition: border-color 0.16s, color 0.16s, background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar button:hover,
+.toolbar .btn:hover {
+  border: 1.5px solid var(--color-accent);
+  color: var(--color-accent);
+  background: none;
+}
+
+.toolbar button[type="submit"] {
+  padding: 3px 8px;
+}
+
+.toolbar i.mdi {
+  font-size: 16px;
+  color: inherit;
+  margin-right: 0;
+  vertical-align: middle;
+}
+
+.toolbar #toolbar-size,
+.toolbar #toolbar-mtime {
+  color: #bfe3ff;
+  font-size: 12px;
+  margin-left: 10px;
+}
+
+#fwe_closeall {
+  font-size: 18px;
+  font-weight: bold;
+  background: none;
+  color: #ff5c5c;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  margin-left: 7px;
+  transition: border-color 0.16s, color 0.16s;
+}
+#fwe_closeall:hover {
+  border: 1.5px solid #ff5c5c;
+  color: #fff;
+  background: none;
+}
+
+/* Responsive/mobile tweaks */
+@media (max-width: 700px) {
+  .toolbar {
+    gap: 4px 6px;
+    padding: 2px 4px;
+    min-height: 31px;
+  }
+  .toolbar input[type="text"] {
+    font-size: 11px;
+    min-width: 62px;
+    padding: 2px 5px;
+  }
+  .toolbar button, .toolbar .btn {
+    font-size: 12px;
+    padding: 2px 5px;
+  }
+  #fwe_closeall { padding: 2px 6px; font-size: 14px; }
+  .toolbar i.mdi { font-size: 13px; }
+}
+
+
+
+
+
+
+
+#default_content {
+  display: none;
+  max-width: 520px;
+  margin: 2em auto 0;
+  padding: 1.1em 1.2em 1.1em 1.2em;
+  background: #232323;
+  border-radius: 8px;
+  box-shadow: 0 2px 18px #1118;
+  color: #e1e8ef;
+  font-size: 1em;
+  line-height: 1.35;
+  border: 1.5px solid #333c;
+  transition: box-shadow .17s;
+}
+#default_content h2 {
+  margin: 0 0 0.6em 0;
+  font-size: 1.16em;
+  font-weight: 600;
+  color: #48afff;
+  letter-spacing: .2px;
+  display: flex;
+  align-items: center;
+  gap: .6em;
+  padding-bottom: 0.15em;
+  border-bottom: 1px solid #283342;
+}
+#default_content ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+#default_content li {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  border-left: 2.8px solid #444a;
+  border-radius: 3.5px;
+  padding: 0.35em 0.65em 0.33em 0.85em;
+  font-size: 0.98em;
+  background: none;
+  transition: background .15s, border-color .2s;
+  gap: .8em;
+  position: relative;
+}
+#default_content li:not(:last-child) {
+  margin-bottom: 2.5px;
+}
+#default_content li:hover {
+  background: #222c38;
+  border-left-color: #4ac1ff;
+}
+#default_content .mdi-file-outline {
+  color: #5bc6f7;
+  font-size: 1.08em;
+  margin-right: .22em;
+  opacity: 0.88;
+}
+#default_content .history-filename {
+  font-family: "Fira Mono", "JetBrains Mono", "Menlo", monospace;
+  font-size: 0.99em;
+  color: #d8eafd;
+  text-decoration: none;
+  transition: color .15s;
+  flex: 1 1 auto;
+  padding: 0;
+}
+#default_content .history-filename:hover {
+  color: #69cfff;
+  text-decoration: underline;
+}
+#default_content .history-date {
+  color: #a9bac9;
+  font-size: 0.93em;
+  margin-left: .6em;
+  white-space: nowrap;
+  font-family: "Fira Mono", "JetBrains Mono", monospace;
+  opacity: .79;
+  flex: 0 0 auto;
+  letter-spacing: 0.03em;
+}
+.restore-closed-tab {
+  background: none;
+  border: none;
+  color: #5bc6f7;
+  cursor: pointer;
+  margin-left: 0.25em;
+  padding: 0 2px;
+  font-size: 1em;
+  opacity: .85;
+  transition: color .18s, opacity .12s;
+}
+.restore-closed-tab:hover {
+  color: #85e3ff;
+  opacity: 1;
+}
+@media (max-width: 600px) {
+  #default_content {
+    padding: 0.65em 0.12em 0.65em 0.65em;
+    font-size: 0.98em;
+    max-width: 97vw;
+  }
+  #default_content h2 {
+    font-size: 1.03em;
+    padding-bottom: 0.06em;
+  }
+  #default_content li {
+    font-size: 0.97em;
+    padding-left: .8em;
+    gap: .5em;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.finput  {
+  background: #23242c;
+  color: #e0eafd;
+  border: 1px solid #363a47;
+  border-radius: 9px;
+  font-family: "JetBrains Mono", "Fira Mono", monospace;
+  font-size: 1em;
+  padding: 0.32em 0.8em;
+  margin: 0 0 0.5em 0;
+  outline: none;
+   
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  height: 2.15em;
+}
+
+ 
+
+.finput[readonly] {
+  background: #23242c;
+  opacity: .85;
+  color: #b4badb;
+  border-style: dashed;
+  cursor: default;
+}
+
+ 
+ 
+ 
+ 
+/* Панель навигаткора по коду  */
+.outline-link{font-size:12px;}
+
+.outline-panel { background: #23242c; color: #d7eafd; font-size: 12px; border-radius: 10px; padding: 10px; max-height: 70vh; overflow:auto;}
+.outline-list, .outline-methods { list-style:none; padding-left: 1.2em; margin:0; }
+.outline-list > li { margin-bottom:.4em;}
+.outline-link { cursor:pointer; border-radius:5px; display:inline-block; padding:2px 7px; }
+.outline-link.outline-active { background: #154a86; color: #fff; }
+.outline-class   > .outline-link { font-weight:bold; color:#53c2fa;}
+.outline-method  > .outline-link { color:#abe8c6;}
+.outline-function> .outline-link { color:#ffdb66;}
+.outline-selector> .outline-link { color:#c9b7f7;}
+.mdi { font-size:12px; margin-right:.45em;}
+
+/* Выделенная строка в ACE редакторе  */
+.ace_editor .ace_marker-layer .ace_active-line {
+    background: #000 !important;
+    opacity: 1 !important;
+}
+
+/* Элемент комментария в outline */
+.outline-comment {
+  color: #8db1ff;
+  font-style: italic;
+  font-size: 12px;
+  margin-left: 2em;
+  cursor: pointer;
+}
+.outline-comment .mdi-comment {
+  color: #6ba3e3;
+  margin-right: .3em;
+}
+
+.outline-active {
+  background: #273a4e !important;
+  color: #fff !important;
+}

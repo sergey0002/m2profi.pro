@@ -1,0 +1,302 @@
+<?
+// ВЫвод обектов если не выбран обьект
+
+$sa = new sahmatka( $_SESSION , $connection );
+$h = $sa->get_homes_arr();
+// print_r($h);
+
+$bgCfg = isset($GLOBALS['booking_guard']) && is_array($GLOBALS['booking_guard']) ? $GLOBALS['booking_guard'] : [];
+$bgFreeStatuses = array_map('intval', (array)($bgCfg['free_statuses'] ?? [0, 2]));
+$bgFreeStatuses = array_values(array_unique($bgFreeStatuses));
+if (!$bgFreeStatuses) { $bgFreeStatuses = [0, 2]; }
+$bgIn = implode(',', $bgFreeStatuses);
+$bgThreshold = (float)($bgCfg['free_percent_threshold'] ?? 10.0);
+$bgEnabled = !empty($bgCfg['enabled']);
+$adminPanelEnabled = !empty($bgCfg['admin_service_panel_enabled']);
+$adminPanelLogins = (array)($bgCfg['admin_service_panel_logins'] ?? ['admin']);
+$showAdminServicePanel = $adminPanelEnabled && in_array((string)($_SESSION['sh_login'] ?? ''), $adminPanelLogins, true);
+$homeServiceStats = [];
+if ($showAdminServicePanel) {
+	$visibleHomeIds = [];
+	foreach ((array)$h as $homeRow) {
+		$hid = (int)($homeRow['home_id'] ?? 0);
+		if ($hid > 0) { $visibleHomeIds[] = $hid; }
+	}
+	$visibleHomeIds = array_values(array_unique($visibleHomeIds));
+	$homeIdsSql = implode(',', $visibleHomeIds);
+	if ($homeIdsSql !== '') {
+		$qStats = "
+			SELECT
+				r.home_id,
+				r.rooms_num,
+				r.total_count,
+				r.free_count,
+				r.booked_count,
+				ROUND((r.free_count / NULLIF(r.total_count, 0)) * 100, 2) AS room_free_percent,
+				ROUND((r.booked_count / NULLIF(r.total_count, 0)) * 100, 2) AS room_booked_percent,
+				t.home_total_count,
+				t.home_free_count,
+				t.home_booked_count,
+				t.home_sold_count,
+				ROUND((t.home_free_count / NULLIF(t.home_total_count, 0)) * 100, 2) AS home_free_percent,
+				ROUND((t.home_booked_count / NULLIF(t.home_total_count, 0)) * 100, 2) AS home_booked_percent,
+				ROUND((t.home_sold_count / NULLIF(t.home_total_count, 0)) * 100, 2) AS home_sold_percent,
+				t.is_blocked
+			FROM (
+				SELECT
+					home_id,
+					CAST(rooms AS UNSIGNED) AS rooms_num,
+					COUNT(*) AS total_count,
+					SUM(CASE WHEN (status2 IS NULL OR status2 IN ($bgIn)) THEN 1 ELSE 0 END) AS free_count,
+					SUM(CASE WHEN (status2 IS NOT NULL AND status2 NOT IN ($bgIn) AND status2 <> 3) THEN 1 ELSE 0 END) AS booked_count
+				FROM apartaments
+				WHERE home_id IN ($homeIdsSql)
+				GROUP BY home_id, CAST(rooms AS UNSIGNED)
+				HAVING rooms_num > 0
+			) r
+			INNER JOIN (
+				SELECT
+					home_id,
+					COUNT(*) AS home_total_count,
+					SUM(CASE WHEN (status2 IS NULL OR status2 IN ($bgIn)) THEN 1 ELSE 0 END) AS home_free_count,
+					SUM(CASE WHEN (status2 IS NOT NULL AND status2 NOT IN ($bgIn) AND status2 <> 3) THEN 1 ELSE 0 END) AS home_booked_count,
+					SUM(CASE WHEN status2 = 3 THEN 1 ELSE 0 END) AS home_sold_count,
+					CASE
+						WHEN COUNT(*) > 0
+							AND ((SUM(CASE WHEN (status2 IS NULL OR status2 IN ($bgIn)) THEN 1 ELSE 0 END) / COUNT(*)) * 100) < {$bgThreshold}
+						THEN 1 ELSE 0
+					END AS is_blocked
+				FROM apartaments
+				WHERE home_id IN ($homeIdsSql)
+				GROUP BY home_id
+			) t ON t.home_id = r.home_id
+		";
+		$rows = $mysql->get_arr($qStats);
+		if (is_array($rows)) {
+			foreach ($rows as $row) {
+				$homeId = (int)($row['home_id'] ?? 0);
+				$rooms = (int)($row['rooms_num'] ?? 0);
+				if ($homeId <= 0 || $rooms <= 0) { continue; }
+				if (!isset($homeServiceStats[$homeId])) {
+					$homeServiceStats[$homeId] = ['rooms' => [], 'total' => 0, 'free' => 0, 'booked' => 0, 'sold' => 0, 'percent' => 0.0, 'booked_percent' => 0.0, 'sold_percent' => 0.0, 'is_blocked' => false];
+				}
+				$homeServiceStats[$homeId]['rooms'][$rooms] = [
+					'total' => (int)($row['total_count'] ?? 0),
+					'free' => (int)($row['free_count'] ?? 0),
+					'booked' => (int)($row['booked_count'] ?? 0),
+					'percent' => (float)($row['room_free_percent'] ?? 0),
+					'booked_percent' => (float)($row['room_booked_percent'] ?? 0),
+				];
+				$homeServiceStats[$homeId]['total'] = (int)($row['home_total_count'] ?? 0);
+				$homeServiceStats[$homeId]['free'] = (int)($row['home_free_count'] ?? 0);
+				$homeServiceStats[$homeId]['booked'] = (int)($row['home_booked_count'] ?? 0);
+				$homeServiceStats[$homeId]['sold'] = (int)($row['home_sold_count'] ?? 0);
+				$homeServiceStats[$homeId]['percent'] = (float)($row['home_free_percent'] ?? 0);
+				$homeServiceStats[$homeId]['booked_percent'] = (float)($row['home_booked_percent'] ?? 0);
+				$homeServiceStats[$homeId]['sold_percent'] = (float)($row['home_sold_percent'] ?? 0);
+				$homeServiceStats[$homeId]['is_blocked'] = !empty($row['is_blocked']);
+			}
+		}
+	}
+	foreach ($homeServiceStats as $homeId => $stat) {
+		if (!$bgEnabled) { $homeServiceStats[$homeId]['is_blocked'] = false; }
+		ksort($homeServiceStats[$homeId]['rooms'], SORT_NUMERIC);
+	}
+}
+
+
+	
+?>
+ 
+ 
+ 
+ <section class="section-objects">
+	<div class="container mobc">
+ 
+		
+<style>
+		@media (max-width: 767px) {.show-mobile{display:auto;} .hide-mobile{display:none;}  }
+		@media (min-width: 768px) {.show-mobile{display:none;} .hide-mobile{display:auto;} }
+</style>
+		
+ <div class="page-header" style="margin-bottom:0;">
+			<div class="page-header__logo"><img src="template/default/images/logo.svg" alt="" /></div>
+			<div class="page-header__title">Объекты</div>
+			 
+			<div style="width:100%; text-align:right; padding-top:30px; cursor:pointer;" class="open_xxpanel hide-mobile">
+				<div style=" display:inline-block; padding: 15px; border-radius:20px; background: #00CDAE; width:500px; max-width:100%;  ">
+					<div style="display:table-cell; text-align:left; vertical-align: top;">
+						<span style="text-transform: uppercase; color: #FFF;  font-weight: bold; font-size: 12px; line-height: 2em;">Новое</span><br/>
+						<span style="  color:#2F4049; font-weight: bold; font-size: 14px;">Добавьте иконку в телефон</span>
+					</div>
+					<div style="display:table-cell; text-align:left; vertical-align: baseline;">
+						<span style="font-size:14px;">И заходите в М2 PROFI как в приложение.</span>
+					</div>
+					<div style="display:table-cell; ">
+					<img src="/l.png" />
+					</div>
+				</div>
+			</div>
+			 
+		</div>
+		
+		
+		
+		<div style="width:100%;  padding-top:30px; padding-bottom:30px; cursor:pointer;" class="open_xxpanel show-mobile">
+				<div style=" display:inline-block; padding: 15px; border-radius:20px; background: #00CDAE; width:500px; max-width:100%;  ">
+					<div style="display:table-cell; text-align:left; vertical-align: top; width: 100%;">
+						<span style="text-transform: uppercase; color: #FFF;  font-weight: bold; font-size: 12px; line-height: 2em;">Новое</span><br/>
+						<span style="  color:#2F4049; font-weight: bold; font-size: 14px;">Добавьте иконку <br/>в телефон</span><br/><br/>
+						<span style="font-size:14px;">И заходите в М2 PROFI<br/> как в приложение.</span>
+					</div>
+					<div style="display:table-cell; text-align:right; ">
+					<img src="/l2.png" width="100" />
+					</div>
+				</div>
+			</div>
+			
+			
+<?
+		object_menu();		
+?>
+
+ 
+			
+			
+			
+			
+		<div class="objects">
+			<div class="row">
+				<?
+				foreach($h as $k=>$v)
+				{
+					
+					if(isset($_GET['sdan']))
+					{
+						if($_GET['sdan']){if($v['complite']=="0"){continue;}}
+						else{if($v['complite']=="1"){continue;}}
+					}
+				?>
+				
+				<div class="col-sm-6 col-md-6 col-lg-4 col-xl-3">
+					<div class="object">
+						<div class="object__title"><?=$v[long_title]?></div>
+						<div class="object__pict">
+							<img src="render/<?=$v[home_id]?>.jpg" alt="">
+							<div class="object__info">
+							<?
+							// Не выводим адрес!
+							if($v[adress333])
+							{
+								?>
+								<div class="object__location"><?=$v[adress]?></div>
+								<?
+							}
+							?>
+							<div class="object__status object__status_sale"><?=$v[complite_text]?></div>
+							</div>
+						</div>
+						<?
+						if ($showAdminServicePanel) {
+							$homeId = (int)$v['home_id'];
+							$service = $homeServiceStats[$homeId] ?? null;
+							if ($service && !empty($service['rooms'])) {
+								$homeFreePercent = (float)$service['percent'];
+								$homeBookedPercent = (float)$service['booked_percent'];
+								$homeSoldPercent = (float)$service['sold_percent'];
+								$homeProgressWidth = max(0, min(100, $homeSoldPercent));
+								$homeProgressColor = 'rgba(231, 167, 167, 0.18)';
+								?>
+								<div class="admin-home-stats" style="background:#fff; border:1px solid #dfe6ea; border-radius:10px; margin-top:10px; padding:0 0 10px 0; font-size:9px; line-height:2em;">
+									<div style="position:relative; margin-bottom:6px; border:1px solid #dfe6ea; border-radius:8px; padding:2px 6px; overflow:hidden; background:#fcfaf4;">
+										<div style="position:absolute; left:0; top:0; bottom:0; width:<?= number_format($homeProgressWidth, 2, '.', '') ?>%; background:<?= $homeProgressColor ?>;"></div>
+										<div style="position:relative; z-index:1; font-weight:600; <?= ($homeFreePercent < $bgThreshold) ? 'color:#b33a3a;' : '' ?>">
+											<b><?= (int)$service['total'] ?></b> / Свободно: <b><?= (int)$service['free'] ?></b><? if ($homeFreePercent > 0): ?> (<b><?= number_format($homeFreePercent, 2, ',', '') ?>%</b>)<? endif; ?> / Бронь: <b><?= (int)$service['booked'] ?></b><? if ($homeBookedPercent > 0): ?> (<b><?= number_format($homeBookedPercent, 2, ',', '') ?>%</b>)<? endif; ?>
+										</div>
+									</div>
+									<div style="padding:0 8px;">
+										<? foreach ($service['rooms'] as $rooms => $roomStat) { ?>
+											<? $roomFreePercent = (float)$roomStat['percent']; ?>
+											<? $roomBookedPercent = (float)$roomStat['booked_percent']; ?>
+											<? $isZeroFree = ((int)$roomStat['free'] === 0); ?>
+											<? $isZeroBooked = ((int)$roomStat['booked'] === 0); ?>
+											<div>
+												<b><?= (int)$rooms ?>к</b>: - <b><?= (int)$roomStat['total'] ?></b> /
+												<span style="<?= $isZeroFree ? 'color:#CCC;' : '' ?>">Свободно: <b><?= (int)$roomStat['free'] ?></b><? if ($roomFreePercent > 0): ?> (<b><?= number_format($roomFreePercent, 2, ',', '') ?>%</b>)<? endif; ?></span> /
+												<span style="<?= $isZeroBooked ? 'color:#CCC;' : '' ?>">Бронь: <b><?= (int)$roomStat['booked'] ?></b><? if ($roomBookedPercent > 0): ?> (<b><?= number_format($roomBookedPercent, 2, ',', '') ?>%</b>)<? endif; ?></span>
+											</div>
+										<? } ?>
+										<? if (!empty($service['is_blocked'])) { ?>
+											<div style="margin-top:6px; font-weight:700; color:#b33a3a;">Ручное бронирование</div>
+										<? } ?>
+									</div>
+								</div>
+								<?
+							}
+						}
+						?>
+						<a href="user.php?action=objects&home=<?=$v[home_id]?>&sdan=<?=$v['complite']?>" class="object__btn btn btn_arrow">К объекту<i></i></a>
+					</div>
+				</div>
+					 <?
+				}
+				
+				
+				if($_GET['sdan'])
+				{
+					foreach($custom_apparts_all as $k=>$v)
+					{
+					?>
+					<div class="col-sm-6 col-md-6 col-lg-4 col-xl-3">
+						<div class="object">
+						<div class="object__title"><?=$v['homecaption']?></div>
+						<div class="object__pict" style="border: solid 1px #EEE; text-align:center;">
+							<img src="<?=$v['image_pb']?>" alt="" style="width:auto; display:inline-block;">
+							<div class="object__info">
+								<div class="object__status object__status_sale">сдан</div>
+							</div>
+						</div>
+						<a href="/sahmatka/form_order_custom.php?custom_home_id=<?=$v['home']?>&custom_appart_id=<?=$v['custom_appart_id']?>" class="iframe object__btn btn btn_arrow">К объекту<i></i></a>
+						</div>
+					</div>
+					<?
+					}
+				}
+					
+					
+					
+				?> 
+
+				
+			</div>
+		<a href="/sahmatka/yandex_feedx.php">XML Фид в формате Yandex</a>
+		</div>
+	</div>
+</section>
+
+<script>
+(function() {
+	function syncAdminStatsHeight() {
+		var blocks = document.querySelectorAll('.admin-home-stats');
+		if (!blocks.length) return;
+		var maxH = 0;
+		blocks.forEach(function(el) {
+			el.style.minHeight = '';
+			if (el.offsetHeight > maxH) maxH = el.offsetHeight;
+		});
+		blocks.forEach(function(el) { el.style.minHeight = maxH + 'px'; });
+	}
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', syncAdminStatsHeight);
+	} else {
+		syncAdminStatsHeight();
+	}
+	window.addEventListener('resize', syncAdminStatsHeight);
+})();
+</script>
+
+
+
+
+		
+				 

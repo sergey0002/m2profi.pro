@@ -1,0 +1,137 @@
+# IDEs and Editors
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# AI & MCP Tools Code
+.playwright-mcp/
+.mcp.json
+mcp.json
+gemini-cli-mcp/
+mcp_config.json
+
+# Local Server Tools & Logs
+adminer.php
+phpMyAdmin/
+xlsx_tmp/*
+!xlsx_tmp/.gitkeep
+*.log
+error_log
+access_log
+
+# Temporary & Debug Scripts
+1.php
+1.htm
+test_db.php
+check_password.php
+inspect_tenants.php
+pass_debug.txt
+user_debug.txt
+setup_tenant_db.php
+test_auth.php
+
+ 
+
+# Verification Files
+google*.html
+
+# Laravel Core (Standard Ignores)
+core/vendor/
+laracore/vendor/
+laracore/node_modules/
+laracore/npm-debug.log
+laracore/yarn-error.log
+laracore/.env
+laracore/.env.*
+!laracore/.env.example
+laracore/public/hot
+laracore/public/storage
+laracore/storage/*.key
+laracore/storage/debugbar/
+laracore/storage/framework/cache/data/
+laracore/storage/framework/sessions/
+laracore/storage/framework/testing/
+laracore/storage/framework/views/
+laracore/storage/logs/
+
+# Tenant site config (credentials, per-environment)
+sites/*/sahmatka/config.php
+sites/*/config.php
+sites/*/config.js.php
+
+# Tenant user uploads (contents only, folder kept via .gitkeep)
+sites/*/sahmatka/uploads/*
+!sites/*/sahmatka/uploads/.gitkeep
+sites/*/sahmatka/uploads_parking/*
+!sites/*/sahmatka/uploads_parking/.gitkeep
+sites/*/sahmatka/uploads_rent/*
+!sites/*/sahmatka/uploads_rent/.gitkeep
+sites/*/sahmatka/uploads_landplots/*
+!sites/*/sahmatka/uploads_landplots/.gitkeep
+sites/*/sahmatka/upload/*
+!sites/*/sahmatka/upload/.gitkeep
+sites/*/sahmatka/agent_files/*
+!sites/*/sahmatka/agent_files/.gitkeep
+sites/*/captcha/uploads/*
+!sites/*/captcha/uploads/.gitkeep
+sites/*/sahmatka/template/captcha/uploads/*
+!sites/*/sahmatka/template/captcha/uploads/.gitkeep
+sites/doc/uploads/*
+!sites/doc/uploads/.gitkeep
+
+# Tenant plans, renders & caches (contents only)
+sites/*/sahmatka/rent/*
+!sites/*/sahmatka/rent/.gitkeep
+sites/*/sahmatka/parking/*
+!sites/*/sahmatka/parking/.gitkeep
+sites/*/sahmatka/render/*
+!sites/*/sahmatka/render/.gitkeep
+sites/*/sahmatka/hrender/*
+!sites/*/sahmatka/hrender/.gitkeep
+sites/*/sahmatka/landplots/*
+!sites/*/sahmatka/landplots/.gitkeep
+sites/*/sahmatka/projects/*
+!sites/*/sahmatka/projects/.gitkeep
+sites/*/area_render/*
+!sites/*/area_render/.gitkeep
+sites/*/svg2png/cache/*
+!sites/*/svg2png/cache/.gitkeep
+
+# Tenant import & runtime data (contents only)
+sites/*/sahmatka/import/*
+!sites/*/sahmatka/import/.gitkeep
+sites/*/sahmatka/personaloffer/*
+!sites/*/sahmatka/personaloffer/.gitkeep
+
+# Tenant generated exports & dumps
+sites/*/sahmatka/cronlog.txt
+sites/*/sahmatka/realty_feed.csv
+sites/*/sahmatka/import.csv
+sites/*/sahmatka/adminer.sql
+
+# Panel (Laravel admin)
+sites/panel/vendor/
+sites/panel/node_modules/
+sites/panel/.env
+sites/panel/.env.*
+!sites/panel/.env.example
+sites/panel/public/hot
+sites/panel/public/storage
+sites/panel/storage/*.key
+sites/panel/storage/logs/
+sites/panel/storage/framework/cache/
+sites/panel/storage/framework/sessions/
+sites/panel/storage/framework/views/
+
+# Doc site vendor
+sites/doc/core/vendor/
+
+# Generated logs
+orderlog.csv
+orderlogx.csv
+
+# Sensitive or Generated
+node_modules

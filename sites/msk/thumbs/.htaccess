@@ -1,0 +1,9 @@
+<IfModule mod_rewrite.c>
+ RewriteEngine On
+ RewriteBase /
+ RewriteRule ^thubms\/index.php$ index.php [L]
+ RewriteCond %{QUERY_STRING} w=[0-9]+ [OR]
+ RewriteCond %{QUERY_STRING} h=[0-9]+ [OR]
+ RewriteCond %{QUERY_STRING} ^tc?$
+ RewriteRule ^(.*)\.(jpg|gif|png) thubms\/index.php?name=%{REQUEST_FILENAME}&%{QUERY_STRING} [NC,L]
+</IfModule>

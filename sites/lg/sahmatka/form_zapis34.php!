@@ -1,0 +1,438 @@
+﻿<?
+//include('sahmatka/config.php');
+?>
+
+<html>
+<head>
+   <meta charset="utf-8">
+</head>
+<style>
+ 
+
+
+input,select
+{
+	border:1px solid #000;
+	border-radius:5px;
+	padding:4px;
+	font-size:16px;
+	margin:6px;
+	width:95%;
+	font-size:14px;
+}
+	
+	</style>
+
+<body>
+<?
+if(!$_POST)
+{
+ 
+/*
+451 - 2 подезда
+
+
+Вывод квартир 
+все проданные квартиры уник номера
+---
+ 
+Вывод доступной даты записи
+---
+Время сдачи по квартирно Корректировать на PHP
+Часы и дни работы
+
+ 
+Вывод доступного времени записи
+---
+Количество человек которые можно записать на одно время 
+
+
+*/
+
+?>
+	
+
+<center> 
+
+
+<div style="display:inline-block; max-width:98%; font-size:16px; text-align:right;">
+<form method="post" id="zapisform">
+		 
+<select id="podezd" name="podezd" style="max-width:100%;">
+<option value="">Подъезд</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+</select>
+				 
+				
+<select id="apartament_num" name="apartament_num" style="max-width:100%;">
+	<option value="">Квартира</option>
+</select> 
+
+
+<select id="date" name="date" style="max-width:100%;">
+	<option value="">Дата</option> 
+</select>
+	
+ 
+<select id="time" name="time" style="max-width:100%;">
+	<option value="">Время</option>
+</select>
+
+<input type="text" name="fio" placeholder="ФИО" required  /><br/>
+<input type="text" name="phone" placeholder="Телефон" required  /><br/>
+ 			
+
+			
+ 
+				 
+
+<div style="border:2px solid #000; text-align: center; padding:10px; margin-top:20px; margin-bottom:20px;">	
+<u><b>ПАМЯТКА ПО ВЫДАЧЕ КЛЮЧЕЙ</b></u><br/>
+  <br/>
+ Для подписания актов приема-передачи квартиры требуется присутствие всех участников ДДУ<br/><br/>
+<b>При себе иметь:</b><br/>
+- Договор долевого участия<br/>
+- Паспорт<br/>
+- Документы, подтверждающие оплату<br/>
+ 
+</div>
+
+<input type="submit" id="submit"  style="background-color:#E2302D; color:#FFF; padding:10px;  padding-left:40px; padding-right:40px; font-size:16px; font-weight:bold;   border-radius:7px;" value="Записаться" >
+ <br><br>
+					 
+			   </form>
+		</div>
+
+		</center>	   
+
+
+<script src="/static/js/jquery.js"></script> 
+        <script type="text/javascript">
+
+
+
+
+
+// A $( document ).ready() block.
+$( document ).ready(function() {
+    
+	
+	
+	
+	
+	
+	$.ajaxSetup({cache: false}); 
+$("#apartament_num").prop('disabled', 'disabled');
+$("#date").prop('disabled', 'disabled');
+$("#time").prop('disabled', 'disabled');
+ 
+ 
+
+
+ 
+
+
+$("#podezd").change(function(){
+	if( $("#podezd").val()   )
+	{ 
+			$("#apartament_num").load("/sahmatka2/ajax_form_zapis34.php", { load:"appartaments", home: $("#home option:selected").val(),section: $("#podezd option:selected").val()  }  , function() {
+			$("#apartament_num").removeAttr("disabled");
+			$("#date").val(0);
+			$("#date").prop('disabled', 'disabled');
+
+			$("#time").val(0);
+			$("#time").prop('disabled', 'disabled');
+	});
+		
+	}
+	else
+	{
+		$("#apartament_num").prop('disabled', 'disabled');
+	}
+});
+	
+	
+	
+	$("#apartament_num").change(function(){
+		
+		
+		
+		 if( $("#apartament_num").val()   )
+		 {
+			$("#date").load("/sahmatka2/ajax_form_zapis34.php", { load:"date", home: $("#home option:selected").val()  , apartament_num: $("#apartament_num option:selected").val() , section: $("#podezd option:selected").val()  });
+			$("#date").removeAttr("disabled");
+		 }
+	     else
+		 {
+			$('#date').find('option').remove();  
+			$('#date').append('<option value="">Дата</option>');
+			$("#date").prop('disabled', 'disabled');
+			
+			
+			$('#time').find('option').remove();  
+			$('#time').append('<option value="">Время</option>');
+			$("#time").prop('disabled', 'disabled'); 
+		 }
+		
+         
+		 $("#time").prop('disabled', 'disabled');
+	 
+        });
+	
+	
+	
+	
+	
+	
+	
+		$("#apartament_num").change(function(){
+		
+		
+		
+		 if( $("#apartament_num").val()   )
+		 {
+			$("#date").load("/sahmatka2/ajax_form_zapis34.php", { load:"date", home: $("#home option:selected").val()  , apartament_num: $("#apartament_num option:selected").val() , section: $("#podezd option:selected").val()  });
+			$("#date").removeAttr("disabled");
+		 }
+	     else
+		 {
+			$('#date').find('option').remove();  
+			$('#date').append('<option value="">Дата</option>');
+			$("#date").prop('disabled', 'disabled');
+			
+			
+			$('#time').find('option').remove();  
+			$('#time').append('<option value="">Время</option>');
+			$("#time").prop('disabled', 'disabled'); 
+		 }
+		
+         
+		 $("#time").prop('disabled', 'disabled');
+	 
+        });
+
+	$("#date").change(function(){
+		
+		
+		 if( $("#apartament_num").val()   )
+		 {
+			 $("#time").load("/sahmatka2/ajax_form_zapis34.php", { load:"time", home: $("#home option:selected").val()  , apartament_num: $("#apartament_num option:selected").val()  , date: $("#date option:selected").val() });
+			 $("#time").removeAttr("disabled");
+		 }
+	     else
+		 {
+			$('#time').find('option').remove();  
+			$('#time').append('<option value="">Дата</option>');
+
+			$("#time").prop('disabled', 'disabled');
+			 
+		 }
+		 
+		 
+        });
+		
+		
+		
+	
+});
+
+
+
+
+
+
+  
+		
+ 
+		
+		 $("#zapisform").submit(function (e) {
+			 
+			 if( !$("#apartament_num").val() || !$("#date").val() || !$("#time").val()  || !$("#podezd").val() )
+			 {
+				 alert('Необходимо заполнить все поля формы!');
+				 return false;
+			 }
+ 
+        //$(this).submit();
+    });
+        </script>
+
+
+
+	<?
+}
+else
+{
+$_POST[home_id] = 16;
+$connection = mysqli_connect('localhost', 'u4603566_energo', 'EM78sd34ns', 'u4603566_sahmatka') or die(mysqli_error()); // Соединение с базой данных 
+$result = mysqli_query($connection, "SET NAMES utf8");
+
+	$_POST[home_id] = 16;
+	$homes[16]='602';
+	
+	/*
+	$_POST[home_id] =   (int) $_POST[home_id];
+	$_POST[apartament_num] =   (int) $_POST[apartament_num];
+	$_POST[date] = mysqli_real_escape_string($_POST[date],$connection);
+	$_POST[phone] = mysqli_real_escape_string($_POST[phone],$connection);
+	$_POST[time] = mysqli_real_escape_string($_POST[time],$connection);
+	*/
+	 
+	if(!$_POST[home_id] || !$_POST[apartament_num] || !$_POST[date] || !$_POST[phone]  || !$_POST[time] ){ print 'Необходимо заполнить все поля!';}
+	else
+	{
+		# Ищем есть ли записи для текущей квартиры + дома 
+ 	
+	$q1=" SELECT * FROM  `zapis` where home_id='". $_POST[home_id]."' AND apartment_num = '".$_POST[apartament_num]."' AND del=\"0\" ";
+
+$row = array();
+	$result = $connection->query($q1);
+	while($r1 = mysqli_fetch_array($result))
+	{
+		 $row = $r1;
+	}
+	 if($row) // Есть запись
+	 {
+		 $mess.= 'Дом - <b>'. $homes[$row[home_id]].'</b><br/>';
+		 $mess.= 'Подъезд  - <b>'.  $row['section'].'</b><br/>';
+		 $mess.= 'Квартира  - <b> '.  $row['apartment_num'].'</b><br/>';
+		 $mess.= 'ФИО  - <b> '.  $row['fio'].'</b><br/>';
+		 $mess.= 'Контактный телефон  - <b>'.  $row[phone].'</b><br/>';
+		 $mess.= 'Дата  - <b>'.  $row[date].'</b><br/>';
+		 $mess.= 'Время  - <b>'.  $row[time].'</b><br/>';
+	 
+		 
+		
+		//$mess.= 'Изменены паспортные данные  - <b>'. $passport.'</b><br/>';
+		$mess.= '<b>Ждем вас в назначенное время  у подъезда  </b><br/>';
+		
+		
+		print "<center><h2>Вы были записаны ранее!</h2>";
+		print "<center><h2>Чтобы отменить запись обратитесь по телефону: 347-47-00 </h2>";
+		print $mess;
+		?>
+		<div style="border:2px solid #000; text-align: center; padding:10px; margin-top:20px; margin-bottom:20px;">	
+		<u><b>ПАМЯТКА ПО ВЫДАЧЕ КЛЮЧЕЙ</b></u><br/>
+		 <br/>
+		 Для подписания актов приема-передачи квартиры требуется присутствие всех участников ДДУ<br/>
+
+		<b>При себе иметь:</b><br/>
+		- Договор долевого участия<br/>
+		- Паспорт<br/>
+		- Документы, подтверждающие оплату<br/>
+		</div>
+		
+		
+		<b style="color:red;"> 
+ Внимание! <br/>В случае опоздания запись аннулируется!</b>
+		</center>
+		<?
+	 }
+	 
+	 
+	else // нет такой строки (дом + квартира )
+	{
+ 
+ 
+ 
+	$d_sql = date("Y-m-d",strtotime($_POST[date]));  
+	  $q1=" SELECT count(*) as c FROM  `zapis` where home_id='". $_POST[home_id]."' AND date = '".$d_sql."' AND time = '".$_POST[time]."' AND del=\"0\" ";
+	$row = array();
+	$result = $connection->query($q1);
+	while($r1 = mysqli_fetch_array($result))
+	{
+		 $row = $r1;
+	}
+	if($row) // Есть запись
+	{
+		$count_zapis_time = $row[c];
+	}
+		 
+	// меньше трех записей в базе на это время
+	if($count_zapis_time<3)
+	{
+ 
+	$mess.= 'Дом - <b>'. $homes[$_POST[home_id]].'</b><br/>';
+	$mess.= 'Подъезд  - <b>'.  $_POST[podezd].'</b><br/>';
+	$mess.= 'Квартира  - <b> '.  $_POST[apartament_num].'</b><br/>';
+	$mess.= 'ФИО  - <b> '.  $_POST[fio].'</b><br/>';
+	$mess.= 'Контактный телефон  - <b>'.  $_POST[phone].'</b><br/>';
+	$mess.= 'Дата  - <b>'.  $_POST[date].'</b><br/>';
+	$mess.= 'Время  - <b>'.  $_POST[time].'</b><br/>';
+ 
+	if($_POST[passprot]){$passport='ДА';}
+	elseif(!$_POST[passprot]){$passport='НЕТ';}
+	
+	//$mess.= 'Изменены паспортные данные  - <b>'. $passport.'</b><br/>';
+ 	$mess.= '<b>Ждем вас в назначенное время  у подъезда  </b><br/>';
+	
+	
+			$mess.= '<b style="color:red;"> 
+ Внимание! <br/>В случае опоздания запись аннулируется!</b>';
+ 
+ 
+  $ti=time();
+	  $_POST[date] =  date("Y-m-d", strtotime($_POST[date])); // Преобразуем дату в формат MYSQL
+	  $sql = "INSERT INTO `zapis` (`home_id`,`section`, `apartment_num`, `date`, `time`, `phone`, `new_passport`,`fio`,`at`) VALUES ('".$_POST[home_id]."','".$_POST[podezd]."', '".$_POST[apartament_num]."', '".$_POST[date]."', '".$_POST[time].":00', '".$_POST[phone] ."', '".$_POST[passprot] ."' , '".$_POST[fio] ."','".$ti."'); ";
+
+	$query = mysqli_query($connection, $sql); 
+	}
+	else 
+	{
+		
+		print 'Произошла ошибка - дата и время которые вы выбрали уже занято<br/> попробуйте <a href="#" onclick="window.history.back()">записаться на другое время</a>';
+	}
+	
+	
+	
+	
+	}
+	}
+	
+	
+if($query )
+{
+print "<center><h2>Ваша заявка принята</h2>";
+print $mess;
+?>
+<div style="border:2px solid #000; text-align: center; padding:10px; margin-top:20px; margin-bottom:20px;">	
+<u><b>ПАМЯТКА ПО ВЫДАЧЕ КЛЮЧЕЙ</b></u><br/>
+ <br/>
+ Для подписания актов приема-передачи квартиры требуется присутствие всех участников ДДУ<br/>
+
+<b>При себе иметь:</b><br/>
+- Договор долевого участия<br/>
+- Паспорт<br/>
+- Документы, подтверждающие оплату<br/>
+</div>
+</center>
+<?
+}
+else
+{
+//print "<center><h2>К сожалению пока вы заполняли форму данное время было занято, попробуйте, записаться на другое время</h2>";
+//print '<a href="http://www.em-nsk.ru/zapis34.php">Записаться</a>';
+}
+	/*
+		 include('/sahmatka2/SendMailSmtpClass.php');
+		 $mailSMTP = new SendMailSmtpClass('energomontaz451@mail.ru', 'zdctvjue12345', 'ssl://smtp.mail.ru', 'em-nsk.ru',465); // создаем экземпляр класса
+		 
+		 // заголовок письма
+		$headers= "MIME-Version: 1.0\r\n";
+		$headers .= "Content-type: text/html; charset=utf-8\r\n"; // кодировка письма
+		$headers .= "From: EM-NSK.RU <energomontaz451@mail.ru>\r\n"; // от кого письмо
+
+		$result =  $mailSMTP->send('89236470002@mail.ru', 'Заявка НА ВЫДАЧУ КЛЮЧЕЙ - '.$homes[$_POST[home_id]].' кв-'.$_POST[apartament_num], $mess, $headers); // отправляем письм
+		$result =  $mailSMTP->send('op06@em-nsk.group', 'Заявка НА ВЫДАЧУ КЛЮЧЕЙ - '.$homes[$_POST[home_id]].' кв-'.$_POST[apartament_num], $mess, $headers); // отправляем письм
+*/
+
+	
+	}
+ ?>	
+
+ </body>
+ </html>

@@ -1,0 +1,301 @@
+<?php
+  header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
+  header("Last-Modified: " . gmdate("D, d M Y H:i:s")." GMT");
+  header("Cache-Control: no-cache, must-revalidate");
+  header("Cache-Control: post-check=0,pre-check=0", false);
+  header("Cache-Control: max-age=0", false);
+  header("Pragma: no-cache");
+    
+include('config.php');
+ 
+/*
+В гет переменной имя списка задается который грузим
+а также значения всех родителских списков
+
+в формате [список]=значение
+*/
+
+
+// print_r($_REQUEST);
+$home_id = 16;
+$date = $_REQUEST['date'];
+$time = $_REQUEST['time'];
+$section = $_REQUEST['section'];
+ 
+ 
+ 
+ 
+$t[]='09:00';
+$t[]='10:00';
+$t[]='11:00';
+$t[]='13:30';
+$t[]='14:30';
+$t[]='15:30';
+$t[]='16:30'; 
+
+
+$w_rus[1]='ПН';
+$w_rus[2]='ВТ';
+$w_rus[3]='СР';
+$w_rus[4]='ЧТ';
+$w_rus[5]='ПТ';
+$w_rus[6]='СБ';
+$w_rus[7]='ВС';
+
+$sql = 'SELECT * FROM `zapis` WHERE home_id="16" AND del="0"';//WHERE home_id="'.$home_id.'" 
+$query = mysqli_query($connection, $sql); 
+	
+while ($result = mysqli_fetch_array($query)) 
+{
+	$arr_z[$result[date]][$result[time]]++;
+	$arr_z1[$result[date]]++;
+}	
+
+ // print_r($arr_z);
+  //	  print_r($arr_z1);
+ 
+
+
+ 
+#### ПОЛУЧАЕМ СПИСОК КВАРТИР В ДОМАХ НА КОТОРЫЕ ЕЩЕ НЕТ БРОНИ?!
+$sql = 'SELECT * FROM `apartaments` WHERE home_id="'.$home_id.'" ';
+
+if($section)
+{
+	$sql.=' AND `section_id`="'.$section.'" ';
+}
+
+//print $sql;
+$query = mysqli_query($connection, $sql); 
+	
+while ($result = mysqli_fetch_array($query)) 
+{
+	# $apartment_num[]=$result['apartment_num'];
+	$appartament.='<option value="'.$result['apartment_num'].'">'.$result['apartment_num'].'</option>';
+}	
+
+  
+if ($_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest' || 1==1)
+{
+
+	if($_REQUEST['load'] =='appartaments' ) // вывод квартир по дому
+	{
+		?><option value="">Квартира</option><?
+		print $appartament;     
+	}
+	elseif($_REQUEST['load'] =='date' ) // вывод квартир по дому
+	{
+		?><option value="">Дата</option><?
+	 
+		if($section==1) // 
+		{ 
+			//1 секция: кв 2,3 с 16.06
+				if( $_REQUEST['apartament_num']==2 || $_REQUEST['apartament_num']==3  )
+				{
+					$start = strtotime('06/16/2021');
+					$finish = strtotime('06/30/2021');
+				}
+				else
+				{
+				$start = strtotime('06/07/2021');
+				$finish = strtotime('06/30/2021');
+				}
+		}
+		elseif($section==2) // 
+		{
+				//2 секция: кв 70,71,65,66 с 11.06
+				if( $_REQUEST['apartament_num']==70 || $_REQUEST['apartament_num']==71 || $_REQUEST['apartament_num']==65 || $_REQUEST['apartament_num']==66   )
+				{
+					$start = strtotime('06/11/2021');
+					$finish = strtotime('06/30/2021');
+				}
+				else
+				{
+					$start = strtotime('06/03/2021');
+					$finish = strtotime('06/30/2021');
+				}
+		}
+		elseif($section==3) // 
+		{
+				// 3 секция: кв 129,131,138,139 с 16.06
+				if(  $_REQUEST['apartament_num']==131 || $_REQUEST['apartament_num']==138 || $_REQUEST['apartament_num']==139   )
+				{
+					$start = strtotime('06/16/2021');
+					$finish = strtotime('06/30/2021');
+				}
+				elseif(  $_REQUEST['apartament_num']==129 )
+				{
+					$start = strtotime('06/23/2021');
+					$finish = strtotime('06/30/2021');
+				}
+				elseif($_REQUEST['apartament_num']>128 && $_REQUEST['apartament_num']<159)
+				{
+					$start = strtotime('06/19/2021');
+					$finish = strtotime('06/30/2021');
+				}
+				else
+				{
+					$start = strtotime('06/10/2021');
+					$finish = strtotime('06/30/2021');
+				}
+		}
+		elseif($section==4 || $section==5  ) // 
+		{
+			$start = strtotime('06/01/2021');
+			$finish = strtotime('06/30/2021');
+		}	 
+		
+		$d = array();
+		
+		$not_work_dates[]='28.06.2021';
+		$not_work_dates[]='28.06.2021'; 
+		
+		for($i=$start; $i<$finish; $i+=86400)
+		{
+ 
+		  list($year,$month,$day) = explode("|",date("Y|m|d",$i));
+		  $date = $day.'.'.$month.'.'.$year;
+			 if(in_array($date,$not_work_dates))
+			 {
+					
+			 }
+			 else
+			 { 
+				$w = date("w", strtotime($date)); 
+				if($w!=0 && $w!='6') // Суббота воскресенье
+				{
+					
+					/*
+					count($t) //  Количество приемов в день
+					$arr_z[год-мес-день][час:мин:сек]
+ 
+					*/
+					$max_for_day = count($t)*3;
+					$dt =  date("Y-m-d", strtotime($date));
+					$h = date('H');
+					$dd = $i-time();
+					// время больше 16 блокировать запись на следующий день 
+					 if( $arr_z1[$dt]   <count($t)*3 && $dd>1  ) // Более чем за сутки запись! //ZZZZZZ 86400
+					 {
+						?><option value="<?=$date?>"><?=$date?> (<?=$w_rus[$w]?>)     </option><?
+						
+						 //if($i>$start){break;} // ТОЛЬКО БЛИЖАЙЩУЮ ДОСТУПНУЮ ДАТУ ПОКАЗЫВАЕМ!
+					 }
+				}
+				
+			 }
+			 
+		}
+		
+		 
+	}
+	elseif($_REQUEST['load'] =='time' ) // вывод квартир по дому
+	{
+		?><option value="">Время</option><?
+		#!!!! отнимаем из формы время которое уже занято!
+		$i=0;
+		foreach($t as $k=>$v)
+		{
+			/*
+				count($t) //  Количество приемов в день
+				$arr_z[год-мес-день][час:мин:сек]
+			*/
+			  $dt =  date("Y-m-d", strtotime($_REQUEST[date]));
+			 // print_r($arr_z[$dt]);
+			 
+			 $w = date("w", strtotime($dt)); // номекр дня недели	
+			 
+			/*
+			пятница 15.30 последнее время
+			пн первое 13.30 
+			
+			c 15 gj 18 13/30
+			
+			15-18 открыть 
+			*/
+			
+			
+			/*
+			if($w==1 || $_REQUEST[date] =='15.06.2021') // понедельник
+			{
+				
+				if($v!='09:00' && $v!='10:00' && $v!='11:00')
+				{
+					if(  $arr_z[$dt][$v.':00']  <3 )//если время не занято 
+					{
+					?><option value="<?=$v?>"><?=$v?> </option><?
+					}
+				}
+ 
+			}
+			elseif($w==5) // пятница
+			{
+				
+				if($v!='16:30'  )
+				{
+					if(  $arr_z[$dt][$v.':00']  <3 )//если время не занято 
+					{
+					?><option value="<?=$v?>"><?=$v?>  </option><?
+					}
+				}
+ 
+			}
+			else 
+			{
+				if(  $arr_z[$dt][$v.':00']  <3 )//если время не занято 
+				{
+					?><option value="<?=$v?>"><?=$v?>  </option><?
+				}
+			}
+			*/
+			
+			
+				if(  $arr_z[$dt][$v.':00']  <3 )//если время не занято 
+				{
+					$i++; // счетчик итераций 
+					?><option value="<?=$v?>"><?=$v?>  </option><?
+					 if($i>0){break;}
+				}
+				
+				
+				 
+		}
+	}
+	elseif($_REQUEST['load'] =='podezd')
+	{
+		if($home_id==5) // пр 1
+		{
+			?>
+			<option value="">Подъезд</option>
+			<option value="1">1</option>
+			<option value="2">2</option>	
+			<option value="3">3</option>
+			<option value="4">4</option>
+			<option value="5">5</option>	
+			
+			<?
+			// ДАТЫ ПОЗЖЕ
+			//<option value="3">3</option>
+			//<option value="4">4</option>
+		}
+		elseif($home_id==3) // 451
+		{
+			?>
+			<option value="">Подъезд</option>
+			<option value="1">1</option>
+			<option value="2">2</option>	
+			<option value="3">3</option>
+			<?
+		}
+	}
+
+} 
+
+
+
+else 
+{
+    echo 'Bad request!';
+    exit;
+}
+

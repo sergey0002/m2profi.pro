@@ -1,0 +1,8 @@
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-l
+
+RewriteRule ^(.*)$ /sahmatka/iframe_router.php?ctr=zapiskeys&act=card&idx=$1 [QSA,L]
+ 

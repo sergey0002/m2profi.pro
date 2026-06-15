@@ -1,0 +1,153 @@
+.fw_frontadmin_panel{
+	position:fixed;
+	background: #33333c;
+	 z-index: 10000;
+	 color: #FFF;
+	  opacity: 0.97;
+}
+
+.fw_panel_label{
+	 position: absolute;
+	 padding: 10px;
+	 background: #33333c;
+	 cursor:pointer;
+	 display: inline-block;
+	 color: #999;
+	 font-weight:bold;
+}
+
+
+ .fw_adm_item_content > a{
+	 display:block;
+	 font-weight: 100;
+	 font-size: 14px;
+	 color:#E9E;
+}
+ .fw_adm_item_content{
+	 padding: 7px;
+	 margin: 3px;
+	 font-size: 14px;
+	 border-radius: 7px;
+	 background: #212127;
+	 color: #E9E;
+}
+ .fw_panel_content{
+	 transition: all 0.1s linear;
+	 overflow:hidden;
+	 width:0;
+	 min-width: 0px;
+	 min-height:0px;
+}
+ .fw_panel_content.fw_panel_ndisp{
+	 overflow:hidden;
+	 width:0;
+	 height:0;
+	 min-width: 0px;
+	 min-height:0px;
+}
+ .fw_panel_content.fw_panel_disp{
+	overflow:visible;
+	 height:auto;
+	 width:auto;
+	 min-width: 300px;
+	 min-height:300px;
+}
+ .fw_panel_disp{
+	left:0;
+}
+ .fw_panel_disp{
+	left:0;
+}
+
+.fwt{
+	padding: 13px;
+    color: #888;
+    font-size: 14px;
+	cursor:pointer;
+}
+.fwt:hover{
+	  border-left:solid 5px red;
+	  padding-left:8px;
+    color: #FFF;
+ 
+}
+
+
+
+/* BOTTOM PANEL */
+.fw_frontadmin_panel_bottom{
+	 width: 100%;
+	 background: #33333c;
+	 z-index: 10000;
+	 color: #FFF;
+	  
+	 bottom:0;
+	 opacity: 0.97;
+}
+ 
+ .ul_fw_frontadmin_panel_bottom {
+	 margin: 10px;
+}
+ .ul_fw_frontadmin_panel_bottom li {
+	 display:inline-block;
+}
+ .ul_fw_frontadmin_panel_bottom li a {
+	 color:#000;
+	 background: #FFF;
+	 padding: 3px;
+	 margin: 3px;
+}
+ .fw_panel_label_bottom{
+	 margin-top:-2em;
+	 border-top-right-radius:5px;
+	 border-top-left-radius:5px;
+	 top: 0;
+	 right: 50%;
+}
+
+
+
+/* RIGHT PANEL */
+ .fw_frontadmin_panel_right{
+	 min-height: 100vh;
+	 top:0;
+	 right:0;
+}
+/* кнопка выдвижной панели ярлычек */
+ .fw_panel_label_right{
+	 border-top-left-radius:5px;
+	 border-bottom-left-radius:5px;
+	 top: 40%;
+	 left:-37px;
+	 writing-mode:tb-rl;
+}
+ .ul_fw_frontadmin_panel_right {
+	 margin: 10px;
+}
+ .ul_fw_frontadmin_panel_right li {
+	 display:inline-block;
+	 width:100%;
+}
+ .ul_fw_frontadmin_panel_right li a {
+	 padding: 3px;
+	 margin: 3px;
+	 display:flex;
+	 margin: 3px;
+	 display: flex;
+	 padding: 7px;
+	 background: #000;
+	 color: #3068df;
+	 font-size: 16px;
+	 font-weight: bold;
+	 border-radius: 7px;
+}
+ .ul_fw_frontadmin_panel_right li a * {
+}
+ .ul_fw_frontadmin_panel_right li a > span {
+	 border-left: 3px solid #3068df;
+	 color: #FFF;
+	 padding-left: 10px;
+}
+
+
+

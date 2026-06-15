@@ -1,0 +1,122 @@
+
+/* Стили для всплывающих подсказок схемы */
+.scheme-popup {
+    display: none;
+    border: 1px solid #777;
+    padding: 10px;
+    width: 200px;
+    position: absolute;
+    font-size: 12px;
+    line-height: 14px;
+    background: #fff;
+    z-index: 9;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    text-align: left;
+}
+
+/* Стили для кастомного tooltipster */
+.tooltipster-sidetip .tooltipster-box {
+    background: #FFF;            /* Фон подсказки */
+    border: 2px solid #FFF;      /* Белая рамка подсказки */
+    border-radius: 29px;         /* Закругляем углы */
+    box-shadow: 1px 1px 4px 0px rgba(34, 60, 80, 0.2); /* Добавляем тень */
+}
+
+.tooltipster-sidetip .tooltipster-content {
+    color: #000;                 /* Цвет текста в подсказке */
+    line-height: 18px;           /* Высота строки */
+    padding: 6px 14px;           /* Отступы внутри подсказки */
+}
+
+/* Стили для заголовков и текста внутри подсказок */
+.tt_title {
+    font-size: 20px;             /* Размер шрифта для заголовка */
+    font-weight: bold;           /* Жирный шрифт для заголовка */
+    margin: 7px;                 /* Отступ вокруг заголовка */
+}
+
+.tt_text, .tt_img {
+    margin: 7px;                 /* Отступы вокруг текста и изображений */
+    display: block;              /* Отображаем элементы как блок */
+}
+
+.tt_img {
+    max-width: 100%;             /* Изображение занимает всю доступную ширину */
+}
+ 
+
+.tooltipster-sidetip.tooltipster-top .tooltipster-arrow-border {
+    border-top-color: #FFF;
+}
+
+.tooltipster-sidetip.tooltipster-top .tooltipster-arrow-background {
+    border-top-color: #FFF;
+    left: 0;
+    top: -3px;
+}
+
+.tooltipster-sidetip.tooltipster-right .tooltipster-arrow-border {
+    border-right-color: #FFF;
+}
+
+.tooltipster-sidetip.tooltipster-right .tooltipster-arrow-background {
+    border-right-color: #FFF;
+    left: 3px;
+    top: 0;
+}
+
+
+.tooltipster-sidetip.tooltipster-bottom .tooltipster-arrow-border {
+    border-bottom-color: #FFF;
+}
+
+.tooltipster-sidetip.tooltipster-bottom .tooltipster-arrow-background {
+    border-bottom-color: #FFF;
+    left: 0;
+    top: 3px;
+}
+
+.tooltipster-sidetip .tooltipster-box {
+    background: #FFF;
+    border: 2px solid #FFF;
+    border-radius: 29px;
+	
+	-webkit-box-shadow: 1px 1px 4px 0px rgba(34, 60, 80, 0.2);
+-moz-box-shadow: 1px 1px 4px 0px rgba(34, 60, 80, 0.2);
+box-shadow: 1px 1px 4px 0px rgba(34, 60, 80, 0.2);
+}
+
+.tooltipster-sidetip .tooltipster-content {
+    color: #000;
+    line-height: 18px;
+    padding: 6px 14px;
+}
+
+.tt_title{font-size:20px; font-weight:bold;  display:block; margin: 7px;}
+.tt_text{font-size:16px;    margin : 7px; display:block;}
+.tt_img{max-width:100%; display:block;}
+
+
+.tooltipster-fade.tooltipster-show {
+    opacity: 1;
+}
+
+.tooltipster-sidetip.tooltipster-top .tooltipster-arrow {
+    bottom: 0;
+    height: 10px;
+    margin-left: -10px;
+    width: 20px;
+}
+
+.tooltipster-sidetip .tooltipster-arrow-uncropped {
+    position: relative;
+}
+
+.tooltipster-sidetip.tooltipster-top .tooltipster-arrow-border {
+    border-top-color: #FFF;
+}
+.tooltipster-sidetip.tooltipster-top .tooltipster-arrow-background {
+    border-top-color: #FFF;
+    left: 0;
+    top: -3px;
+}

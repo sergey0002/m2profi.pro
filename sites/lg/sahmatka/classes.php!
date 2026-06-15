@@ -1,0 +1,1063 @@
+<?
+/*Загружен в юзерс и ифрейм аппарт , для работы нужен только конфиг с мускл соединением
+
+
++ перевести юзер методы на этот класс
++ перевести брони ифрейм на этот класс
++ перевести вывод квартир на класс
+
+
+*/
+####### MYSQL  
+class m_mysql {
+	
+	public $с = ''; // Соединение с mYSQL
+   
+	public $errors_messages = ''; // Сообщения об ошибках для пользователей массив
+	public $messages = array(); // Сообщения  
+	public $log = array(); // ЛОг ошибок для отладки
+	
+	
+	// Соединение
+	function __construct($c)
+	{
+		$this->c = $c;	
+	}
+	
+	// получить по ключу
+	function get_for_key( $table , $key_filed , $key_value )
+	{
+		$q = ' SELECT * FROM '.$table .' WHERE `'.$key_filed.'` = "'.$key_value.'" ' ;
+		return $this -> get_arr( $q ,1);
+	}
+	
+	
+	// обновить строку таблицы
+	function update_for_key( $table , $key_filed , $key_value , $data )
+	{
+		$q = ' UPDATE '.$table .' SET ';
+		$i = 0;
+		foreach( $data as $k=>$v )
+		{
+			$i++;
+			$q .= '`'.$k.'` = "'.$v.'" ';
+			if($i<count($data)){$q.=' , ';}
+		}
+		$q.=' WHERE `'.$key_filed.'` = "'.$key_value.'" ' ;
+		print $q;
+ 	}
+	
+	// Удалить строку из таблицы
+	function delete_for_key($table,$key_filed,$value )
+	{
+		
+	}
+	
+	// Вставить строку в таблицу
+	function insert( $table , $data)
+	{
+ 
+		$q = ' INSERT INTO '.$table .' ( ';
+		$i = 0;
+		foreach( $data as $k=>$v )
+		{
+			$i++;
+			$q .=' `'.$k.'` ';
+			if($i<count($data)){$q.=' , ';}
+		}
+		$q .=' ) VALUES (';
+		
+		$i = 0;
+		foreach( $data as $k=>$v )
+		{
+			$i++;
+			$q .=' "'.$v.'" ';
+			if($i<count($data)){$q.=' , ';}
+		}
+		$q .=' );';
+ 
+		if( $this -> sql( $q ) )
+		{
+			return mysqli_insert_id ( $this->c ); // Если все получилось возвращаем последний вставленный ИД
+		}
+		else
+		{
+			//print '----------';
+			//print $q;
+			//print '----------';
+			return false;
+		}
+	}
+	
+	// получить ассоциативный массив по sql запросу
+	function get_arr($sql,$first=false)
+	{
+		$query = $this->sql( $sql );
+		while( $result = mysqli_fetch_assoc($query) ) 
+		{
+			 $arr[]=$result;
+		}
+		if($first){	$arr=$arr[0]; }
+		return $arr;
+	}
+	
+	
+	// Обработка запроса и логирование 
+	function sql($sql)
+	{
+		 $result =  mysqli_query( $this->c , $sql );
+		 
+		 if( $result )
+		 {
+			 return  $result;
+		 }
+		 else{
+			 print mysqli_error($this->c);
+		 }
+	}
+	
+	
+	
+	
+}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+
+// хелперы 
+class hlp {
+	public $sqlc = ''; // Соединение с mYSQL
+ 
+	public $sql = ''; //  
+	public $c = ''; //  
+	
+	function __construct( $connection )
+	{
+		$this -> c = $connection;
+		$this -> sql = new m_mysql($connection);
+	}
+	
+	
+	// Методы многопользовательского режима
+	
+	// Получить ид агентства отдела продаж!
+	function get_op_id()
+	{
+		
+	}
+	
+	// Получить ид агентства администраторов юзера!
+	function get_admins_id()
+	{
+		
+	}
+	
+	
+	
+	
+	// Отправка сообщения с фиксацией в БД
+	function send_message($to,$subject,$text, $files='')
+	{
+		
+		$data[to] = $to;
+		$data[subject] = $subject;
+		$data[text] = $text;		 
+		 
+		$this->sql->insert( 'messages' , $data);
+ 
+ 
+ 
+		// Дeблируем на Email, если не отправлено меняем статус 
+		
+		
+		// статус crm (id юзера который отвечает) отдел продаж может видеть свои сообщения можно (ид глобального бзера + ид админского агентства)
+		
+		print 'Сообщение отправлено';
+	}
+	
+	
+	
+	
+	
+	// наследуем все гет переменные в форме !
+	// vars - массив значений которые надо наследовать
+    function formgetval($vars)
+	{
+		foreach($_GET as $k=>$v)
+		{
+			if( in_array($k,$vars) )
+			{
+			?>
+			<input type="hidden" name="<?=$k?>" value="<?=$v?>" />
+			<?
+			}
+		}
+	}
+	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+class sahmatka {
+	public $sqlc = ''; // Соединение с mYSQL
+    public $user = ''; // Массив переменных пользователя
+	public $errors_messages = ''; // Сообщения об ошибках для пользователей массив
+	public $messages = array(); // Сообщения  
+	public $log = array(); // ЛОг ошибок для отладки
+	public $status = ''; //  статусы квартир
+	public $sql = ''; //  
+	
+	function __construct( $user , $connection )
+	{
+		$this -> user = $user;
+		$this -> c = $connection;
+		$this -> sql = new m_mysql($connection);
+		
+		
+		
+		//$this->status[0]='Не задан';
+		$this->status[2]='Свободна';
+		$this->status[3]='Продана';
+		$this->status[4]='Забронирована';
+		$this->status[5]='Застройщика';
+		$this->status[6]='Подрядчика';
+ 
+		
+		$this->rooms[1] = '1к';
+		$this->rooms[2] = '2к';
+		$this->rooms[3] = '3к';
+		$this->rooms[4] = '4к';
+		
+		$this->group[1] = 'Месяцам';
+		$this->group[2] = 'Неделям';
+		$this->group[3] = 'Дням';
+		
+	}
+	
+ 
+	 
+	
+	//Сообщения пользователям Mess- текст $status 1-
+	function mess($mess, $status='')
+	{
+		$this->messages[]=$mess;
+	}
+	  
+	//вывод сообщений
+	function display_mess()
+	{
+		foreach($this->messages as $k=>$v)
+		{	
+			print $v.'<br/>'; 
+		}
+	}
+	
+	
+	
+	// Новая запись о броне выдает ид брони + меняет статус квартиры в аппартаментах
+    function new_broni($home_id, $apartment_num ) {
+         $this->mess('Обновление брони');
+		 
+    }
+	
+	
+	
+	
+	
+	// Обновление брони на основе ID - Новая запись о броне выдает ид брони + меняет статус квартиры в аппартаментах - 
+    function up_broni( $broni_id,$status='',$comment ='') 
+	{
+# todo ! сейчас все брони только обновляются (статус берется прежний!)
+		if($status == 2 )
+		{
+			$this->mess(' Отмена брони успешно выполнено ');
+		}
+		elseif($status == 4 )
+		{
+			$this->mess('Обновление брони успешно выполнено');
+		}
+		
+		// 1 Получить бронь которую обновляем взять из нее все данные
+		$data = $this->sql->get_for_key( 'broni' ,  'broni_id' , $broni_id );
+		
+# todo ! Тут добавить проверку пользователя! чтобы если пользователь не админ и не админ агентства только свои брони мог обновлять и удалять!!!!
+# todo ! Если старая дата менее 6 дней назад не обновлять 
+# todo ! внести в таблицу броней id аппартамента 
+		
+		$new_date = date("Y-m-d H:i:s"); 
+		
+		// 2 ДОбавить новую запись о броне
+		$data['date'] = $new_date;   // обнуляем дату
+		unset($data['broni_id']);  
+		$data['comment'] = $comment;
+		$new_broni_id = $this->sql->insert('broni',  $data ); // добавляем бронь с новой датой
+ 
+		print   $q='
+		 UPDATE `apartaments` SET
+		`status2` = "'.$data[status].'",
+		`status_broni_id` = "'.$new_broni_id.'",
+		`status_broni_date` = "'.$new_date.'"
+		 WHERE `home_id` = "'.$data['home_id'].'" AND apartment_num = "'.$data['apartments_num'].'" ;
+		';
+		 $this->sql->sql($q); // ОБНОВЛЯЕМ ТАБЛИЦУ АППАРТАМЕНТОВ
+    }
+	
+	
+	
+	
+	
+	
+	// Список броней выдать (в зависимости от статуса мои/всех пользователей/пользователей агентства) учетом поиска
+    function show_broni($home_id='', $apartment_num='', $agency_id='', $user_id='', $date_start='', $date_end='' ) {
+		 
+    }
+	
+	
+	
+	// Меню обектов (разное в зависимости от тстатуса)
+	function show_objects_menu()
+	{
+			
+	}
+	
+	// Меню действий (разное в зависимости от тстатуса)
+	function show_action_menu()
+	{
+				
+	}	
+	
+	
+	// показать чекбоксы для выбора домов
+	function show_house_check()
+	{
+		// Получеем массив домов
+		$q = ' SELECT * FROM homes WHERE homes.show="1"; ' ; 
+		$arr = $this ->sql->get_arr( $q );
+		 ?>
+		<input type="checkbox" name="home_mch" id="home_mch" <?if($_GET[home_mch]){?> checked="checked" <?}?>/> - <label for="home_mch">Все</label> &nbsp;&nbsp;&nbsp;
+		 <?
+		foreach($arr as $k=>$v)
+		{
+			?> <input type="checkbox" name="homes[<?=$v[home_id]?>]" id="home_<?=$v[home_id]?>" class="home_ch" value="<?=$v[home_id]?>" <?if(in_array($v[home_id],$_GET[homes])){?> checked="checked" <?}?> /> 
+			- <label for="home_<?=$v[home_id]?>"><?=$v[title]?></label> &nbsp;&nbsp;&nbsp;<?
+			
+		}
+		
+		?>
+		<script type="text/javascript">
+			$(document).ready( function() {
+			   $("#home_mch").click( function() {
+					if($('#home_mch').attr('checked')){
+						$('.home_ch').attr('checked', true);
+					} else {
+						$('.home_ch').attr('checked', false);
+					}
+			   });
+			});
+		</script>
+ 
+		<?
+	}
+	
+	 
+	
+	
+	// показать чекбоксы для выбора домов
+	function show_status_check()
+	{
+		// Получеем массив домов
+ 
+		 ?>
+		<input type="checkbox" name="status_mch" id="status_mch" <?if($_GET[home_mch]){?> checked="checked" <?}?>/> - <label for="status_mch">Все</label> &nbsp;&nbsp;&nbsp;
+		 <?
+		 
+		 
+		foreach($this->status as $k=>$v)
+		{
+			?> <input type="checkbox" name="status[<?=$k?>]" id="status_<?=$k?>" class="status_ch" value="<?=$k?>" <?if(in_array($k,$_GET[status])){?> checked="checked" <?}?> /> 
+			- <label for="status_<?=$k?>"><?=$v?></label> &nbsp;&nbsp;&nbsp;<?
+			
+		}
+		
+		?>
+		<script type="text/javascript">
+			$(document).ready( function() {
+			   $("#status_mch").click( function() {
+					if($('#status_mch').attr('checked')){
+						$('.status_ch').attr('checked', true);
+					} else {
+						$('.status_ch').attr('checked', false);
+					}
+			   });
+			});
+		</script>
+ 
+		<?
+	}
+	
+	
+	
+	
+	
+	
+	
+ 
+	function show_rooms_check()
+	{
+		// Получеем массив домов
+ 
+		 ?>
+		<input type="checkbox" name="rooms_mch" id="rooms_mch" <?if($_GET[rooms_mch]){?> checked="checked" <?}?>/> - <label for="rooms_mch">Все</label>  &nbsp;&nbsp;&nbsp;
+		 <?
+		 
+		 
+		foreach($this->rooms as $k=>$v)
+		{
+			?> <input type="checkbox" name="rooms[<?=$k?>]" id="rooms_<?=$k?>" class="rooms_ch" value="<?=$k?>" <?if(in_array($k,$_GET[rooms])){?> checked="checked" <?}?> /> 
+			- <label for="rooms_<?=$k?>"><?=$v?></label> &nbsp;&nbsp;&nbsp;<?
+			
+		}
+		
+		?>
+		<script type="text/javascript">
+			$(document).ready( function() {
+			   $("#rooms_mch").click( function() {
+					if($('#rooms_mch').attr('checked')){
+						$('.rooms_ch').attr('checked', true);
+					} else {
+						$('.rooms_ch').attr('checked', false);
+					}
+			   });
+			});
+		</script>
+ 
+		<?
+	}
+	
+	
+	 
+	
+	 
+	function show_gr_fileds()
+	{
+		// Получеем массив домов
+ 
+		 ?><select name="group"><?
+		foreach($this->group as $k=>$v)
+		{
+			?><option value="<?=$k?>" <?if( $k==$_GET[group]){?> selected  <?}?> ><?=$v?></option> <?
+			
+		}
+		?></select><?
+		 
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+		
+	// Получить массив описаний домов
+    function get_homes_arr($show=1) 
+	{
+		
+		
+ 		 $q='SELECT * FROM `homes` WHERE `show` = "'.$show.'" ';
+
+			// Только Админ видит статус 2
+			if($_SESSION[sh_login] == 'admin')
+			{
+				 $q.=' OR `show` = "2" ';	
+				 $q.=' OR `show` = "3" ';
+				
+			}
+			// Отдел продаж видит статус 3 
+			if(  $_SESSION['agency_id'] == "92" )
+			{
+				 $q.=' OR `show` = "3" ';	
+				
+			}
+		 $q.=' ORDER BY `order` ; ';	
+		 return $this->sql->get_arr($q); 
+    }
+	
+	
+	
+	
+		
+	// Получить массив описаний домов
+    function get_home_arr($id=1,$show=1) 
+	{
+ 		   $q='SELECT * FROM `homes` WHERE `show` = "'.$show.'" AND home_id="'.$id.'" ; ';	
+		 $arr =  $this->sql->get_arr($q); 
+		 return $arr[0] ;
+    }
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+# Меню подездов в бекенде шахматки дома
+function diaplay_home_secmenu( $config , $home )
+{ 
+	  //print_r($config[$home]);
+	foreach($config[$home] as $k=>$v)
+	{
+		if( is_numeric($k) )
+		{
+		?>
+			<div class="cl-item">
+				<div class="objects-cl-nav__title"><?=$v['caption']?></div>
+			</div>
+		<?
+		}
+	}
+}
+	
+	
+	
+	
+# Шапка таблицы секции бекенде 
+function display_home_sechead( $config , $home , $sec=1)
+{
+		//print $config[$home][$sec]['apartments'];
+	   for($i=1; $i<=$config[$home][$sec]['apartments']; $i++)
+	   {
+			?>
+			<td>
+				<div class="tdcheck tdcheck-head">
+					<input type="checkbox" data-col=".td-<?=$i?>">
+				</div>
+			</td>
+			<?
+	   }
+ 
+	
+}
+	
+	
+	
+
+//template_apartament - шаблон аппартамента (инклайд)
+/*
+$conf - Массив конфиг квартир
+$home - дом/район номер
+$data - данные о бронировании
+$template_apartament
+*/
+function diaplay_home( $config , $home, $section, $data=array() , $editurl='')
+{ 
+ 
+$data = $data[$home][$section];
+$conf = $config[$home][$section];
+ 
+ $ckv=0;
+ // Количество пустых квартир вычисляем
+ if( $conf['clean_apartments'] &&  is_Array($conf['clean_apartments'] ) )
+ {
+		foreach( $conf['clean_apartments'] as $k=>$v)
+		{
+			foreach($v as $k2=>$v2)
+			{
+				$ckv++;
+			}
+		}
+ }
+
+ # автонумерация квартир
+ // вычисляем последнюю 
+ //количество этажей * квартир на этаже + стартовый номер квартиры в секции ( НУмеруем в другую сторону! )
+ $endnum = ($conf['floor']*$conf['apartments']) + $conf['start_num']-$ckv; // Количество квартир в секции
+ 
+ 	?>
+		<div class="cl-item" style="float:none; display:inline-block;">
+		<table class="objects-table">
+	<?
+ 	  //print '<pre>';
+	  //print_r($data);
+	  //print_r($conf[caption]);
+	  //print '</pre>';
+	?>
+
+	<?
+	// Цикл по строкам (количество этажей)
+	for($i=$conf['floor']; $i>0; $i--)
+	{
+	
+		// количество нежилых квартир на этаже
+		$nezk = count($conf['clean_apartments'][$i]); 
+
+		$end_etza_num = $endnum-$conf['apartments']-1+$nezk; // стартовый номер для этажа (- квартир на этаже СО СТАТУСОМ ЕСТЬ КВАРТИРА!)
+		// РАБОЧИЙ ПОРЯДКОВЫЙ НОМЕР НА ЭТАЖЕ
+ 
+ 
+ 
+ 
+		#########################################
+		// ТОлько для админа показываем шапку с чекбуксом
+		if($_SESSION['sh_login'] == 'admin' && $i==$conf['floor'])
+		{
+			?>
+				<thead>
+					<!-- <tr>
+							<td colspan="5" class="tdtitle">Подъезд №1</td>
+						</tr> -->
+					<tr>
+						<td>&nbsp;</td>
+						<?
+						 $this->display_home_sechead( $config , $home , $section );
+						?> 
+					</tr>
+				</thead>
+			<?
+		}
+		#########################################
+		
+		 
+		
+		print '<tr>';
+		// Цикл по столбам (количество квартир)
+		for($k=0; $k<=$conf['apartments']; $k++)
+		{
+ 
+			### Запрашиваем конфиг номера квартиры 
+			/*
+			Если для данной секции для этажа указан номер этой квартиры , если указанно что тут нет квартиры!
+			*/
+			if( $conf['clean_apartments'][$i][$k] )
+			{
+				
+			}
+			elseif( $conf['spn_apartments'][$i][$k] )
+			{
+			//	$end_etza_num = $conf['spn_apartments'][$i][$k];
+				 $end_etza_num++;
+			}
+			else
+			{
+				$end_etza_num++;
+			}
+			
+			#
+			#################
+			// нулевой столбей номер этажа
+			if($k==0)
+			{
+				print '<td class="tdfloor" title="Этаж">'.$i.'</td>';
+			}
+			###################
+			
+			#
+			else // ИНфа о квартире
+			{
+				 $tdst='';
+				// граница поседней квартиры на этаже
+				if($k==$conf['apartments'])
+				{
+					$tdst.=' border-right:2px solid #5d6c74; ';
+				}
+				elseif($k==1)
+				{
+					$tdst.=' border-left:2px solid #5d6c74; ';
+				}
+				if($i==1)
+				{
+					 $tdst.=' border-bottom:2px solid #5d6c74; ';
+				}
+				
+				
+				
+				### ИНФОРМАЦИЯ О КВАРТИРЕ
+				$type= $conf['types'][$k-1]; // тип
+				$size = $conf['types_s'][$k]; // площадь
+			//	print_r($conf['types_s'][$k]);
+			
+			
+			    
+			    $edit_url = 'iframe_apart.php?home_id='.$home.'&apartment_num='.$end_etza_num.'&apartments='.$k;
+				 
+			 
+		 ####### Растановка номеров квартир
+		 //$GLOBALS[sql_u] .= 'UPDATE `broni` SET `apartments_num_new` = "'.$end_etza_num.'" WHERE `home_id` = "'.$home.'" AND `section_id` = "'.$section.'" AND `floor` = "'.$i.'" AND `apartments` = "'.$k.'" '.";  ";
+		  
+				$apart = $GLOBALS['data_apart'][$home][$section][$end_etza_num];
+			 	if(!$apart[rooms]){$apart[rooms]='';}
+				if(!$apart[price]){$apart[price]='';}
+				if( !$data[$i][$k] ){$data[$i][$k][status]='2';} // по умолчанию свободны
+
+               // if($apart[home_id]){$sss.='UPDATE `apartaments` SET `status` = "'.$data[$i][$k][status].'" WHERE `apartament_num` = "'.$end_etza_num.'" AND home_id="'.$apart[home_id].'" <br/>';}
+
+				if($conf['clean_apartments'][$i][$k])
+				{
+					$status_text = 'Нет квартиры';
+					$tdst='height:100px;';	
+					$value='';
+				}
+				/*
+			<option value="0" selected="selected">Не задан</option>
+			  <option value="2">Свободна</option>
+			  <option value="4">Забронирована</option>
+			  <option value="3">Продана</option>
+			  <option value="5">Забронирована застройщиком</option>
+			  <option value="6">Квартира подрядчика</option>
+				*/
+				elseif($data[$i][$k][status]=='0' || $data[$i][$k][status]=='1' || !$data[$i][$k] ) // Нет информации
+				{
+					$end_etza_num=1;
+					$status_text = ' нет данных ';
+					$tdst.=' background-color:#5d6c74;  ';	
+					$value='<a href="'.$edit_url.'" style="font-size:14px;" ><b>№ '.$end_etza_num.'</b></a>';
+					
+					if($_SESSION['adm_caption'] && $_SESSION['sh_login']!='admin') //  админ агентства
+					{
+						$class="tdgreen";
+						$value='<a class="iframe_r" href="#1'.$_SESSION['sh_login'].'" style="font-size:14px; color:#FFF;" ><b>№ '.$end_etza_num.'</b></a>';
+					}
+					elseif($_SESSION['sh_login'] == 'admin')
+					{
+						$class="tdgreen";
+						$value='
+						<div class="tdroom"><a class="iframe_r" href="'.$edit_url.'" style="font-size:18px; color:#000;" >'.$end_etza_num2.'</a></div>
+						<div class="tdsquare">'.$apart[area].'</div>
+						<div class="tdprice">'.$apart[price].'</div>
+						<div class="tdcheck tdcheck-body">
+							<input type="checkbox" name="editapart['.$_GET[home].']['.$end_etza_num.']" value="1" class="td-'.$k.'">
+						</div>
+						 
+						';
+					}
+					else
+					{
+						$value='<a class="iframe_r" href="#2" style="font-size:14px; color:#FFF;" ><b>№ '.$end_etza_num.'</b></a>';
+					}
+					
+				} 
+				elseif($data[$i][$k][status]=='2')
+				{
+					$class="tdgreen";
+					
+					
+					$end_etza_num2 = '№'.$end_etza_num;
+					$status_text = '<b>Свободна</b> <br/> Комнат: '. $apart[rooms].' <br/>   Площадь: '. $apart[area].'м<sup>2</sup> <br/> Цена: '. $apart[price].'р. 
+					<br/>
+					<img src=\''.$apart[image_pb].'?x=23234\' width=100>
+					';
+
+					$tdst.=' background-color:#89FFA4;  ';	
+					if(!$_SESSION['adm_caption']  && $_SESSION['sh_login']!='admin') // не админ агентства
+					{
+						$value='<a class="iframe_r" href="'.$edit_url.'" style="font-size:14px; color:#000;" ><b>'.$end_etza_num2.'</b></a>';
+					}
+					elseif($_SESSION['sh_login'] == 'admin')
+					{
+					 	  
+					 	$value='
+						<div class="tdroom"><a class="iframe_r" href="'.$edit_url.'" style="font-size:18px; color:#000;" >'.$end_etza_num2.'</a></div>
+						<div class="tdsquare">'.$apart[area].'</div>
+						<div class="tdprice">'.$apart[price].'</div>
+						<div class="tdcheck tdcheck-body">
+							<input type="checkbox" name="editapart['.$_GET[home].']['.$end_etza_num.']" value="1" class="td-'.$k.'">
+						</div>
+						 
+						';
+			
+					}
+					else
+					{
+						$value='<a class="iframe_r" href="'.$edit_url.'" style="font-size:14px; color:#000;" ><b>№ '.$end_etza_num.'</b></a>';
+					}
+				}
+				elseif($data[$i][$k][status]=='3')
+				{
+					
+					$class="tdred";
+					
+					
+					if($_GET[home]=='19'){$end_etza_num2='#';}
+					else{$end_etza_num2 = '№'.$end_etza_num;}
+						
+						if($_SESSION['sh_login'] == 'admin')
+						{
+						$tdst.=' height:95px; ';
+						}
+					$status_text = '<b>Продана</b> <br/> Комнат: '. $apart[rooms].' <br/>   Площадь: '. $apart[area].'м<sup>2</sup> <br/>
+					<img src=\''.$apart[image_pb].'?x=23234\' width=100>
+					';
+					
+					
+					$tdst.=' background-color:#FF8A90;   ';	
+					 	$value='<a   href="#" style="font-size:14px;" ><b>№ '.$end_etza_num.'</b></a>';
+					if($_SESSION['sh_login'] == 'admin')
+					{
+						$value='
+						<div class="tdroom"><a class="iframe_r" href="'.$edit_url.'" style="font-size:18px; color:#000;" >'.$end_etza_num2.'</a></div>
+						<div class="tdsquare">'.$apart[area].'</div>
+						<div class="tdprice">'.$apart[price].'</div>
+						<div class="tdcheck tdcheck-body">
+							<input type="checkbox" name="editapart['.$_GET[home].']['.$end_etza_num.']" value="1" class="td-'.$k.'">
+						</div>
+						 
+						';	
+					}
+				}
+				elseif($data[$i][$k][status]=='5')
+				{
+					$class="tdgrey";
+					$end_etza_num2 = '№ '.$end_etza_num;	
+					
+					if($_SESSION['sh_login'] == 'admin' )
+					{
+						$tdst.=' height:95px; ';
+						$status_text = 'Забронирована застройщиком';
+						$tdst.=' background-color:#D4E6FF;   ';	
+						$value='
+						<div class="tdroom"><a class="iframe_r" href="'.$edit_url.'" style="font-size:18px; color:#000;" >'.$end_etza_num2.'</a></div>
+						<div class="tdsquare">'.$apart[area].'</div>
+						<div class="tdprice">'.$apart[price].'</div>
+						<div class="tdcheck tdcheck-body">
+							<input type="checkbox" name="editapart['.$_GET[home].']['.$end_etza_num.']" value="1" class="td-'.$k.'">
+						</div>
+						 
+						';
+			
+			
+					}
+					elseif($_SESSION['agency_id'] == "92")
+					{
+						$class="tdgrey";
+						$status_text = 'Забронирована застройщиком';
+						$tdst.=' background-color:#D4E6FF;   ';	
+						$value='<a  class="iframe_r" href="'.$edit_url.'" style="font-size:14px;" ><b> '.$end_etza_num2.'</b></a>';
+					}
+					else
+					{
+						$class="tdred";
+						$status_text = 'Продана';
+						$tdst.=' background-color:#FF8A90;   ';	
+						$value='<a href="#'.$_SESSION['agency_id'].'" style="font-size:14px;" ><b> '.$end_etza_num2.'</b></a>';
+					}
+				}
+				elseif($data[$i][$k][status]=='4')
+				{
+					$class="tdyellow";
+					
+						$value='<a href="#" style="font-size:10px; color:#000000;" ><b>№ '.$end_etza_num.'</b></a>';
+						if($_SESSION['sh_login'] == 'admin')
+						{
+							$tdst.=' height:95px; ';
+							$tdst.=' background-color:#FFFF3E; color:#000; ';	
+							
+						$value='
+						<div class="tdroom"><a class="iframe_r" href="'.$edit_url.'" style="font-size:18px; color:#000;" >'.$end_etza_num2.'</a></div>
+						<div class="tdsquare">'.$apart[area].'</div>
+						<div class="tdprice">'.$apart[price].'</div>
+						<div class="tdcheck tdcheck-body">
+							<input type="checkbox" name="editapart['.$_GET[home].']['.$end_etza_num.']" value="1" class="td-'.$k.'">
+						</div>
+						 
+						';
+			
+						
+							$status_text = 'Бронь '.$data[$i][$k][date] . '<br>' . $data[$i][$k][login] . '<br>'. $data[$i][$k][name];
+							$status_text .=' <br/><b>'.$data[$i][$k][agency_caption].'</b>';
+						}
+						elseif($_SESSION['adm_caption'] && $_SESSION['agency_id'] == $data[$i][$k][agency_id] ) // Если админ агенства и бронь сотрудником агентства
+						{
+							
+							$status_text = 'Бронь '.$data[$i][$k][date] . '<br>' . $data[$i][$k][login] . '<br>'. $data[$i][$k][name];
+							$value='<a class="iframe_r" href="'.$edit_url.'" style="font-size:14px; color:#000;" ><b>№ '.$end_etza_num.'</b></a>';
+							$tdst.=' background-color:#FFA500; color:#000; ';	
+						}
+						elseif(  $_SESSION['agency_id'] == '92' ) //СОТРУДНИК ОП
+						{
+							
+							$status_text = 'Бронь '.$data[$i][$k][date] . '<br/>' . $data[$i][$k][login] . '<br>'. $data[$i][$k][name];
+							$value='<a href="#" style="font-size:14px; color:#000;" ><b>№ '.$end_etza_num.'</b></a>';
+							$tdst.=' background-color:#FFFF00; color:#000; ';	
+						}
+						else
+						{	
+							$value='<a  class="iframe_r" href="'.$edit_url.'" style="font-size:14px; color:#000;" ><b>№ '.$end_etza_num.'</b></a>';
+							$tdst.=' background-color:#FFFF00; color:#000; ';	
+						//	$status_text = 'Бронь '.$data[$i][$k][date] . '<br/>';
+							
+							$status_text = '<b>Бронь <br/> '.$data[$i][$k][date] . '</b> <br/> Комнат: '. $apart[rooms].' <br/>   Площадь: '. $apart[area].'м<sup>2</sup>    
+							<br/>
+							<img src=\''.$apart[image_pb].'?x=23234\' width=100>
+							';
+					
+						}
+				}
+				elseif($data[$i][$k][status]=='6')
+				{
+						$class="tdblue";
+					
+					if($_SESSION['sh_login'] == 'admin')
+					{
+						
+						$status_text = 'Квартира подрядчика';
+						$tdst.=' background-color:#9933ff;   ';	
+							$tdst.=' height:95px; ';	
+							
+					
+						/*
+						$value='<a  class="iframe_r" href="'.$edit_url.'" style="font-size:10px;" ><b>№ '.$end_etza_num.'</b></a>
+						<br/>
+						<input type="checkbox" name="editapart['.$_GET[home].']['.$end_etza_num.']" value="1"><br>
+						
+						<a class="iframe_r" href="'.$edit_url.'" style="font-size:10px; color:#000;" >
+						<span style="font-size:8px;">'.$apart[area].' <br/> '.$apart[price].'</span> 
+						</a>
+
+					 ';
+					 */
+					 
+					 
+					 	$value='
+						<div class="tdroom"><a class="iframe_r" href="'.$edit_url.'" style="font-size:18px; color:#000;" >'.$end_etza_num2.'</a></div>
+						<div class="tdsquare">'.$apart[area].'</div>
+						<div class="tdprice">'.$apart[price].'</div>
+						<div class="tdcheck tdcheck-body">
+							<input type="checkbox" name="editapart['.$_GET[home].']['.$end_etza_num.']" value="1" class="td-'.$k.'">
+						</div>
+						 
+						';
+			
+
+					}
+					elseif($_SESSION['agency_id'] == "92")
+					{
+						$class="tdblue";
+						$status_text = 'Квартира подрядчика';
+						$value='<a class="iframe_r" href="'.$edit_url.'" style="font-size:14px;" ><b>№ '.$end_etza_num.'</b></a>';
+					}
+					else
+					{
+						$class="tdred"; 
+						$status_text = 'Продана';
+						$value='<a href="#'.$_SESSION['agency_id'].'" style="font-size:14px;" ><b>№ '.$end_etza_num.'</b></a>';
+					}
+				}
+				
+				
+				if($conf['clean_apartments'][$i][$k]) // пустая квартира
+				{
+					/*
+					if($_SESSION['sh_login'] == 'admin')
+					{
+					print '<td style=" height:100px;">&nbsp;</td>';
+					}
+					else
+					{
+						print '<td style="height:36px;">&nbsp;</td>';
+					}
+					*/
+					
+					?>
+					<td  <? if($_SESSION['sh_login'] != 'admin'){print 'style="height:auto;"';}?>>
+						
+					</td>
+					<?
+					
+				}
+				else
+				{
+					?>
+					<td class="<?=$class?>" rel="tooltip"  title="<?=$status_text?>" <? if($_SESSION['sh_login'] != 'admin'){print 'style="height:auto;"';}?>>
+						<?=$value?>
+					</td>
+					<?
+					/*
+					print '<td align="center">';
+					print '<div '.$tdst2.' style="'.$tdst.' border-radius: 7px;   border: solid 1px #FFF;  padding: 5px;" title="'.$status_text.'    " class="tdapartment" rel="tooltip">';
+					print $value;
+					print '</div>';
+					print '</td>';
+					*/
+					$endnum--; // вытонумерация квартир
+					
+				}
+				
+				
+			}
+		}
+		print '</tr>';
+	}
+		
+print ' </table>
+</div>
+
+';
+ if($_GET['home']==19)
+ {
+	print  $sss;
+ }
+}
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+}
+$sa=new sahmatka($_SESSION , $connection);
+
+
+$hlp = new hlp($connection);

@@ -1,0 +1,192 @@
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+set_time_limit(0); // Снимаем ограничение по времени выполнения
+
+require_once 'config.php';
+
+echo "<pre>";
+
+$csv_file_path = 'data.csv';
+$delimiter = ";"; // Используем точку с запятой
+
+// Получаем реальные имена столбцов из БД
+try {
+    $stmt = $pdo->query("SHOW COLUMNS FROM caller");
+    $db_columns_raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $db_columns = array_map('strtolower', array_column($db_columns_raw, 'Field')); // Приводим к нижнему регистру
+} catch (PDOException $e) {
+    die("Ошибка при получении столбцов из БД: " . $e->getMessage());
+}
+
+// --- Анализ CSV файла ---
+if (!file_exists($csv_file_path)) {
+    die("Файл не найден: " . htmlspecialchars($csv_file_path));
+}
+
+$handle = fopen($csv_file_path, 'r');
+if ($handle === false) {
+    die("Не удалось открыть файл: " . htmlspecialchars($csv_file_path));
+}
+
+// Читаем заголовки из CSV
+$header_line = fgets($handle);
+// Убираем BOM, если он есть
+if (strpos($header_line, "\xEF\xBB\xBF") === 0) {
+    $header_line = substr($header_line, 3);
+}
+$csv_headers = str_getcsv($header_line, $delimiter);
+
+if ($csv_headers === false) {
+    die("Не удалось прочитать заголовки из CSV файла.");
+}
+
+echo "Анализ заголовков CSV...\n";
+$header_mapping = [];
+$unmatched_csv_headers = [];
+
+foreach ($csv_headers as $index => $csv_header) {
+    $trimmed_csv_header = trim($csv_header);
+    
+    // Игнорируем пустые заголовки и разделитель
+    if (empty($trimmed_csv_header) || $trimmed_csv_header === "'---Портрет покупателя---") {
+        continue;
+    }
+
+    $matched_db_field = null;
+
+    // Специальная обработка для ID: не импортируем, так как это автоинкремент
+    if ($trimmed_csv_header === 'ID') {
+        continue; 
+    }
+    
+    // Поиск соответствия в значениях $table_captions
+    // Поиск соответствия в значениях $table_captions
+    $found_key = array_search($trimmed_csv_header, $table_captions);
+
+    if ($found_key !== false && in_array(strtolower($found_key), $db_columns)) {
+        $matched_db_field = $found_key;
+    }
+
+    if ($matched_db_field) {
+        $header_mapping[$index] = $matched_db_field;
+    } else {
+        $unmatched_csv_headers[] = $trimmed_csv_header;
+    }
+}
+
+echo "Сопоставление заголовков CSV с полями БД:\n";
+// Создаем массив для вывода сопоставленных заголовков
+$matched_headers_for_display = [];
+foreach ($header_mapping as $csv_idx => $db_field) {
+    $matched_headers_for_display[$csv_headers[$csv_idx]] = $db_field;
+}
+print_r($matched_headers_for_display);
+
+echo "Найдено " . count($header_mapping) . " совпадений столбцов.\n";
+if (!empty($unmatched_csv_headers)) {
+    echo "Не удалось сопоставить следующие столбцы из CSV:\n";
+    print_r($unmatched_csv_headers);
+}
+echo "\nНачинаем импорт...\n\n";
+
+// --- Импорт данных ---
+$total_rows = 0;
+$imported_rows = 0;
+$skipped_rows = 0;
+
+$pdo->beginTransaction();
+
+try {
+    while (($data = fgetcsv($handle, 0, $delimiter)) !== false) {
+        $total_rows++;
+        $row_to_insert = [];
+        
+        foreach ($header_mapping as $csv_index => $db_field) {
+            if (isset($data[$csv_index])) {
+                $value = trim($data[$csv_index]);
+                
+                // Пропускаем пустые значения, чтобы сработали DEFAULT в БД
+                if ($value === '' || $value === 'Нет данных') {
+                    continue;
+                }
+                
+                // Преобразование дат
+                if (in_array($db_field, ['created_at', 'updated_at', 'closed_at'])) {
+                    try {
+                        $date = new DateTime($value);
+                        $row_to_insert[$db_field] = $date->format('Y-m-d H:i:s');
+                    } catch (Exception $e) {
+                        // Если дата не парсится, оставляем NULL
+                        $row_to_insert[$db_field] = null;
+                    }
+                } 
+                // Преобразование чисел
+                elseif (in_array($db_field, ['budget', 'area'])) {
+                    // Убираем все, кроме цифр, запятых и точек, затем заменяем запятые на точки
+                    $value = preg_replace('/[^\d,\.]/', '', $value);
+                    $row_to_insert[$db_field] = (float)str_replace(',', '.', $value);
+                }
+                // Обработка телефонных номеров, чтобы они сохранялись как строки
+                elseif (strpos($db_field, 'Phone') !== false) {
+                    $row_to_insert[$db_field] = (string)str_replace([' ', '(', ')', '-'], '', $value); // Удаляем пробелы и скобки
+                }
+                else {
+                    $row_to_insert[$db_field] = $value;
+                }
+            }
+        }
+
+        if (empty($row_to_insert)) {
+            $skipped_rows++;
+            continue;
+        }
+
+        $columns_for_sql = [];
+        $placeholders_for_sql = [];
+        $bind_params = [];
+
+        // Создаем маппинг из имен полей БД в латинские плейсхолдеры
+        $latin_placeholder_map = [];
+        foreach (array_keys($row_to_insert) as $db_field) {
+            $latin_placeholder_map[$db_field] = 'ph_' . md5($db_field); // Генерируем уникальный латинский плейсхолдер
+        }
+
+        foreach ($row_to_insert as $db_field => $value) {
+            $columns_for_sql[] = "`$db_field`"; // Оборачиваем имена столбцов в обратные кавычки
+            $latin_placeholder = $latin_placeholder_map[$db_field];
+            $placeholders_for_sql[] = ":$latin_placeholder";
+            $bind_params[":$latin_placeholder"] = $value;
+        }
+
+        $sql = "INSERT INTO caller (" . implode(', ', $columns_for_sql) . ") VALUES (" . implode(', ', $placeholders_for_sql) . ")";
+        $stmt = $pdo->prepare($sql);
+        
+        if ($stmt->execute($bind_params)) {
+            $imported_rows++;
+        } else {
+            // Если произошла ошибка SQL при вставке, логируем ее
+            $errorInfo = $stmt->errorInfo();
+            echo "Ошибка при вставке строки " . $total_rows . ": " . $errorInfo[2] . " (SQL: $sql)\n";
+            $skipped_rows++;
+        }
+    }
+    
+    $pdo->commit();
+
+} catch (Exception $e) {
+    $pdo->rollBack();
+    die("Ошибка во время импорта: " . $e->getMessage());
+} finally {
+    fclose($handle);
+}
+
+echo "Импорт завершен!\n";
+echo "---------------------\n";
+echo "Всего строк в файле (без заголовка): $total_rows\n";
+echo "Успешно импортировано: $imported_rows\n";
+echo "Пропущено (пустые или ошибочные): $skipped_rows\n";
+echo "</pre>";
+
+?>

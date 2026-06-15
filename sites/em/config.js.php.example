@@ -1,0 +1,73 @@
+<?php
+header('Content-Type: application/javascript');
+header("Cache-Control: no-cache, must-revalidate");
+header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
+
+// Подключаем helper, если он еще не подключен, чтобы получить актуальные значения
+$helperPath = __DIR__ . '/sahmatka/config.php';
+if(file_exists($helperPath)) {
+    include_once($helperPath);
+}
+
+// Fallback logic if helpers not loaded or variables not set
+if(!function_exists('get_app_url')) {
+    function get_app_url() { 
+        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)) ? "https://" : "http://";
+        $host = $_SERVER['HTTP_HOST'] ?? 'em.m2profi.pro';
+        return getenv('APP_URL') ?: "$protocol$host";
+    }
+}
+if(!function_exists('get_app_domain')) {
+    function get_app_domain() { 
+        return getenv('APP_DOMAIN') ?: ($_SERVER['HTTP_HOST'] ?? 'em.m2profi.pro');
+    }
+}
+if(!function_exists('get_public_url')) {
+    function get_public_url() { return get_app_url(); }
+}
+if(!function_exists('get_public_domain')) {
+    function get_public_domain() { return get_app_domain(); }
+}
+?>
+// Автоматически сгенерированный конфиг доменов
+window.DOMAIN_CONFIG = {
+    APP_DOMAIN: '<?= get_app_domain() ?>',
+    APP_URL: '<?= get_app_url() ?>',
+    PUBLIC_DOMAIN: '<?= get_public_domain() ?>',
+    PUBLIC_URL: '<?= get_public_url() ?>',
+    
+    // Пути
+    PATHS: {
+        SAHMATKA: '/sahmatka',
+        AJAX_ROUTER: '/sahmatka/ajax_router.php',
+        AJAX_ACTIONS: '/sahmatka/ajax_actions.php',
+        JQUERY: '/sahmatka/template/default/libs/jquery-3.3.1/jquery-3.3.1.min.js'
+    },
+    
+    // Хелпер функции
+    getAjaxUrl: function(controller, action, params) {
+        var base = this.APP_URL + this.PATHS.AJAX_ROUTER + '?ctr=' + controller + '&act=' + action;
+        if (params) {
+            for (var key in params) {
+                base += '&' + key + '=' + params[key];
+            }
+        }
+        return base;
+    },
+    
+    getAjaxActionUrl: function(load, controller) {
+        return this.APP_URL + this.PATHS.AJAX_ACTIONS + '?load=' + load + '&controller=' + controller;
+    },
+    
+    getResourceUrl: function(path) {
+        return this.APP_URL + path;
+    },
+    
+    getPublicResourceUrl: function(path) {
+        return this.PUBLIC_URL + path;
+    },
+
+    getJQueryUrl: function() {
+        return this.getResourceUrl(this.PATHS.JQUERY);
+    }
+};

@@ -1,0 +1,268 @@
+/* ============================================================================
+   FWE Online Editor — theme-base.css (Базовые переменные, layout, панели, скроллы)
+   ============================================================================ */
+
+/* --- 1. Базовые переменные темы --- */
+:root {
+  --bg-main:        #232323;
+  --bg-content:     #222;
+  --bg-header:      #383838;
+  --bg-editor:      #1e1e1e;
+  --bg-progress:    rgba(20,24,34,.86);
+
+  --border-main:    #353535;
+  --border-unsaved: #ff8888;
+  --border-opened:  #42a5f5;
+
+  --color-main:     #e0e0e0;
+  --color-accent:   #33c9ff;
+  --color-link:     #21d4fd;
+  --color-unsaved:  #ff5252;
+  --color-log:      #8be9fd;
+  --color-muted:    #bbb;
+
+  --font-main:      Arial, "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-mono:      "Fira Mono", "JetBrains Mono", monospace;
+
+  --radius-main:    9px;
+  --radius-editor:  8px;
+
+  --panel-w:        250px;
+  --panel-w-m:      90vw;
+  --panel-border:   #2a2a2a;
+
+  --nav-w:          30px;
+  --nav-h:          50px;
+  --nav-bg:         #000;
+  --nav-color:      #fff;
+  --nav-op:         .5;
+
+  --close-w:        20px;
+  --close-bg:       #555;
+  --close-hover:    #ff5252;
+
+  --z-panels:       1200;
+  --z-nav:          2001;
+  --z-cross:        2200;
+}
+
+/* --- 2. Общая разметка --- */
+html, body {
+  margin: 0; padding: 0;
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+  background: var(--bg-main);
+  color: var(--color-main);
+  font-family: var(--font-main);
+}
+
+/* --- 3. Layout --- */
+#layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.content-panel, .content {
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--bg-content);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* --- 4. Боковые панели --- */
+.side-panel, .panel {
+  width: var(--panel-w);
+  min-width: var(--panel-w);
+  height: 100vh;
+  background: var(--bg-main);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  position: relative;
+  z-index: var(--z-panels);
+  transition: left 0.3s, right 0.3s;
+}
+.side-panel1, .panel.left  { border-right: 1px solid var(--panel-border); }
+.side-panel2, .panel.right { border-left:  1px solid var(--panel-border); }
+
+/* --- 5. Кнопки панелей/гамбургеры (desktop hide) --- */
+.sp_nav, .sp_nav1, .sp_nav2 { display: none; }
+
+/* --- 6. Закрывающая вертикальная полоса --- */
+.spp_nav {
+  display: none;
+}
+
+/* --- 7. Responsive: панели и закрыватели на мобиле --- */
+@media (max-width: 999px) {
+  .side-panel, .panel {
+    position: fixed;
+    top: 0;
+    height: 100vh;
+    width: var(--panel-w-m);
+    max-width: 99vw;
+    box-shadow: 5px 0 12px #0008;
+    transition: left .3s, right .3s;
+    z-index: var(--z-panels);
+  }
+  .side-panel1, .panel.left  { left: -100vw; padding-left: 0; }
+  .side-panel2, .panel.right { right: -100vw; padding-right: 0; }
+
+  /* открытие панели смещает её на ширину полосы закрытия */
+  #side-checkbox1:checked + .side-panel1,
+  .panel.left.open  { left:  var(--close-w) !important; }
+  #side-checkbox2:checked + .side-panel2,
+  .panel.right.open { right: var(--close-w) !important; }
+
+  /* отменить transform, только left/right */
+  .side-panel1, .panel.left,
+  .side-panel1.open, .panel.left.open,
+  .side-panel2, .panel.right,
+  .side-panel2.open, .panel.right.open {
+    transform: none !important;
+  }
+
+  /* Вертикальные полосы-закрыватели */
+  .spp_nav {
+    display: block;
+    position: fixed;
+    top: 0; left: auto; right: auto;
+    width: var(--close-w);
+    height: 100vh;
+    background: var(--close-bg);
+    opacity: .9;
+    z-index: var(--z-cross);
+    cursor: pointer;
+    transition: background .2s, opacity .2s;
+  }
+  .spp_nav1 { left: 0;         border-right:solid 1px #000; }
+  .spp_nav2 { right: 0;        border-left:solid 1px #000;  }
+  .spp_nav.hidden { display: none; }
+  .spp_nav::after {
+    content: "×";
+    color: #fff;
+    font-size: 21px;
+    font-weight: bold;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .spp_nav:hover {
+    background: var(--close-hover);
+    opacity: 1;
+  }
+}
+
+/* --- 8. Always open panels на десктопе --- */
+@media (min-width: 1000px) {
+  .side-panel, .panel { position: static; box-shadow: none; }
+  .close-inside, .sp_nav, .sp_nav1, .sp_nav2, .spp_nav { display: none !important; }
+}
+
+/* --- 9. Заголовки (header) панелей --- */
+.spanel_heder, .header {
+  background: var(--bg-header);
+  color: #fff;
+  padding: 7px 12px;
+  font-weight: bold;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  opacity: 0.97;
+  width: 100%;
+  border-bottom: 1px solid #222;
+}
+.spanel_content { padding: 7px 7px 5px 7px; }
+
+/* --- 10. Кнопки открытия панелей на мобиле --- */
+.panel-btn {
+  display: none;
+}
+@media (max-width: 999px) {
+  .panel-btn {
+    display: block;
+    position: fixed;
+    width: var(--nav-w);
+    height: var(--nav-h);
+    background: var(--nav-bg);
+    color: var(--nav-color);
+    font-size: 23px;
+    font-weight: bold;
+    text-align: center;
+    line-height: var(--nav-h);
+    top: 25vh;
+    z-index: var(--z-nav);
+    opacity: var(--nav-op);
+    border: none;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity .2s, background .2s;
+  }
+  .panel-btn.left {
+    left: 0;
+    border-top-right-radius: 18px;
+    border-bottom-right-radius: 18px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  .panel-btn.right {
+    right: 0;
+    border-top-left-radius: 18px;
+    border-bottom-left-radius: 18px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .panel-btn.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .panel-btn:active, .panel-btn:hover {
+    opacity: 0.95;
+    background: #181818;
+  }
+}
+
+/* --- 11. Скроллбары (минимализм) --- */
+::-webkit-scrollbar { width: 7px; background: #202b33; }
+::-webkit-scrollbar-thumb { background: #485563; border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: #1de9b6; }
+
+/* --- 12. Универсальные утилиты --- */
+.hidden { display: none !important; }
+
+/* --- 13. Скрыть чекбоксы панелей --- */
+#side-checkbox1, #side-checkbox2 { display: none; }
+
+/* --- 14. Универсальное текстовое поле (например, finput) --- */
+.finput  {
+  background: #23242c;
+  color: #e0eafd;
+  border: 1px solid #363a47;
+  border-radius: 9px;
+  font-family: "JetBrains Mono", "Fira Mono", monospace;
+  font-size: 1em;
+  padding: 0.32em 0.8em;
+  margin: 0 0 0.5em 0;
+  outline: none;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  height: 2.15em;
+}
+.finput[readonly] {
+  background: #23242c;
+  opacity: .85;
+  color: #b4badb;
+  border-style: dashed;
+  cursor: default;
+}

@@ -1,0 +1,125 @@
+<?php
+// Файл конфигурации и подключения к базе данных
+
+// Параметры подключения к базе данных
+ ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+
+// Отключить отчёт об ошибках (или установить 0)
+error_reporting(0);
+
+
+// Параметры подключения к базе данных
+define('DB_HOST', 'localhost'); // или IP-адрес сервера БД
+define('DB_NAME', 'm2profi_calling');
+define('DB_USER', 'm2profi_calling');
+define('DB_PASS', 'ZntF<3du6N]Rx+%#');
+define('DB_CHARSET', 'utf8mb4');
+
+
+
+
+// Глобальная переменная для хранения объекта подключения
+global $pdo;
+
+// Опции для PDO
+$options = [
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+];
+
+// Создание DSN (Data Source Name)
+$dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+
+try {
+    // Попытка подключения к базе данных
+    $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+} catch (\PDOException $e) {
+    // В случае ошибки подключения, выводим сообщение и прекращаем выполнение скрипта
+    // В продакшене лучше логировать ошибку и выводить общее сообщение
+    die("Database connection error: " . $e->getMessage());
+}
+
+// Массив заголовков столбцов для таблицы 'caller'
+$config['table_captions'] = [
+    //'deal_name' => 'Название сделки',
+    'company' => 'Компания',
+    'main_contact' => 'Основной контакт',
+    //'contact_company' => 'Компания контакта',
+    //'responsible' => 'Ответственный',
+    //'deal_stage' => 'Этап сделки',
+    //'pipeline' => 'Воронка',
+    //'budget' => 'Бюджет',
+    //'created_at' => 'Дата создания',
+    //'created_by' => 'Кем создана',
+    //'updated_at' => 'Дата изменения',
+    //'updated_by' => 'Кем изменена',
+    //'source_phone' => 'Source phone',
+    //'deal_type' => 'Тип сделки',
+    //'contract_type' => 'Тип договора',
+    //'maternity_capital' => 'Мат. капитал',
+    //'mortgage' => 'Ипотека',
+    //'area' => 'Площадь',
+    //'channel' => 'Канал привлечения',
+    //'parking' => 'Парковка',
+    //'closed_at' => 'Дата закрытия сделки',
+    '---' => '---Портрет покупателя---', // Разделитель
+    //'gender' => 'Пол',
+    //'age' => 'Возраст',
+    'country' => 'Страна',
+    'city' => 'Город',
+    //'region' => 'Регион (россия + казахстан)',
+    //'activity_sphere' => 'Сфера  ',
+    //'marital_status' => 'В браке',
+    //'marriage_contract' => 'Брачный контракт',
+    //'position_contact' => 'Должность  ',
+    //'work_email_contact' => 'Рабочий email   ',
+    //'personal_email_contact' => 'Личный email ',
+    //'other_email_contact' => 'Другой email  ',
+    //'work_phone_contact' => 'Рабочий телефон (контакт)',
+    //'mobile_phone_contact' => 'Мобильный телефон  ',
+    //'fax_contact' => 'Факс (контакт)',
+    //'home_phone_contact' => 'Домашний телефон  ',
+    //'other_phone_contact' => 'Другой телефон  ',
+];
+
+// Определение типов событий
+$config['event_types'] = [
+    1 => 'Добавление комментария',
+    2 => 'Изменение цвета',
+    3 => 'Изменение статуса',
+    4 => 'Обновление данных',
+    5 => 'Создание записи',
+    6 => 'Просмотр телефона'
+];
+
+// Обратный массив для поиска ID по названию типа события
+$config['event_type_ids'] = array_flip($config['event_types']);
+
+$config['rowcolors'] = [
+    '1' => '#FFFFFF',
+    '2' => '#FFB3BA', // Light pastel red
+    '3' => '#FFDFBA', // Light pastel orange
+    '4' => '#FFFFBA', // Light pastel yellow
+    '5' => '#BAFFC9', // Light pastel green
+    '6' => '#BAE1FF', // Light pastel blue
+    '7' => '#D7BAFF', // Light pastel purple
+    '8' => '#FFC0CB', // Light pastel pink
+    '9' => '#F5E6CC', // Light pastel beige
+    '10' => '#E6E6FA', // Light pastel lavender
+    '11' => '#F0FFF0', // Light pastel honeydew
+];
+
+// Массив заголовков столбцов для таблицы 'users'
+$config['user_table_captions'] = [
+    'id' => 'ID',
+    'login' => 'Логин',
+    'password' => 'Пароль',
+    'full_name' => 'ФИО',
+    'phone' => 'Телефон',
+    'group_id' => 'Группа',
+];
+
+// Возвращаем массив конфигурации
+return $config;
