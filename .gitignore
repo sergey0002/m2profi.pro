@@ -135,3 +135,8 @@ orderlogx.csv
 
 # Sensitive or Generated
 node_modules
+
+# Deploy panel secrets (sites/dep)
+sites/dep/.env
+sites/dep/projects/*.env
+!sites/dep/projects/*.env.example
