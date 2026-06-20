@@ -34,7 +34,7 @@
 		?>
 		<div class="sidenav-nav">
 			<a href="http://em-nsk.ru" class="sidenav__backlink sidenav__backlink_mob">Вернуться на сайт</a>
-			<div style="font-size:7px;"><?=$_SERVER['SERVER_ADDR'];?></div>
+			<div style="font-size:7px;"><?=$_SERVER[SERVER_ADDR];?></div>
 			<ul class="sidenav-menu">
 				<li><a href="user.php?action=objects" class="active"><i><img src="template/default/images/menu-icon-1.svg" alt=""></i>Квартиры</a></li>
 				 
