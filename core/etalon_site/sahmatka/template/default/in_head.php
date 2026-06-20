@@ -34,7 +34,7 @@
 		?>
 		<div class="sidenav-nav">
 			 
-			<div style="font-size:7px;"><?=$_SERVER['SERVER_ADDR'];?></div>
+			<div style="font-size:7px;"><?=$_SERVER[SERVER_ADDR];?></div>
 			<ul class="sidenav-menu">
 				<li><a href="user.php?action=objects" class="active"><i><img src="template/default/images/menu-icon-1.svg" alt=""></i>Квартиры</a></li>
 				 
@@ -417,7 +417,7 @@ $( document ).ready(function()
 			   modal: false,
 			   removalDelay: 100,
 			   items: {
-				 src: 'https://' . $GLOBALS['config']['domain'] . '/sahmatka/popup.php',
+				 src: 'https://em.m2profi.pro/sahmatka/popup.php',
 			   },
 			   type: 'iframe', 
 			   callbacks: {

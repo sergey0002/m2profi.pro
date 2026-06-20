@@ -22,12 +22,12 @@ else{$show_b_panel = '<div class="rentobj_stp rentobj_stp2">помещение �
 				?>
 				
 			 	<p>
-                  <a href="https://{$GLOBALS['config']['domain']}/sahmatka/iframe_router.php?ctr=rentobjects&act=card&id=<?=$v['rent_objects_id']?>#map" class="rent_a iframerent"><img src="https://em-nsk.ru/m2rent/images/map.svg" alt="">Помещение на карте</a>
+                  <a href="https://em.m2profi.pro/sahmatka/iframe_router.php?ctr=rentobjects&act=card&id=<?=$v['rent_objects_id']?>#map" class="rent_a iframerent"><img src="https://em-nsk.ru/m2rent/images/map.svg" alt="">Помещение на карте</a>
                 </p>
 				<br/>
                 <p><?=$v['comment']?></p>
 			 
-			  <p><a href="https://{$GLOBALS['config']['domain']}/sahmatka/iframe_router.php?ctr=rentobjects&act=card&id=<?=$v['rent_objects_id']?>" class="rent_a iframerent" style="text-decoration: underline;">Подробнее о помещении</a></p>
+			  <p><a href="https://em.m2profi.pro/sahmatka/iframe_router.php?ctr=rentobjects&act=card&id=<?=$v['rent_objects_id']?>" class="rent_a iframerent" style="text-decoration: underline;">Подробнее о помещении</a></p>
               </div>
               <div class="col-lg-3 p10"> 
 			  
@@ -52,7 +52,7 @@ else{$show_b_panel = '<div class="rentobj_stp rentobj_stp2">помещение �
 					if($v['status'] == 2 || !$v['status'] )
 					{
 						?>	
-			  <a class="iframerent" href="https://{$GLOBALS['config']['domain']}/sahmatka/iframe_router.php?ctr=rentobjects&act=card&id=<?=$v['rent_objects_id']?>">
+			  <a class="iframerent" href="https://em.m2profi.pro/sahmatka/iframe_router.php?ctr=rentobjects&act=card&id=<?=$v['rent_objects_id']?>">
                   <button class="btn_bg_border">
                     <div class="btn_bg_text p20"> ОТПРАВИТЬ ЗАЯВКУ <i class="btn_arrowx"></i> </div>
                   </button>

@@ -218,7 +218,7 @@ class ctr__homeseditor extends ctr__
 			{
 				/// $data['delivery_date'] = date('d.m.Y' , strtotime( $data['delivery_date'] ) );
 			}
-			if(!$data['img'] ||1==1){ $data['img'] = 'http://' . $GLOBALS['config']['domain'] . '/render/'.$data['home_id'].'.jpg'; }
+			if(!$data['img'] ||1==1){ $data['img'] = 'http://em.m2profi.pro/render/'.$data['home_id'].'.jpg'; }
 			
 			//print '<h2>Редактирование '.$this->title_act2.'</h2>';
 			

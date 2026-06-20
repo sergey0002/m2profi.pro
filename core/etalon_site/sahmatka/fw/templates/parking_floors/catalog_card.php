@@ -10,10 +10,10 @@ $v=$data;
       <img src="/sahmatka/parking/render/<?=$v['parking_building_id']?>.jpg" alt="">
       <div class="object__info">
         <div class="object__status object__status_sale">
-          <?=$v['complite_text']?>
+          <?=$v[complite_text]?>
         </div>
       </div>
     </div>
-    <a href="ctrind.php?ctr=parking_floors&act=catalog&parking_building_id=<?=$v['parking_building_id']?>" class="object__btn btn btn_arrow">К объекту<i></i></a>
+    <a href="ctrind.php?ctr=parking_floors&act=catalog&parking_building_id=<?=$v[parking_building_id]?>" class="object__btn btn btn_arrow">К объекту<i></i></a>
   </div>
 </div>

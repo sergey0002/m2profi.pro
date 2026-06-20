@@ -639,7 +639,7 @@ class ctr__zapisx extends ctr__
 					// Если есть записи на дату время выводим тт
 					if($this->zapis_i_dt[$date][$k2] )
 					{
-						foreach($this->zapis_i_dt[$date]['k2'] as $vx1=>$vx2)
+						foreach($this->zapis_i_dt[$date][k2] as $vx1=>$vx2)
 						{
 							$tt =$vx2['home_id'];
 							$tt.=$vx2['home_id'];
@@ -906,9 +906,9 @@ class ctr__zapisx extends ctr__
 					$this->card($insid,'','Ваша заявка принята'); //  card($id='',$data='', $title='')
 					print $con = ob_get_clean();
 					
-					multi_attach_mail('89236470002@mail.ru', 'Запись на выдачу ключей - дом:'.$this->homes_arr[$data['home_id']]['title'].' кв.:'.$data['apartment_num'].' дата:'.$_POST['date'].' время:'.$data['time'], $con, 'admin@m2profi.pro', $GLOBALS['config']['domain']);
-					multi_attach_mail($data['email'], 'Запись на выдачу ключей - дом:'.$this->homes_arr[$data['home_id']]['title'].' кв.:'.$data['apartment_num'].' дата:'.$_POST['date'].' время:'.$data['time'], $con, 'admin@m2profi.pro', $GLOBALS['config']['domain']);
-					multi_attach_mail('op15@em-nsk.group', 'Запись на выдачу ключей - дом:'.$this->homes_arr[$data['home_id']]['title'].' кв.:'.$data['apartment_num'].' дата:'.$_POST['date'].' время:'.$data['time'], $con, 'admin@m2profi.pro', $GLOBALS['config']['domain']);
+					multi_attach_mail('89236470002@mail.ru', 'Запись на выдачу ключей - дом:'.$this->homes_arr[$data['home_id']]['title'].' кв.:'.$data['apartment_num'].' дата:'.$_POST['date'].' время:'.$data['time'], $con, 'admin@m2profi.pro', 'em-nsk.ru');
+					multi_attach_mail($data['email'], 'Запись на выдачу ключей - дом:'.$this->homes_arr[$data['home_id']]['title'].' кв.:'.$data['apartment_num'].' дата:'.$_POST['date'].' время:'.$data['time'], $con, 'admin@m2profi.pro', 'em-nsk.ru');
+					multi_attach_mail('op15@em-nsk.group', 'Запись на выдачу ключей - дом:'.$this->homes_arr[$data['home_id']]['title'].' кв.:'.$data['apartment_num'].' дата:'.$_POST['date'].' время:'.$data['time'], $con, 'admin@m2profi.pro', 'em-nsk.ru');
 			 
 					/// ОТПРАВКА НА ПОЧТУ	
 				}
@@ -994,8 +994,8 @@ form{position:relative;}
     font-size: 20px;
 	}
 </style>
-		 <form method="post" action="https://{$GLOBALS['config']['domain']}/sahmatka/ajax_router.php?ctr=zapiskeys&act=zapisformx" id="zapisform">
-		 <div id="form_progressbar">Загрузка...<br/><img src="http://{$GLOBALS['config']['domain']}/sahmatka/loader.gif"></div>
+		 <form method="post" action="https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=zapiskeys&act=zapisformx" id="zapisform">
+		 <div id="form_progressbar">Загрузка...<br/><img src="http://em.m2profi.pro/sahmatka/loader.gif"></div>
  
 			<?=$filed->checkbox('admin_mode','<b>ЛЮБЫЕ ДОМА И ВРЕМЯ</b>',$_GET['admin_mode'] ,' data-bl="-1" ' , 'admin_mode');?><br/>
 		
@@ -1116,7 +1116,7 @@ form{position:relative;}
 			var home_id = "22";
 			
 			
-			$("#home_id").fwloadx("https://{$GLOBALS['config']['domain']}/sahmatka/ajax_router.php?ctr=zapisx&act=sel_home_zapis",function() {
+			$("#home_id").fwloadx("https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=zapisx&act=sel_home_zapis",function() {
 				$('#home_id option[value='+home_id+']').prop('selected', true);
 			});
 			 
@@ -1125,7 +1125,7 @@ form{position:relative;}
 			$("#admin_mode").change(function() 
 			{
 				if ($(this).val()){
-					$("#home_id").fwloadx("https://{$GLOBALS['config']['domain']}/sahmatka/ajax_router.php?ctr=zapisx&act=sel_home_zapis");
+					$("#home_id").fwloadx("https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=zapisx&act=sel_home_zapis");
 				}
 				else{
 					blocked_child_select($(this).attr('data-bl'));
@@ -1135,7 +1135,7 @@ form{position:relative;}
 			$("#pom").change(function() 
 			{
 				if ($(this).val()){
-					$("#home_id").fwloadx("https://{$GLOBALS['config']['domain']}/sahmatka/ajax_router.php?ctr=zapisx&act=sel_home_zapis");
+					$("#home_id").fwloadx("https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=zapisx&act=sel_home_zapis");
 				}
 				else{
 					blocked_child_select($(this).attr('data-bl'));
@@ -1147,7 +1147,7 @@ form{position:relative;}
 			$("#home_id").change(function() 
 			{
 				if ($(this).val()){
-					$("#section_id").fwloadx("https://{$GLOBALS['config']['domain']}/sahmatka/ajax_router.php?ctr=zapisx&act=sel_section_zapis");
+					$("#section_id").fwloadx("https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=zapisx&act=sel_section_zapis");
 				}
 				else{
 					blocked_child_select($(this).attr('data-bl'));
@@ -1157,7 +1157,7 @@ form{position:relative;}
 			$("#section_id").change(function() 
 			{
 				if ($(this).val()){
-					$("#apartament_num").fwloadx("https://{$GLOBALS['config']['domain']}/sahmatka/ajax_router.php?ctr=zapisx&act=sel_apartament_zapis");
+					$("#apartament_num").fwloadx("https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=zapisx&act=sel_apartament_zapis");
 				}
 				else{
 					blocked_child_select($(this).attr('data-bl'));
@@ -1168,7 +1168,7 @@ form{position:relative;}
 			$("#apartament_num").change(function() 
 			{
 				if ($(this).val()){
-					$("#date").fwloadx("https://{$GLOBALS['config']['domain']}/sahmatka/ajax_router.php?ctr=zapisx&act=sel_date_zapisx");
+					$("#date").fwloadx("https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=zapisx&act=sel_date_zapisx");
 				}
 				else{
 					blocked_child_select($(this).attr('data-bl'));
@@ -1181,7 +1181,7 @@ form{position:relative;}
 			$("#date").change(function() 
 			{
 				if ($(this).val()){
-					$("#time").fwloadx("https://{$GLOBALS['config']['domain']}/sahmatka/ajax_router.php?ctr=zapisx&act=sel_time_zapisx");
+					$("#time").fwloadx("https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=zapisx&act=sel_time_zapisx");
 				}
 				else{
 					blocked_child_select($(this).attr('data-bl'));

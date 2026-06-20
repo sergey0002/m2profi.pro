@@ -146,7 +146,7 @@ $('#sel_apartment_num').on('change', function() {
 
 // ЗАГРУЗКА ДАННЫХ ПРИЛЮБОЙ ОБРАБОТКЕ ФОРМЫ!
 $( "#filtrform input,#filtrform select" ).change(function() {
-  sendAjaxForm( 'zapisdata' , 'filtrform' , 'https://' . $GLOBALS['config']['domain'] . '/sahmatka/ajax_actions.php?load=data&controller=zapiskeys',0); // Грузим содержимое селек
+  sendAjaxForm( 'zapisdata' , 'filtrform' , 'https://em.m2profi.pro/sahmatka/ajax_actions.php?load=data&controller=zapiskeys',0); // Грузим содержимое селек
 });
 
 

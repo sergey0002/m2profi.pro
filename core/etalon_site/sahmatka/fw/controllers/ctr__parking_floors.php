@@ -127,7 +127,7 @@ class ctr__parking_floors extends ctr__
 		}
 		if($_SESSION['sh_login']=='admin')
 		{
-			$href   = 'https://' . $GLOBALS['config']['domain'] . '/sahmatka/iframe_router.php?ctr=parking_spaces&act=order&id='.$data['parking_space_id'].'';
+			$href   = 'https://em.m2profi.pro/sahmatka/iframe_router.php?ctr=parking_spaces&act=order&id='.$data['parking_space_id'].'';
 	 
 			if($data['status_broni_id'])
 			{
@@ -153,7 +153,7 @@ class ctr__parking_floors extends ctr__
 			}			
 			
 			if($data['status']!=2){$price='';}else{$price.='<br/>';}
-			$href   = 'https://' . $GLOBALS['config']['domain'] . '/sahmatka/iframe_router.php?ctr=parking_spaces&act=order&id='.$data['parking_space_id'].'';
+			$href   = 'https://em.m2profi.pro/sahmatka/iframe_router.php?ctr=parking_spaces&act=order&id='.$data['parking_space_id'].'';
 			?>
 			<a  href="<?=$href?>" rel="tooltip"  title="Место №<?=$data['num']?><br/><?=$price?><br/><?=$data['area']?>м<sup>2</sup> <?=$br_info?>" data-id="<?=$data['parking_space_id']?>" class="iframe_r car <?=$status_class?>" style="left:<?=$data['x']?>px; top:<?=$data['y']?>px; transform:rotate(<?=$data['rotate']?>rad);"> 
 				<span class="pk_num"><?=$data['num']?></span> 
@@ -165,7 +165,7 @@ class ctr__parking_floors extends ctr__
 		elseif( $_SESSION['sh_login'] ) // Все залогиненые - кликть можно на все квартиры карточка должна меняться в зависимости от прав
 		{
 			if($data['status']!=2){$price='';}else{$price.='<br/>';}
-			$href   = 'https://' . $GLOBALS['config']['domain'] . '/sahmatka/iframe_router.php?ctr=parking_spaces&act=order&id='.$data['parking_space_id'].'';
+			$href   = 'https://em.m2profi.pro/sahmatka/iframe_router.php?ctr=parking_spaces&act=order&id='.$data['parking_space_id'].'';
 			?>
 			<a  href="<?=$href?>" rel="tooltip"  title="Место №<?=$data['num']?><br/><?=$price?> <?=$data['area']?>м<sup>2</sup>" data-id="<?=$data['parking_space_id']?>" class="iframe_r car <?=$status_class?>" style="left:<?=$data['x']?>px; top:<?=$data['y']?>px; transform:rotate(<?=$data['rotate']?>rad);"> 
 				<span class="pk_num"><?=$data['num']?></span> 
@@ -177,7 +177,7 @@ class ctr__parking_floors extends ctr__
 		else
 		{
 			if($data['status']!=2){$price='';}else{$price.='<br/>';}
-			$href   = 'https://' . $GLOBALS['config']['domain'] . '/sahmatka/iframe_router.php?ctr=parking_spaces&act=broni&id='.$data['parking_space_id'].'';
+			$href   = 'https://em.m2profi.pro/sahmatka/iframe_router.php?ctr=parking_spaces&act=broni&id='.$data['parking_space_id'].'';
 			?>
 			<a  href="<?=$href?>" rel="tooltip"  title="Место № <?=$data['num']?><br/><?=$price?>  <?=$data['area']?>м<sup>2</sup>" data-id="<?=$data['parking_space_id']?>" class="iframe  car <?=$status_class?>" style="left:<?=$data['x']?>px; top:<?=$data['y']?>px; transform:rotate(<?=$data['rotate']?>rad);"> 
 				<span class="pk_num"><?=$data['num']?></span> 

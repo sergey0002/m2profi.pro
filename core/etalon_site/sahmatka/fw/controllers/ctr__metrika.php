@@ -1,4 +1,4 @@
-<?
+﻿<?
 /*
 SELECT 
 IFNULL( (select status  from broni as b where b.home_id = broni.home_id AND b.apartments_num = broni.apartments_num ORDER by b.date DESC LIMIT 1 ) ,  2)  as status2x,
@@ -669,7 +669,7 @@ class ctr__metrika
 		$('#filed_group_tree').jstree({
 			'core': {
 			  'data': {
-				"url": "https://{$GLOBALS['config']['domain']}/sites/em/sahmatka/ajax_router.php?ctr=metrika&act=jsoonajaxftree",
+				"url": "https://em.m2profi.pro/sites/em/sahmatka/ajax_router.php?ctr=metrika&act=jsoonajaxftree",
 				'data': function(node) {
 				  return {
 					'id': node.id,
@@ -739,7 +739,7 @@ class ctr__metrika
 				$.ajax({
 					 method: 'get', 
 					dataType: "json",
-					url: 'https://' . $GLOBALS['config']['domain'] . '/sites/em/sahmatka/ajax_router.php?ctr=metrika&act=ajax__chartdata',
+					url: 'https://em.m2profi.pro/sites/em/sahmatka/ajax_router.php?ctr=metrika&act=ajax__chartdata',
 					data: {id: puth},
 					success: function(data){   /* функция которая будет выполнена после успешного запроса.  */
 						//alert(data);  

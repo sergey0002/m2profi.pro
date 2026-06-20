@@ -1,4 +1,4 @@
-var chart;
+﻿var chart;
 function refresh() {
     if (suspendRefresh)
         return;

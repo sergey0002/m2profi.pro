@@ -1,3 +1,15 @@
+# ============================================================
+# WHITELIST: track only core/ and sites/em/
+# Everything else is excluded from the repository.
+# ============================================================
+*
+!.gitignore
+!core/
+!core/**
+!sites/
+!sites/em/
+!sites/em/**
+
 # IDEs and Editors
 .idea/
 .vscode/

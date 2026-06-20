@@ -43,10 +43,10 @@
 		display:none;
 	  }
 	  .ui-rotatable-handle{ }
-	  .car_g{background-image:url('https://' . $GLOBALS['config']['domain'] . '/sahmatka/parking/car_g.png'); }
-	  .car_r{background-image:url('https://' . $GLOBALS['config']['domain'] . '/sahmatka/parking/car_r.png'); }
-	  .car_y{background-image:url('https://' . $GLOBALS['config']['domain'] . '/sahmatka/parking/car_y.png'); }
-	  .car_f{background-image:url('https://' . $GLOBALS['config']['domain'] . '/sahmatka/parking/car_f.png'); }
-	  .car_b{background-image:url('https://' . $GLOBALS['config']['domain'] . '/sahmatka/parking/car_b.png'); }
+	  .car_g{background-image:url('https://em.m2profi.pro/sahmatka/parking/car_g.png'); }
+	  .car_r{background-image:url('https://em.m2profi.pro/sahmatka/parking/car_r.png'); }
+	  .car_y{background-image:url('https://em.m2profi.pro/sahmatka/parking/car_y.png'); }
+	  .car_f{background-image:url('https://em.m2profi.pro/sahmatka/parking/car_f.png'); }
+	  .car_b{background-image:url('https://em.m2profi.pro/sahmatka/parking/car_b.png'); }
 	  .ui-rotatable-handle{position:absolute; width:5px; height:5px;     bottom: -7px;     left: 0;}
     </style>

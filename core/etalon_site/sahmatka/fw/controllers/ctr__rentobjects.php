@@ -756,7 +756,7 @@ $("#"+resultto).fadeIn(600);
 // СНятие чекбокса дома
 $('#h_adress').on('change', function() {
 	$('#rent_home_id').attr('value',''); // Очистка дома
-    sendAjaxForm( 'rent_search_result' , 'rentsearch' , 'https://' . $GLOBALS['config']['domain'] . '/sahmatka/ajax_router.php?ctr=rentobjects&act=display_ag_ajax&sale=<?=$_GET['sale']?>',0); // Грузим содержимое селек
+    sendAjaxForm( 'rent_search_result' , 'rentsearch' , 'https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=rentobjects&act=display_ag_ajax&sale=<?=$_GET['sale']?>',0); // Грузим содержимое селек
 });
  
     	},
@@ -772,14 +772,14 @@ $('#h_adress').on('change', function() {
 	 
  
 // Начальная загрузка данных 
-sendAjaxForm( 'rent_search_result' , 'rentsearch' , 'https://' . $GLOBALS['config']['domain'] . '/sahmatka/ajax_router.php?ctr=rentobjects&act=display_ag_ajax&sale=<?=$_GET['sale']?>',0); // Грузим содержимое селек
+sendAjaxForm( 'rent_search_result' , 'rentsearch' , 'https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=rentobjects&act=display_ag_ajax&sale=<?=$_GET['sale']?>',0); // Грузим содержимое селек
 // Улицы
-sendAjaxForm( 'street' , 'rentsearch' , 'https://' . $GLOBALS['config']['domain'] . '/sahmatka/ajax_router.php?ctr=rentobjects&act=sel_street',0); // Грузим содержимое селек
+sendAjaxForm( 'street' , 'rentsearch' , 'https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=rentobjects&act=sel_street',0); // Грузим содержимое селек
  
 // ЗАГРУЗКА ДАННЫХ ПРИЛЮБОЙ ОБРАБОТКЕ ФОРМЫ!
 $( "#rentsearch_ag input,#rentsearch_ag select" ).change(function() {
 	   $('#rent_home_id').attr('value',''); // Очистка дома
-	 sendAjaxForm( 'rent_search_result' , 'rentsearch_ag' , 'https://' . $GLOBALS['config']['domain'] . '/sahmatka/ajax_router.php?ctr=rentobjects&act=display_ag_ajax&sale=<?=$_GET['sale']?>',0,'progressbar','',function postload() {}); // Грузим содержимое селек
+	 sendAjaxForm( 'rent_search_result' , 'rentsearch_ag' , 'https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=rentobjects&act=display_ag_ajax&sale=<?=$_GET['sale']?>',0,'progressbar','',function postload() {}); // Грузим содержимое селек
    // $('#maprentobjects').hide();
 });
 
@@ -1119,7 +1119,7 @@ foreach($data as $k=>$v)
 		global $mysql;
 		if(!$href_perfix){$href_perfix='';}
 		
-		$href_perfix='https://' . $GLOBALS['config']['domain'] . '/sahmatka/iframe_router.php?ctr=rentobjects&act=card&id=';
+		$href_perfix='https://em.m2profi.pro/sahmatka/iframe_router.php?ctr=rentobjects&act=card&id=';
 		
 		 
 		//Получаем все обекты
@@ -1167,7 +1167,7 @@ foreach($data as $k=>$v)
 	 
 			$oc = count($data_obj[$v['rent_home_id']]);
 			
-			if( !$_GET['id'] ) // ТОлько для общей карты
+			if( !$_GET[id] ) // ТОлько для общей карты
 			{	
 				if($oc>1){$show_text='Все помещения';}
 				else{$show_text='Подробнее о помещении';}
@@ -1667,7 +1667,7 @@ foreach($data as $k=>$v)
 		if($v['status'] == 2 || !$v['status'] )
 					{
 						?>	
-					 <a href="https://{$GLOBALS['config']['domain']}/sahmatka/iframe_router.php?ctr=rentobjects&act=order&id=<?=$v['rent_objects_id']?>">
+					 <a href="https://em.m2profi.pro/sahmatka/iframe_router.php?ctr=rentobjects&act=order&id=<?=$v['rent_objects_id']?>">
           <button class="btn_bg_border" style="margin: 30px 0px 17px 0px;">
             <div class="btn_bg_text p20"> ОТПРАВИТЬ ЗАЯВКУ <i class="btn_arrowx"></i> </div>
           </button>
@@ -1960,7 +1960,7 @@ $this->act__map($v['rent_home_id']);
 			 
 			 
 			$to = '89236470002@mail.ru,op@em-nsk.group'; //
-			// multi_attach_mail( $to, 'Заявка на аренду помещения' , $mess, 'admin@m2profi.pro', $GLOBALS['config']['domain'] , $files);
+			// multi_attach_mail( $to, 'Заявка на аренду помещения' , $mess, 'admin@m2profi.pro', 'em-nsk.ru' , $files);
 				
 				
 			if( multi_attach_mail( $to , 'Заявка на аренду помещения', $mess, 'admin@m2profi.pro' , 'Заявка аренда - em-nsk.ru'  , $files ) )

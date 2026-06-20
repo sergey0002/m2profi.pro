@@ -850,7 +850,7 @@ function sendAjaxForm(resultto, formid, url,append=1,progressid='progressbar') {
 					},
 					close: function() {
 						// Перезагрузить отображение!
-						sendAjaxForm( 'zapisdata' , 'filtrform' , 'https://' . $GLOBALS['config']['domain'] . '/sahmatka/ajax_router.php?ctr=zapiskeys&act=ajax_data',0); // Грузим содержимое селек
+						sendAjaxForm( 'zapisdata' , 'filtrform' , 'https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=zapiskeys&act=ajax_data',0); // Грузим содержимое селек
 					},
 					open: function() {
 						  location.href = location.href.split('#')[0] + "#pop";
