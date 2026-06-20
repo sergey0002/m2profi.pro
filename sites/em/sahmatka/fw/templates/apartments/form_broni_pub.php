@@ -8,6 +8,8 @@ $apartments = $data['apartments'];
 
 
 $curr_apart_status = isset($apartment['status2']) ? (int)$apartment['status2'] : 0;  // АКТУАЛЬНЫЙ СТАТУС КВАРТИРЫ 
+$o1 = (int)($apartment['window_orient_1'] ?? 0);
+$o2 = (int)($apartment['window_orient_2'] ?? 0);
 
 if($_GET[dev1])
 {
@@ -48,8 +50,19 @@ input, select {
         <div class="alert alert-danger"><?=implode('<br>', $data['err_m'])?></div>
     <?php } ?>
     <div class="row">
-        <div class="col-md-6 col-xs-12" style="text-align:center;">
+        <div class="col-md-6 col-xs-12 apartment-plan-col" style="text-align:center;">
+            <?php if ($html_compass = render_window_compass_images($o1, $o2, 110)): ?>
+            <div class="mdl-compas apartment-compas">
+                <?= $html_compass ?>
+            </div>
+            <?php endif; ?>
             <img src="<?=$apartment['image_pb'];?>?x=178" style="max-height:400px; max-width:100%">
+            <?php if ($o1 || $o2): ?>
+            <div class="window-compass__label apartment-compas-caption">
+                Окна: <?= htmlspecialchars(window_orient_labels($o1, $o2)) ?>
+                <?php if ($codes = window_orient_codes($o1, $o2)): ?>(<?= htmlspecialchars($codes) ?>)<?php endif; ?>
+            </div>
+            <?php endif; ?>
         </div>
         <div class="col-md-6 col-xs-12 xxx" style="text-align:left; font-size:16px;">
 		

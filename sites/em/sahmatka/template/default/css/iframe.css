@@ -1,2 +1,33 @@
 .bronihtable{width :100%; font-size:12px;}
 .bronihtable tr{border:solid 1px #EEE ;}
+
+.apartment-plan-col {
+    position: relative;
+    text-align: center;
+}
+.mdl-compas,
+.apartment-compas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    width: auto;
+    max-width: 240px;
+}
+.window-compass-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.window-compass-img {
+    display: block;
+    width: 110px;
+    height: auto;
+    max-width: 100%;
+}
+.apartment-compas-caption {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #333;
+}
+

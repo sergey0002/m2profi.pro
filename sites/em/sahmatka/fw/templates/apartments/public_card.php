@@ -18,6 +18,10 @@
   
   if( !$status ){ $status = "2"; }
    
+  $o1 = (int)($data['apartment']['window_orient_1'] ?? $data['data']['window_orient_1'] ?? 0);
+  $o2 = (int)($data['apartment']['window_orient_2'] ?? $data['data']['window_orient_2'] ?? 0);
+  $html_compass = render_window_compass_images($o1, $o2, 110);
+   
   ?>
   
   
@@ -443,12 +447,19 @@ background: #E30613;
   position: absolute;
   top: 0;
   left: -19px;
-  width: 128px;
+  width: auto;
+  max-width: 240px;
 }
-.mdl-compas img {
+.mdl-compas img,
+.mdl-compas .window-compass-img {
   display: block;
   max-width: 100%;
   max-height: 100%;
+}
+.mdl-compas .window-compass-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 @media (max-width: 1023.98px) {
   .mdl-compas {
@@ -678,9 +689,11 @@ background: #E30613;
 	  
       <div class="mdl-content open" data-tabs-content="tab-1">
         <div class="mdl-main">
-          <div class="mdl-compas" style="display:none;">
-            <img class="lazy" data-src="https://m2profi.pro/images/compas.svg" src="https://m2profi.pro/images/compas.svg" alt="" />
+          <?php if ($html_compass): ?>
+          <div class="mdl-compas">
+            <?= $html_compass ?>
           </div>
+          <?php endif; ?>
           <div class="mdl-pln">
             <div class="mdl-pln__top"><?=$data['data']['homes_kvartal_title']?>  </div>
             <img style="    max-height: 80vh;" src="<?=$data['data']['image_pb']?>"  alt="" />
@@ -692,9 +705,11 @@ background: #E30613;
 	  
       <div class="mdl-content" data-tabs-content="tab-2">
         <div class="mdl-main">
-          <div class="mdl-compas" style="display:none;">
-            <img data-src="https://m2profi.pro/images/compas.svg" src="https://m2profi.pro/images/compas.svg" />
+          <?php if ($html_compass): ?>
+          <div class="mdl-compas">
+            <?= $html_compass ?>
           </div>
+          <?php endif; ?>
           <div class="mdl-pln">
             <div class="mdl-pln__top"><?=$data['data']['homes_kvartal_title']?></div>
             <img class="lazy" data-src="<?=$data['data']['image_pb_plan']?>" src="<?=$data['data']['image_pb_plan']?>" data-srcset="<?=$data['data']['image_pb_plan']?>" alt="" />

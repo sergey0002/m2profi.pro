@@ -543,27 +543,6 @@ class ctr__objects
 					$result = mysqli_query($connection, $query) or die(  mysqli_error (  $connection ) ); // Отправляем переменную с запросом в базу данных 
 			
 		 }	 
-		 if (
-			trim($_POST['neworient_1'] ?? '') !== ''
-			&& $_SESSION['sh_login'] == 'admin'
-			&& !empty($_POST['editapart'][$_GET['home']])
-		 ) {
-			list($o1, $o2) = window_orient_normalize(
-				(int)($_POST['neworient_1'] ?? 0),
-				0
-			);
-			$check = window_orient_validate($o1, null);
-			if ($check['ok']) {
-				$o1sql = $o1 === null ? 'NULL' : '"' . (int)$o1 . '"';
-				$query = 'UPDATE `apartaments` SET `window_orient_1` = ' . $o1sql . ' WHERE `home_id` = "' . (int)$_GET['home'] . '" AND ( `apartment_num` = "100000" ';
-				foreach ($_POST['editapart'][$_GET['home']] as $k => $v) {
-					$query .= ' OR `apartment_num` = "' . (int)$k . '" ';
-				}
-				$query .= ');';
-				mysqli_query($connection, $query) or die(mysqli_error($connection));
-				add_log('Массовое изменение ориентации окон');
-			}
-		 }
 		  if(trim($_POST[newtext]) &&  $_SESSION['sh_login'] == 'admin' ) // Массовая редактирование планироваок
 		 {
 				$query = 'UPDATE `apartaments` SET `text` = "'.$_POST[newtext].'" WHERE `home_id` = "'.$_GET[home].'"  AND  ( `apartment_num` = "100000"   ';

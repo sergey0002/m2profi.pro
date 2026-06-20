@@ -302,4 +302,48 @@ width: 28px;
 
  
 		.fw_selrow2{ background:#F0F0F0;}
+
+/* Ориентация окон — компас */
+.apartment-plan-col {
+    position: relative;
+    text-align: center;
+}
+.mdl-compas,
+.apartment-compas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    width: auto;
+    max-width: 240px;
+}
+.window-compass-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: flex-start;
+}
+.window-compass-img {
+    display: block;
+    width: 110px;
+    height: auto;
+    max-width: 100%;
+}
+.apartment-compas-caption {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #333;
+}
+.window-compass-num {
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+}
+#mass-orient-preview {
+    margin-top: 10px;
+    min-height: 0;
+}
+#mass-orient-preview:empty {
+    display: none;
+}
+
 		 

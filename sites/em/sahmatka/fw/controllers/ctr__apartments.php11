@@ -708,8 +708,7 @@ function act__order()
     $apartment = array_filter($data, fn($k) => strpos($k, 'apartment_') === 0 || in_array($k, [
         'apartament_id', 'section_id', 'floor', 'price', 'price_m', 'area', 'rooms',
         'kitchen_area', 'text', 'adress', 'plan_code', 'status', 'status2',
-        'status_broni_id', 'date', 'image_pb', 'plan_type', 'image', 'area2', 'area_t',
-        'window_orient_1', 'window_orient_2'
+        'status_broni_id', 'date', 'image_pb', 'plan_type', 'image', 'area2', 'area_t'
     ]), ARRAY_FILTER_USE_KEY);
 
     $home = array_filter($data, fn($k) => strpos($k, 'home_') === 0, ARRAY_FILTER_USE_KEY);
@@ -783,54 +782,31 @@ function act__order()
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$show_done_template) {
         // 1. Админ или агент: меняет статус через up_broni, если история уже есть
         if (in_array($_SESSION['sh_login'], ['admin','em_nsv','demo_admin'])) {
-            if (isset($_POST['status'])) {
-                $status = (int)$_POST['status'];
-                $comment = 'Изменение статуса админом';
-                $status_broni_id = isset($apartment['status_broni_id']) ? (int)$apartment['status_broni_id'] : 0;
+            $status = (int)$_POST['status'];
+            $comment = 'Изменение статуса админом';
+            $status_broni_id = isset($apartment['status_broni_id']) ? (int)$apartment['status_broni_id'] : 0;
 
-                $valid_bron = 0;
-                if ($status_broni_id > 0) {
-                    $brn = $mysql->get_arr("SELECT broni_id FROM broni WHERE broni_id={$status_broni_id}", 1);
-                    if ($brn && $brn['broni_id'] == $status_broni_id) $valid_bron = 1;
-                }
-
-                if ($valid_bron) {
-                    $sa->up_broni($status_broni_id, $status, $comment);
-                } else {
-                    $sa->new_broni($home_id, $apartment_num, $status);
-                }
-
-                add_log('Статус квартиры изменён администратором');
-                $success = "Статус квартиры изменён!";
+            $valid_bron = 0;
+            if ($status_broni_id > 0) {
+                $brn = $mysql->get_arr("SELECT broni_id FROM broni WHERE broni_id={$status_broni_id}", 1);
+                if ($brn && $brn['broni_id'] == $status_broni_id) $valid_bron = 1;
             }
 
-            if (isset($_POST['window_orient_1'])) {
-                list($o1, $o2) = window_orient_normalize(
-                    (int)($_POST['window_orient_1'] ?? 0),
-                    0
-                );
-                $check = window_orient_validate($o1, null);
-                if ($check['ok']) {
-                    $apartament_id = (int)($apartment['apartament_id'] ?? $data['apartament_id'] ?? 0);
-                    if ($apartament_id > 0) {
-                        $mysql->update_for_key('apartaments', 'apartament_id', $apartament_id, [
-                            'window_orient_1' => $o1,
-                        ]);
-                        add_log('Ориентация окон изменена администратором');
-                        $success = ($success ? $success . '<br>' : '') . 'Ориентация окон сохранена.';
-                    }
-                } else {
-                    $err_m[] = $check['error'];
-                }
+            if ($valid_bron) {
+                $sa->up_broni($status_broni_id, $status, $comment);
+            } else {
+                $sa->new_broni($home_id, $apartment_num, $status);
             }
+
+            add_log('Статус квартиры изменён администратором');
+            $success = "Статус квартиры изменён!";
 
             // Обновляем данные после изменений
             $data = $this->get_apartment($home_id, $apartment_num);
             $apartment = array_filter($data, fn($k) => strpos($k, 'apartment_') === 0 || in_array($k, [
                 'apartament_id', 'section_id', 'floor', 'price', 'price_m', 'area', 'rooms',
                 'kitchen_area', 'text', 'adress', 'plan_code', 'status', 'status2',
-                'status_broni_id', 'date', 'image_pb', 'plan_type', 'image', 'area2', 'area_t',
-                'window_orient_1', 'window_orient_2'
+                'status_broni_id', 'date', 'image_pb', 'plan_type', 'image', 'area2', 'area_t'
             ]), ARRAY_FILTER_USE_KEY);
 
             $broni = array_filter($data, fn($k) => strpos($k, 'booking_') === 0 || in_array($k, ['b_id', 'b_status', 'b_date']), ARRAY_FILTER_USE_KEY);
@@ -1075,8 +1051,7 @@ function act__card()
     $apartment = array_filter($data, fn($k) => strpos($k, 'apartment_') === 0 || in_array($k, [
         'apartament_id', 'section_id', 'floor', 'price', 'price_m', 'area', 'rooms',
         'kitchen_area', 'text', 'adress', 'plan_code', 'status', 'status2',
-        'status_broni_id', 'date', 'image_pb', 'plan_type', 'image', 'area2', 'area_t',
-        'window_orient_1', 'window_orient_2'
+        'status_broni_id', 'date', 'image_pb', 'plan_type', 'image', 'area2', 'area_t'
     ]), ARRAY_FILTER_USE_KEY);
 
     $home = array_filter($data, fn($k) => strpos($k, 'home_') === 0, ARRAY_FILTER_USE_KEY);
