@@ -32,7 +32,6 @@ if( $_SESSION['sh_login'] || 1==1 )
     <meta name="yandex" content="none" />
     <title>M2 Profi</title>
     <meta name="description" content="">
-    <meta property="og:image" content="/sahmatka/template/default/images/home-og.jpg">
     <?php endif; ?>
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -40,6 +39,7 @@ if( $_SESSION['sh_login'] || 1==1 )
     <link rel="shortcut icon" href="/sahmatka/template/default/images/favicon/favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" href="/sahmatka/template/default/images/favicon/apple-touch-icon-57x57.png">
     <link rel="apple-touch-icon" sizes="72x72" href="/sahmatka/template/default/images/favicon/apple-touch-icon-72x72.png">
+    <meta property="og:image" content="/sahmatka/template/default/images/home-og.jpg">
     <link rel="stylesheet" href="/sahmatka/template/default/libs/air-datepicker/css/datepicker.min.css">
     <link rel="stylesheet" href="/sahmatka/template/default/libs/formstyler/jquery.formstyler.css">
     <style>
