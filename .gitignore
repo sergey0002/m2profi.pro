@@ -98,6 +98,11 @@ sites/doc/uploads/*
 !sites/doc/uploads/.gitkeep
 
 # Tenant plans, renders & caches (contents only)
+sites/*/sahmatka/pbplans/*
+!sites/*/sahmatka/pbplans/.gitkeep
+sites/*/sahmatka/pbplans_jpg/*
+!sites/*/sahmatka/pbplans_jpg/.gitkeep
+sites/*/sahmatka/pbplans -до мебели/
 sites/*/sahmatka/rent/*
 !sites/*/sahmatka/rent/.gitkeep
 sites/*/sahmatka/parking/*
