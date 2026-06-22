@@ -1,0 +1,305 @@
+ /* Стили редактора форм */
+ .input_edit {
+	 border: solid #3C96E1 2px;
+	 padding: 5px;
+	 font-size: 16px;
+	 width: 470px;
+	 max-width: 90%;
+	 margin: 3px;
+	 margin-left:0;
+	 margin-right:0;
+}
+ .input_title {
+	 text-transform:uppercase;
+	 margin-left:3px;
+	 font-size:12px;
+	 font-weight:bold;
+	 display:block;
+	 margin-bottom: 4px;
+	 color:#2F4049;
+}
+
+
+/* возможно убрать ↓↓↓ */
+ .input_title2 {
+	text-transform:uppercase;
+	margin-left:3px;
+	font-size:12px;
+	font-weight:bold;
+	display:block;
+	margin-bottom: 4px;
+	color:#2F4049;
+}
+/* возможно убрать  */
+
+
+
+ .input_button {
+	 border:solid 1px;
+	 display:block;
+	 background-color: #3C96E1;
+	 border-radius :15px;
+	 cursor: pointer;
+	 font-family :Montserrat, "sans-serif";
+	 font-size :14px;
+	 font-weight: 500;
+	 height: 51px;
+	 color:#FFF;
+	 width:500px;
+	 max-width:100%;
+	 letter-spacing: 1.4px;
+	 text-transform: uppercase;
+}
+ .input_edit_line {
+	 border: solid #3C96E1 2px;
+	 padding: 5px;
+	 font-size: 16px;
+	 width:100%;
+	 margin: 3px;
+	 padding: 10px;
+}
+ .input_error{
+	 color:red;
+	 font-weight:bold;
+	 font-size:10px;
+	 display: block;
+	 width: 100%;
+	  
+}
+.error_input{
+	border-bottom:2px solid red;
+}
+
+
+ .input_errord{
+	 border-bottom:2px red;
+}
+ .filedline {
+	 display:inline-block;
+}
+
+/*Редактор таблиц админки*/
+ .dtable {
+	 font-size:12px;
+	 padding: 3px;
+	 padding-top: 3px;
+	 padding-right: 3px;
+	 padding-bottom: 3px;
+	 padding-left: 3px;
+	 width:auto;
+}
+ .stat-table-user table tr td {
+	 font-size: 12px;
+}
+ .akk_slide{
+	display:none;
+}
+ .akk{
+	cursor: pointer;
+}
+
+
+
+ .forminform{
+	 font-size:18px;
+	 color:#2F4049;
+	 text-align:center;
+	 font-weight:bold;
+	 padding:7px;
+}
+ .forminformpanel_link {
+	 display:inline-block;
+	 width:100%;
+	 background-color:#3d535f;
+	 color:#3C96E1;
+	 font-weight:bold;
+	 padding:7px;
+	 padding-left:40px;
+	 padding-right:40px;
+	 border-radius:10px;
+}
+ .forminformpanel_link:hover{
+	 background-color:#3C96E1;
+	 color:#FFF;
+}
+
+
+
+
+
+
+
+
+
+/* Форма фильтрации */
+ .filter-block {
+	display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: center;
+    flex-direction: row;
+    align-content: stretch;
+}
+
+ .filtr_input{
+	 font: 400 18px/49px Montserrat, sans-serif;
+	 border: solid #3C96E1 2px;
+	 background: #FFF;
+	 max-width:100%;
+	 height:auto;
+	 font: 400 18px/49px Montserrat, sans-serif;
+	 color: #01112B;
+	 text-transform: uppercase;
+	 padding-left: 10px;
+	 display: inline-block;
+	 line-height:1em;
+	 padding: 7px;
+}
+
+
+ .filter-item .input_title{
+	 margin-top:0;
+}
+ .filter-item .input_edit{
+	 border:solid #00CDAD 2px;
+	 max-width: 100%;
+}
+ .filter-item_print{
+	padding-top: 4px;
+	text-align: right;
+}
+
+ .filter-item {
+    max-width: 190px;
+	padding-right: 8px;
+	margin-top: 10px;
+
+}
+
+.filter-item-icon {
+	background-color: #00CDAD;
+    display: block; 
+    padding: 6px;
+	border-radius:6px;
+}
+
+.filter-item-icon img {
+width: 28px;
+}
+
+.filter-item-icon:hover {
+	background-color:#00a088;
+    display: block; 
+
+}
+
+@media (min-width: 992px)  and (max-width: 1400px) {
+	.filter-item {
+		width: auto;
+	}
+	}
+
+
+@media screen and (max-width: 991px) {
+		.filter-item_print{
+			/* display: none; */
+	   }
+
+	.filter-item {
+		width: 100%;
+		padding-top: 10px;
+		margin-top: auto;
+	}
+}	
+			
+
+	
+		
+		
+		
+		
+		
+		
+		
+.rentobj_stp{
+	position:absolute; 
+	top:0; left:-3px;  
+	border-top-right-radius:20px; 
+	border-bottom-right-radius:20px;
+	padding:7px;
+	padding-right:20px; 
+	padding-left:20px; 
+	font-weight:bold; 
+	text-transform: uppercase;
+
+	display: none;
+	
+}
+ 
+
+.rentobj_stp1{
+	background:#FF0000; color:#FFF; 
+}
+
+.rentobj_stp2{
+	background:#2F4049; color:#00CDAD; 
+}
+
+
+/* Скытиекконтента при печати*/
+@media screen {
+	.hidedisplaybody{display:none;}
+}	
+/* Стили для печати */
+ @media print{
+	#fwcrudtable{width:100%;}
+	#fwcrudtable td, #fwcrudtable thead th{border:solid 1px #000;}
+	
+	/* Нечетные строки */
+	#fwcrudtable tbody tr:nth-child(odd) td{ background: #fff;}
+	 
+	/* Четные строки */
+	#fwcrudtable tbody tr:nth-child(even) td{	background: #F7F7F7;}
+	
+	
+	#fwcrudtable thead th,#fwcrudtable  thead th * {background-color: #000; color:#FFF;}
+	
+	
+	.noprint{display:none;}
+ } 
+ 
+ 
+ 
+ 
+ 
+ #globalprogress{
+	 display:none;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    height: 100vh;
+    background: #FFF;
+    z-index: 1000;
+    text-align: center;
+    opacity: 0.6;
+}
+ #globalprogress span{
+	 position:absolute;
+	 top:40%;
+}
+
+
+
+.aj_crud_rowplus{
+    font-size: 24px;
+    display: block;
+    border: solid 1px #333;
+    line-height: 0.7em;
+    text-align: center;
+    width: 0.7em;
+}
+
+
+ 
+		.fw_selrow2{ background:#F0F0F0;}
+		 

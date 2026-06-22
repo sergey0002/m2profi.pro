@@ -1,5 +1,5 @@
 # ============================================================
-# WHITELIST: track only core/ and sites/em/
+# WHITELIST: track only core/, sites/em/, sites/sigma/
 # Everything else is excluded from the repository.
 # ============================================================
 *
@@ -9,9 +9,11 @@
 !sites/
 !sites/em/
 !sites/em/**
+!sites/sigma/
+!sites/sigma/**
 
-# EM oferta documents (server/local only)
-sites/em/oferta/
+# Tenant oferta documents (server/local only)
+sites/*/oferta/
 
 # IDEs and Editors
 .idea/
@@ -74,6 +76,8 @@ laracore/storage/logs/
 
 # Tenant site config (credentials, per-environment)
 sites/*/sahmatka/config.php
+sites/*/sahmatka/config.php*
+!sites/*/sahmatka/config.php.example
 sites/*/config.php
 sites/*/config.js.php
 

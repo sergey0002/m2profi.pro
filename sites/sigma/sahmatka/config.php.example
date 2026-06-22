@@ -1,0 +1,789 @@
+<?php
+ 
+ 
+  
+######################
+#### ОбРАБОТКА ОШИБОК И ОТЛАДКА
+######################
+
+if( isset($_GET['dev']) )
+{
+	ini_set('display_errors', 1);
+	ini_set('display_startup_errors', 1);
+	error_reporting(E_ERROR );
+	ini_set("log_errors", 1);
+	ini_set("memory_limit","512M");
+	ini_set("error_log", __DIR__."/php-error.log");
+}
+else
+{
+	ini_set('display_errors', 0);
+	ini_set('display_startup_errors', 0);
+	error_reporting(0);
+}
+ 
+ 
+// Перехват ошибок в том числе фатальных 
+register_shutdown_function( "fatal_handler" );
+function fatal_handler() {
+	ob_flush();ob_flush();ob_flush();
+    $errfile = "unknown file";
+    $errstr  = "shutdown";
+    $errno   = E_CORE_ERROR;
+    $errline = 0;
+
+    $error = error_get_last();
+
+			//print '<pre>';
+			//print_r( $error );
+			//print '</pre>';
+    if($error !== NULL) {
+        $errno   = $error["type"];
+        $errfile = $error["file"];
+        $errline = $error["line"];
+        $errstr  = $error["message"];
+		if(isset($_GET['dev']))
+		{
+			
+			print '<pre>';
+			print_r( $error );
+			print '</pre>';
+		 
+		 
+		}
+    }
+}
+session_start();
+
+ // fw_check_access( array( 'mod' => '', 'ctr'=>'' , act =>'' ) ) // Используем в загрузчике контроллеров
+function fw_check_access( $params )
+{
+	/*
+	$params['mod']
+	ctr
+	act
+	
+	user_id
+	login
+	
+	*/
+	/*
+	$_SESSION
+	[formshow] => 1691663931
+    [agency_id] => 1
+    [ucaption] => Администраторы
+    [adm_caption] => Администраторы
+    [sh_password] => 89039111405
+    [sh_login] => admin
+    [sh_id] => 1
+    [sh_name] => Администратор
+    [agency_adm_id] => 1
+    [gl_user_id] => 1
+	*/
+	
+	$user_id = $_SESSION['sh_id'];
+
+	if($ctr = '' && $act=''   )
+	{
+		if( $user_id == '1' || $user_id == '1' || $user_id == '1' ){ return true; }
+		else{ return false; }
+	}
+	
+}
+ if(isset( $_SESSION['sh_login']) && $_SESSION['sh_login'] == 'demo_admin' && $_POST) 
+ {
+	 
+	if(!isset($_GET['ajax']) && $_GET['act']!='edit' ) 
+	{
+		// alax
+		// die('Доступ запрещен - в демонстрационном режиме можно только просматривать данные');
+	}
+	else
+	{
+		 die('Доступ запрещен - в демонстрационном режиме можно только просматривать данные');
+	}
+	  
+  
+	
+ }
+/*
+	$custom_apparts[100][1]['homecaption'] = ' Тюленина, 5';
+	$custom_apparts[100][1]['apartment_num'] = '3';
+	$custom_apparts[100][1]['rooms'] = '2';
+	$custom_apparts[100][1]['area'] = '69,2 ';
+	$custom_apparts[100][1]['price'] = '5 500 000';
+	$custom_apparts[100][1]['image_pb'] = '/sahmatka/custom_appart/2.svg';
+	 
+	$custom_apparts[101][1]['homecaption'] = ' Свечникова, 4/1 ';
+	$custom_apparts[101][1]['apartment_num'] = '1';
+	$custom_apparts[101][1]['rooms'] = '3';
+	$custom_apparts[101][1]['area'] = ' 73,2';
+	$custom_apparts[101][1]['price'] = '6 650 000';
+	$custom_apparts[101][1]['image_pb'] = '/sahmatka/custom_appart/1.svg';
+	*/
+	
+	/*
+	$custom_apparts[102][1]['homecaption'] = ' Краузе 21/1';
+	$custom_apparts[102][1]['apartment_num'] = '340';
+	$custom_apparts[102][1]['rooms'] = '1';
+	$custom_apparts[102][1]['area'] = ' 41';
+	$custom_apparts[102][1]['price'] = '3 890 000';
+	$custom_apparts[102][1]['image_pb'] = '/sahmatka/custom_appart/x.jpg';
+	*/
+	
+	
+	
+	
+	
+	$custom_apparts_all = array();
+	foreach($custom_apparts as $k=>$v)
+	{
+		foreach($v as $k1=>$v1)
+		{
+			$custom_apparts_all_item = $v1;
+			$custom_apparts_all_item['home'] = $k;
+			$custom_apparts_all_item['custom_appart_id'] = $k1;
+			
+			$custom_apparts_all[] = $custom_apparts_all_item;
+		}
+	}
+	
+	
+$status_arr=array();
+$status_arr[0] = 'Не задан (свободно)'; 
+$status_arr[2] = 'РЎРІРѕР±РѕРґРЅРѕ';
+$status_arr[3] = 'Продано';
+$status_arr[4] = 'Бронь';
+$status_arr[5] = 'Бронь застройщика';
+$status_arr[6] = 'Бронь подрядика';
+
+$status_color_arr=array();
+$status_color_arr[0] = '#8DFFA9';
+$status_color_arr[2] = '#8DFFA9';
+$status_color_arr[3] = '#FF8A90';
+$status_color_arr[4] = '#FEFF52';
+$status_color_arr[5] = '#D5E6FE';
+$status_color_arr[6] = '#991DFB';
+ 
+
+//ВЕЗДЕ!!!
+$kvartal[6] = 'Поколение';
+$kvartal[1] = 'Квартал Space';
+$kvartal[2] = 'Микрорайон Приречный';
+$kvartal[3] = 'Серия Yellow';
+$kvartal[7] = 'Протон';
+
+
+
+$kvartal_code[6] = '006';
+$kvartal_code[1] = '004';
+$kvartal_code[2] = '002'; 
+$kvartal_code[3] = '005';
+$kvartal_code[7] = '007';
+// Выпадающий список домов кварталов в каталоге!
+$kvartal_style[6] = ' background-color:#E30613; color: #FFF; font-weight: bold;';
+$kvartal_style[1] = ' background-color:#E77600; color: #FFF; font-weight: bold;';
+$kvartal_style[2] = ' background-color:#F4C200; color: #FFF; font-weight: bold; '; 
+$kvartal_style[3] = ' background-color: red; color: #FFF; font-weight: bold;';
+$kvartal_style[7] = ' background-color: #eb5b04; color: #3e3c51; font-weight: bold;';
+
+// РҐР— РіРґРµ
+
+$GLOBALS['config']['object_unit'] = [
+	'mode' => 'custom',
+	'label' => 'апартаменты',
+	'abbrev' => 'ап.',
+	'legacy' => [
+		'nom' => 'квартира', 'gen' => 'квартиры', 'dat' => 'квартире', 'acc' => 'квартиру',
+		'ins' => 'квартирой', 'pl_nom' => 'квартиры', 'pl_gen' => 'квартир', 'pl_acc' => 'квартиры',
+		'abbrev' => 'кв.',
+	],
+];
+
+if (!function_exists('unit_cfg')) {
+	function unit_cfg() {
+		return isset($GLOBALS['config']['object_unit']) ? $GLOBALS['config']['object_unit'] : ['mode' => 'legacy'];
+	}
+}
+if (!function_exists('unit_label')) {
+	function unit_label($case = 'nom') {
+		$cfg = unit_cfg();
+		if (($cfg['mode'] ?? '') === 'custom') {
+			return $cfg['label'] ?? 'апартаменты';
+		}
+		$legacy = isset($cfg['legacy']) ? $cfg['legacy'] : [];
+		return isset($legacy[$case]) ? $legacy[$case] : (isset($legacy['nom']) ? $legacy['nom'] : 'квартира');
+	}
+}
+if (!function_exists('unit_label_cap')) {
+	function unit_label_cap($case = 'nom') {
+		$s = unit_label($case);
+		return mb_strtoupper(mb_substr($s, 0, 1)) . mb_substr($s, 1);
+	}
+}
+if (!function_exists('unit_abbrev')) {
+	function unit_abbrev() {
+		$cfg = unit_cfg();
+		if (($cfg['mode'] ?? '') === 'custom') {
+			return $cfg['abbrev'] ?? 'ап.';
+		}
+		return isset($cfg['legacy']['abbrev']) ? $cfg['legacy']['abbrev'] : 'кв.';
+	}
+}
+if (!function_exists('unit_num')) {
+	function unit_num($num, $style = 'dot') {
+		$abbr = unit_abbrev();
+		$num = (string) $num;
+		if ($style === 'dash') {
+			return rtrim($abbr, '.') . '-' . $num;
+		}
+		if ($style === 'hash') {
+			return $abbr . '№' . $num;
+		}
+		if ($style === 'colon') {
+			return rtrim($abbr, '.') . ':' . $num;
+		}
+		return $abbr . ' ' . $num;
+	}
+}
+if (!function_exists('unit_rate_abbrev')) {
+	function unit_rate_abbrev() {
+		return rtrim(unit_abbrev(), '.') . '/мес';
+	}
+}
+if (!function_exists('unit_phrase')) {
+	function unit_phrase($key) {
+		static $map = null;
+		if ($map === null) {
+			$u = unit_label('nom');
+			$U = unit_label_cap('nom');
+			$ug = unit_label('pl_gen');
+			$map = [
+				'not_found' => $U . ' не найдены',
+				'select' => 'Выбрать ' . $u,
+				'select_empty' => $U,
+				'booking_title' => 'Заявка на бронирование ' . $u,
+				'stats_title' => 'Статистика ' . $ug,
+				'catalog_title' => 'Каталог ' . $ug,
+				'contractor' => $U . ' подрядчика',
+				'already_booked' => $U . ' уже забронированы другим пользователем',
+				'booked_success' => $U . ' успешно забронированы',
+				'available_again' => $U . ' снова доступны для бронирования',
+				'booked_label' => $U . ' забронированы',
+				'column_header' => $U,
+				'count_label' => $U . ':',
+				'back_to_list' => 'Назад к выбору ' . $ug,
+				'num_column' => '№ ' . unit_abbrev(),
+				'search_not_found' => $U . ' соответствующих условиям поиска не найдено',
+				'email_card_subject' => 'ФОРМА КАРТОЧКИ ' . mb_strtoupper($U),
+				'id_not_set' => 'Не указан ID ' . unit_label('gen'),
+				'status_changed' => 'Статус ' . $ug . ' изменён',
+				'status_changed_admin' => 'Статус ' . unit_label('gen') . ' изменен администратором',
+				'price_changed' => 'Цена ' . unit_label('gen') . ' изменилась',
+				'price_changed_actual' => 'Актуальная цена ' . unit_label('gen') . ' изменилась',
+				'booked_at_price' => $U . ' забронированы по цене',
+				'no_active_booking' => 'На эти ' . $u . ' нет активной брони',
+				'booking_expired' => 'Ваша бронь на эти ' . $u . ' истекла',
+				'existing_booking' => 'У вас уже есть действующая бронь на эти ' . $u,
+				'history_title' => 'История броней по ' . unit_label('dat'),
+				'no_bookings_yet' => 'Броней по этим ' . $u . ' пока не было',
+				'room_numbers' => 'Номера ' . $ug . ':',
+				'properties' => 'Свойства ' . unit_label('gen'),
+				'statuses' => 'Статусы ' . $ug,
+				'other_properties' => 'Другие свойства ' . unit_label('gen'),
+				'not_sold' => $U . ' не продано',
+				'show_units' => 'Показать ' . $ug . ':',
+				'ready_units' => 'готовые ' . $u . ' с ремонтом',
+				'free_units' => 'Свободные ' . $ug,
+				'apply_markup' => 'ПРИМЕНИТЬ НАЦЕНКУ К СВОБОДНЫМ ' . mb_strtoupper($ug),
+				'calc_prices' => 'Расчет цен для ' . $ug . ' с учетом наценки',
+				'free_sum' => 'Сумарная стоимость свободных ' . $ug,
+				'not_free_sum' => 'Сумарная стоимость НЕ свободных ' . $ug . ' (продажи брони итп)',
+				'markup_free' => 'Необходимая наценка на свободные ' . $ug,
+				'new_free_sum' => 'Новая сумарная стоимость свободных ' . $ug,
+				'round_prices' => 'округления цен на ' . $ug . ' в большую сторону',
+				'book_unit' => 'Забронировать ' . unit_label('acc'),
+				'feed_subject' => 'Фид ' . $ug,
+				'feed_email' => 'Фид содержит данные по всем ' . $ug . ' в домах',
+				'feed_statuses' => 'Статусы ' . $ug,
+				'csv_unique_id' => 'Уникальный ID ' . unit_label('gen'),
+				'csv_num' => 'Номер ' . unit_label('gen'),
+				'csv_status' => 'Статус ' . unit_label('gen'),
+				'api_not_found' => unit_label_cap('nom') . ' не найдены или недоступны',
+				'api_fetch_error' => 'Ошибка при получении ' . $ug,
+				'email_booking' => 'Бронирование ' . unit_label('gen'),
+				'email_booking_keys' => 'Запись на выдачу ключей',
+				'bron_expires' => 'истекает бронь',
+				'you_booked' => 'Вы бронировали ' . unit_label('acc'),
+				'will_be_freed' => 'иначе ' . unit_label('nom') . ' будут автоматически освобождены',
+				'monthly_sales' => 'Месячная динамика продаж по типам ' . $ug,
+				'sales_pct' => 'Продажи в % от кол-ва ' . $ug . ' в выборке (накопительно)',
+				'bookings_pct' => 'Брони в % от кол-ва ' . $ug . ' в выборке (накопительно)',
+				'sold_table' => 'Проданные ' . $ug,
+				'unsold_table' => 'Непроданные ' . $ug . ' (свободные + бронь агентств, застройщика, подрядчиков)',
+				'booked_table' => 'Забронированные ' . $ug . ' (бронь агентств и ОП)',
+				'count_col' => 'Кол-во ' . $ug,
+				'sales_speed' => 'Скорость продажи (' . unit_rate_abbrev() . ')',
+				'room_type_desc' => '%s-комн. ' . unit_abbrev(),
+			];
+		}
+		return isset($map[$key]) ? $map[$key] : $key;
+	}
+}
+if (!function_exists('unit_room_type')) {
+	function unit_room_type($rooms) {
+		$u = unit_label('pl_nom');
+		if (($GLOBALS['config']['object_unit']['mode'] ?? '') === 'custom') {
+			return $rooms . '-комн. ' . $u;
+		}
+		$names = [1 => 'Однокомнатная', 2 => 'Двухкомнатная', 3 => 'Трехкомнатная', 4 => 'Четырехкомнатная'];
+		$adj = isset($names[$rooms]) ? $names[$rooms] : ($rooms . '-комнатная');
+		return $adj . ' ' . unit_label('nom');
+	}
+}
+
+$kv_type = array();
+if (($GLOBALS['config']['object_unit']['mode'] ?? '') === 'custom') {
+	$kv_type['1'] = unit_room_type(1);
+	$kv_type['2'] = unit_room_type(2);
+	$kv_type['3'] = unit_room_type(3);
+	$kv_type['4'] = unit_room_type(4);
+	$kv_type['1к'] = unit_room_type(1);
+	$kv_type['2к'] = unit_room_type(2);
+	$kv_type['3к'] = unit_room_type(3);
+	$kv_type['4к'] = unit_room_type(4);
+} else {
+	$kv_type['1'] = 'Однокомнатная квартира';
+	$kv_type['2'] = 'Двухкомнатная квартира';
+	$kv_type['3'] = 'Трехкомнатная квартира';
+	$kv_type['4'] = 'Четырехкомнатная квартира';
+	$kv_type['1к'] = 'Однокомнатная квартира';
+	$kv_type['2к'] = 'Двухкомнатная квартира';
+	$kv_type['3к'] = 'Трехкомнатная квартира';
+	$kv_type['4к'] = 'Четырехкомнатная квартира';
+}
+$kv_type['1с'] = 'Одноконатная студия';
+$kv_type['2с'] = 'Двухкомнатная студия';
+$kv_type['3с'] = 'Трехкомнатная студия';
+$kv_type['4с'] = 'Четырехкомнатная студия';
+
+
+function fromsql_date($mysqldate,$notime=0)
+{
+	$phpdate = strtotime( $mysqldate );
+	if($notime)
+	{
+		return $normaldate = date( 'd.m.Y', $phpdate );
+	}
+	else
+	{
+		return $normaldate = date( 'd.m.Y H:i:s', $phpdate );
+	}
+}
+/* 
+ * Custom PHP function to send an email with multiple attachments 
+ * $to Recipient email address 
+ * $subject Subject of the email 
+ * $message Mail body content 
+ * $senderEmail Sender email address 
+ * $senderName Sender name 
+ * $files Files to attach with the email 
+ */ 
+function multi_attach_mail2($to, $subject, $message, $senderEmail, $senderName, $files = array())
+{ 
+    // Sender info  
+    $from = $senderName." <".$senderEmail.">";  
+    $headers = "From: $from"; 
+ 
+    // Boundary  
+    $semi_rand = md5(time());  
+    $mime_boundary = "==Multipart_Boundary_x{$semi_rand}x";  
+ 
+    // Headers for attachment  
+    $headers .= "\nMIME-Version: 1.0\n" . "Content-Type: multipart/mixed;\n" . " boundary=\"{$mime_boundary}\"";  
+ 
+    // Multipart boundary  
+    $message = "--{$mime_boundary}\n" . "Content-Type: text/html; charset=\"UTF-8\"\n" . 
+    "Content-Transfer-Encoding: 7bit\n\n" . $message . "\n\n";  
+ 
+    // Preparing attachment 
+    if(!empty($files)){ 
+        for($i=0;$i<count($files);$i++){ 
+            if(is_file($files[$i])){ 
+                $file_name = basename($files[$i]); 
+                $file_size = filesize($files[$i]); 
+                 
+                $message .= "--{$mime_boundary}\n"; 
+                $fp =    @fopen($files[$i], "rb"); 
+                $data =  @fread($fp, $file_size); 
+                @fclose($fp); 
+                $data = chunk_split(base64_encode($data)); 
+                $message .= "Content-Type: application/octet-stream; name=\"".$file_name."\"\n" .  
+                "Content-Description: ".$file_name."\n" . 
+                "Content-Disposition: attachment;\n" . " filename=\"".$file_name."\"; size=".$file_size.";\n" .  
+                "Content-Transfer-Encoding: base64\n\n" . $data . "\n\n"; 
+            } 
+        } 
+    } 
+     
+    $message .= "--{$mime_boundary}--"; 
+    $returnpath = "-f" . $senderEmail; 
+     
+    // Send email 
+    $mail = mail($to, $subject, $message, $headers, $returnpath);  
+     
+    // Return true if email sent, otherwise return false 
+    if($mail){ 
+        return true; 
+    }else{ 
+        return false; 
+    } 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	function multi_attach_mail($to, $subject, $message, $senderEmail = 'test@m2profi.pro', $senderName = 'em-nsk.ru', $files = array(), $smtpConfig = []) {
+		// Настройки SMTP
+		if (empty($smtpConfig)) {
+			$smtpConfig = [
+				'host' => 'smtp.masterhost.ru', // SMTP-сервер
+				'port' => 25,                  // Порт для незащищенного соединения
+				'username' => 'test@m2profi.pro', // Ваш email
+				'password' => 'zdctvjue123',   // Ваш пароль
+			];
+		}
+
+		$smtpHost = isset($smtpConfig['host']) ? $smtpConfig['host'] : '';
+		$smtpPort = isset($smtpConfig['port']) ? $smtpConfig['port'] : 25; // Порт для незащищенного соединения
+		$smtpUsername = isset($smtpConfig['username']) ? $smtpConfig['username'] : '';
+		$smtpPassword = isset($smtpConfig['password']) ? $smtpConfig['password'] : '';
+		$senderEmail = $smtpConfig['username'];
+
+		// Увеличение времени выполнения скрипта
+		set_time_limit(120);
+
+		// Подключение к SMTP серверу
+		$smtpConnect = fsockopen($smtpHost, $smtpPort, $errno, $errstr, 30);
+		if (!$smtpConnect) {
+			print "Не удалось подключиться к SMTP серверу: $errstr ($errno)\n";
+			return false;
+		}
+
+		// Чтение приветственного сообщения от сервера
+		$response = fgets($smtpConnect, 512);
+		if (substr($response, 0, 3) != '220') {
+			fclose($smtpConnect);
+			print "Неверный ответ на приветствие: $response\n";
+			return false;
+		}
+
+		// HELO
+		if (!smtp_msg($smtpConnect, "HELO " . $_SERVER['SERVER_NAME'])) {
+			fclose($smtpConnect);
+			return false;
+		}
+
+		// AUTH LOGIN
+		if (!smtp_msg($smtpConnect, "AUTH LOGIN")) {
+			fclose($smtpConnect);
+			return false;
+		}
+		if (!smtp_msg($smtpConnect, base64_encode($smtpUsername))) {
+			fclose($smtpConnect);
+			return false;
+		}
+		if (!smtp_msg($smtpConnect, base64_encode($smtpPassword))) {
+			fclose($smtpConnect);
+			return false;
+		}
+
+		// MAIL FROM
+		if (!smtp_msg($smtpConnect, "MAIL FROM:<" . $senderEmail . ">")) {
+			fclose($smtpConnect);
+			return false;
+		}
+
+
+		/*
+		// RCPT TO
+		if (!smtp_msg($smtpConnect, "RCPT TO:<" . $to . ">")) {
+			fclose($smtpConnect);
+			return false;
+		}
+		*/
+		
+		
+		
+
+
+		// RCPT TO для каждого получателя
+		$recipients = explode(',', $to);
+		foreach ($recipients as $recipient) {
+			$recipient = trim($recipient);
+			if (!smtp_msg($smtpConnect, "RCPT TO:<" . $recipient . ">")) {
+				fclose($smtpConnect);
+				return false;
+			}
+		}
+	
+	
+	
+
+		// DATA
+		if (!smtp_msg($smtpConnect, "DATA")) {
+			fclose($smtpConnect);
+			return false;
+		}
+
+		// Генерация заголовков
+		$from = $senderName . " <" . $senderEmail . ">";
+		$boundary = md5(uniqid(time()));
+		$headers = "From: " . $from . "\r\n";
+		$headers .= "MIME-Version: 1.0\r\n";
+		$headers .= "Content-Type: multipart/mixed; boundary=\"" . $boundary . "\"\r\n";
+		$headers .= "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\n"; // Кодировка темы письма в Base64
+
+		// Тело письма
+		$body = "--" . $boundary . "\r\n";
+		$body .= "Content-Type: text/html; charset=UTF-8\r\n";
+		$body .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
+		$body .= $message . "\r\n";
+
+		// Вложения
+		if (!empty($files)) {
+			foreach ($files as $file) {
+				if (is_file($file)) {
+					$file_name = basename($file);
+					$file_size = filesize($file);
+					$fp = fopen($file, "rb");
+					$data = fread($fp, $file_size);
+					fclose($fp);
+					$data = chunk_split(base64_encode($data));
+
+					$body .= "--" . $boundary . "\r\n";
+					$body .= "Content-Type: application/octet-stream; name=\"" . $file_name . "\"\r\n";
+					$body .= "Content-Disposition: attachment; filename=\"" . $file_name . "\"\r\n";
+					$body .= "Content-Transfer-Encoding: base64\r\n\r\n";
+					$body .= $data . "\r\n";
+				}
+			}
+		}
+
+		$body .= "--" . $boundary . "--\r\n";
+
+		// Отправка письма
+		if (!smtp_msg($smtpConnect, $headers . "\r\n" . $body . ".\r\n")) {
+			fclose($smtpConnect);
+			return false;
+		}
+
+		// Завершение соединения
+		smtp_msg($smtpConnect, "QUIT");
+		fclose($smtpConnect);
+
+		return true;
+	}
+
+	// Функция для отправки команд и получения ответов от SMTP-сервера
+	function smtp_msg($sock, $msg) {
+		if (!$sock) {
+			printf("Broken socket!\n");
+			exit(1);
+		}
+
+		// Отправляем команду
+		fputs($sock, "$msg\r\n");
+
+		// Читаем ответ сервера
+		$response = '';
+		while (($line = fgets($sock, 512)) !== false) {
+			$response .= $line;
+			// Если строка начинается с цифры и заканчивается пробелом, это последняя строка ответа
+			if (preg_match('/^[0-9]{3} /', $line)) {
+				break;
+			}
+		}
+
+		// Разбираем код ответа
+		$code = substr($response, 0, 3);
+		if ($code >= 400) { // Ошибка, если код больше или равен 400
+			//printf("Ошибка SMTP: Code %d. Message: %s\n", $code, trim(substr($response, 4)));
+			return false;
+		}
+
+		return true;
+	}
+
+	/*
+	if ($_GET['dev']) {
+		$result = multi_attach_mail(
+			'89236470002@mail.ru', // Получатель
+			'Тестовоwwwwwwwwwwwе письмо',     // Тема
+			'<h1>Привwwwwwwет!</h1><p>Это тестовое письмо.</p>', // Сообщение
+			'test@m2profi.pro',    // Отправитель
+			'Ваше имя',            // Имя отправителя
+			['path/to/file1.pdf' ]
+		   
+		);
+	}
+	*/
+	 
+
+
+
+
+
+	 
+	///Сборка формы для отправки
+	function form_message( $data_arr='' , $mess_conf='' , $dev=0 )
+	{
+		$mess='';
+		foreach( $data_arr as $k=>$v)
+		{
+			if( $mess_conf[$k] )
+			{
+				$mess.='<b>'.$mess_conf[$k].':</b> '. $data_arr[$k]."\r\n<br/><br/>";
+			}
+			elseif( $dev )
+			{
+				$dev_mess.='<b>$mess_conf[\''.$k.'\']</b>="'.$data_arr[$k].'";<br/>';
+			}
+			else
+			{
+				
+			}
+		}
+		if($dev){$mess.=$dev_mess;}
+		return $mess;
+	}
+ 
+
+// Список логинов с правами супер-админа (используется check_access('admin') в core/functions.php)
+$GLOBALS['config']['admin_logins'] = array(
+	'admin',
+	'nodar',
+);
+
+include('../../../core/functions.php');	
+ 
+
+
+$GLOBALS['config']['mysql_login'] = 'm2profi_hotel';
+$GLOBALS['config']['mysql_password'] = 'uZPo6Lx#Rg#lLZft';
+$GLOBALS['config']['mysql_base'] = 'm2profi_hotel';
+$GLOBALS['config']['server'] = 'localhost';
+
+/*
+$GLOBALS['config']['mysql_login'] = 'root';
+$GLOBALS['config']['mysql_password'] = 'root';
+$GLOBALS['config']['mysql_base'] = 'm2profi_sigma';
+$GLOBALS['config']['server'] = '127.0.0.1';
+*/
+$connection = mysqli_connect($GLOBALS['config']['server'], $GLOBALS['config']['mysql_login'], $GLOBALS['config']['mysql_password'], $GLOBALS['config']['mysql_base']) or die(mysqli_connect_error()); // Соединение с базой данных 
+$result = mysqli_query($connection, "SET NAMES utf8");
+ 	
+	
+	
+
+$GLOBALS['config']['site_subdomain'] = 'sigma';
+$GLOBALS['config']['client_site_url'] = 'https://sigmaplaza-abkhazia.ru';
+
+include('../../../core/classes.php');
+ 
+require_once '../../../core/fw/fw.php';
+// РУЧНАЯ ЗАГРУЗКА МОДУЛЯ MAILER из современной версии фреймворка ! потом переделать на нормальную загрузку  апеременная глоб останется !
+require_once '../../../core/fw/mod/fw_mailer/classes/phpmailer/Exception.php';
+require_once '../../../core/fw/mod/fw_mailer/classes/phpmailer/PHPMailer.php';
+require_once '../../../core/fw/mod/fw_mailer/classes/phpmailer/SMTP.php';
+require_once '../../../core/fw/mod/fw_mailer/classes/phpmailer/fw_wrapper_mailer.php';
+	
+$fw_mailer = new fw_wrapper_mailer( array( 
+		'from'=>'test@m2profi.pro' , 
+		'from_name'=>'EM-NSK.RU' , 
+		'method'=>'smtp' , //smtp
+		'server'=>'smtp.masterhost.ru', 
+		'port'=>'25',
+		'login'=>'test@m2profi.pro',
+		'password'=>'zdctvjue123'
+	)  );
+//////////////////////////////////
+
+// ручная загрузка модуля сообщений 
+require_once '../../../core/fw/mod/fw_messages/classes/fw_messages.php';
+	 
+		
+		
+		
+ include('../captcha/FormProtect.php');
+ 
+ 
+include('../../../core/classes/controller.php');
+include('../../../core/classes/controller_homes.php');
+
+
+include('/fw/controllers/ctr__zapiskeys.php');
+include('../../../core/classes/router.php');
+
+
+
+
+
+
+
+
+
+
+$r = new router();
+include('../../../core/classes/filed.php');
+$filed = new filed();
+t('classes.php');
+
+ 
+
+ 
+// Инициализация сессии для хранения избранных объектов
+if(session_status() === PHP_SESSION_NONE) {
+    if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+}
+
+// Проверка и создание директории для постоянных предложений
+$proposal_dir = 'personaloffer/data/';
+if (!is_dir($proposal_dir)) {
+    mkdir($proposal_dir, 0755, true);
+}
+
+// Подключение файла управления предложениями
+if (file_exists('inc/proposal_manager.php')) {
+    include_once('inc/proposal_manager.php');
+}
+
+// Инициализация сессии для хранения избранных объектов
+if (session_status() === PHP_SESSION_NONE) {
+    if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+}
+
+// Подключаем менеджер предложений, если он еще не подключен
+if (!class_exists('ProposalManager')) {
+    require_once('inc/proposal_manager.php');
+}
+
+ 
+
+ 

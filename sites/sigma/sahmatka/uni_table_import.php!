@@ -1,0 +1,1051 @@
+<?
+session_start();
+error_reporting(1);
+include('config.php');
+ error_reporting(1);
+session_start();
+ 
+
+/*
+PRICEMOTOR
+сделать как сервис 
++ импорт данных в 2гис  (фид), вконтакте, инстаграмм просто обновлять цены на сайте?! себе на сайт аякс/php
+
+
+РАЗДЕЛИТЬ ШАГИ ОБРАБОТКИ ФОРМЫ НА МЕТОДЫ 
+
+РАЗДЕЛИТЬ ТАКИМ ОБРАЗОМ ЧТОБЫ МОЖНО БЫЛО СКРЫТЬ ПОЛЯ И СДЕЛАТЬ КАСТОМНЫЙ ВЫВОД 
+- обновление цен домов
+№квартиры - цена
+
+или номер дома+№квартиры +цена 
+исключть гет и пост переменные из классов
+
+запилить в модуль джумла
+битрикс
+
+
+В методы
+- обображать выбор столбов? - если нет то все активные
+- отображать выбор строк ? если нет все активные 
+- отображать назначение столбов - несли нет порядок по умолчанию 
+
+- отображать шаг загрузки - если нет то загрузка методом (из екселя итп)
+метод загрузка данных 
+должен присвоить нулевому шагу сериализованный массив строк/столбов!
+на втором шаге проверяется этот массив 
+
+таблица сессий 
+ид
+номер сессии
+номер шага (только цифры и их ограниченное количество)
+Модель данных - что вставляем? код 
+
+
+
+
+
+
+
+
+
+
+- похожие строки текстовые наименования если нет искать (по набору корней?) % похожести массивов
+в случае прайса на советской
+наименование услуги+цена 
+(если нет услуги такой - выбираем врача - раздел, какие то еще доп поля произвольные и вставляем )
+
+
+
+1. ОПределяем строки, поля и разделы 
+- инициирцем сессию импорта (пишем в базу массив сериализованный)
+
+
+2. Валидация данных + снимаем строки которые не прошли валидацию
++ возможность скрть столбцы (удалить и не учитывать их)
++ менять цвета столбцов при определении ключевыми 
+
+
+
+3. Сравнение с существующими данными 
+
++ РЕВИЗИИ ОБНОВЛЕНИЯ обязательно с целью сделать откат на любое обновление 
+
+выводим совпадающие данные
+- выводим данные для редактирования с учетом ключевых столбов (изменилась цена)
+- выводим строки которых не было (по ключевым)-возможность присвоить новый ключевой 
+- выводим те которые были но сейчас нет (по ключевым)-возможность присвоить новый ключевой
+
+- псевдонимы ключевых столбов в конфиге 
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
++++ ДЕкативируем строку если не полйден хотябы один валидатор хотябы одним столбом!
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Пошаговый мастер с хлебными крошами 
+при первой отправки формы инициируем сессию 
+sessions_add
+sessions_add_id - ai
+- session_id - Номер сессии вставки 
+- user - Пользователь иницииировавший сессию
+- step - имя/номер шага
+- data - Сериализованные данные
+
+Механизм отката 
+инсерт и update обертка
+при инсерте пишется НОВАЯ СТРОКА в нее сессия и помечается как актуальная  (с старой снимается актуальность )
+при update - ВСТАВЛЯЕТСЯ НОВАЯ СТРОКА и помечается как актуальная (с старой снимается актуальность)
+при удалении строка помечается как не актуальная
+
+-----
+в таблице данных только строки с уникальным набором значений (типа жкономия места)
+- актуальность и принадлежность к сессиям в доп таблице 
+
+доп таблица не актульных строк 
+-Сессия строка id + статус (удалена или нет)
+------
+
+
+вызвать прайс на дату целиком?!
+-----------------------------------------------
+- В строках классы tr_num
+в столбах td_num
+
+при изменении столба td_num добавлять к нему класс sel
+
+для скрытия снимаем чекбукс и добавляется класс hidden
+
+
+
+-------------------------------------------------
+ОТДЕЛЬНЫй КЛАСС ВАЛИДАТОР
+
+конфиг класса вадидатор
+$[поле][]='len:15,25';
+$[поле][]='chars:lat,rus,",;."';
+$[поле][]='type:string';
+
+$x = new validate($conf_val,$rule);
+ 
+$_POST = $x -> validate($arr_post); - обработанные приведенные и проверенные переменные
+
+$x->errors - массив ошибок
+$x->log_err - лог проверок
+Русские названия полей для ошибок
+$x->displayerrors(fileds_caption_arr)
+
+
+
+
++ русские названия полей для текстов ошибок 
+fileds_caption_arr два формата первый [filed]=ЗАголовок - упрощенный 
+второй [filed][caption]= заголовок - из юнинави
+
+
+Rule - 
+0 игнорировать переменные которых нет в конфиге валидации
+1 при наличии переменных которых нет в конфиге выводить оошибку
+----------------------------------------------------
+
+
+
+
+
+-------ДОполнительная логика проверки дома - доп экшен в ремках сессии
+нет одинаковых номеров!
+количество квартир на площадке не превышает 
+предварительная отрисовка подезда
+*/
+
+
+/*
+Уменьшите количество пробелов до одного
+Удалите какие-либо пробелы до этого ? . ,
+Добавьте пробелы после ; :
+Добавляйте пробелы после запятых, но не тогда, когда они являются частью числа
+Добавляйте пробелы после точек, но не тогда, когда они являются частью числа или аббревиатуры
+Удалить whitespace из начала и конца строки
+Заглавные буквы первого слова предложений
+Измените последний символ на точку, если это запятая
+*/
+function format_punc($string){
+    $punctuation = ';:';
+    $spaced_punc = array(' ?', ' .', ' ,');
+    $un_spaced_punc = array('?', '.', ',');
+    $string = preg_replace("/([.,!?;:])+/iS","$1",$string);
+    $string = preg_replace('/[[:space:]]+/', ' ', $string);
+    $string = str_replace($spaced_punc, $un_spaced_punc, $string);
+    $string = preg_replace('/(['.$punctuation.'])[\s]*/', '\1 ', $string);
+    $string = preg_replace('/(?<!\d),|,(?!\d{3})/', ', ', $string);
+    $string = preg_replace('/(\.)([[:alpha:]]{2,})/', '$1 $2', $string);
+    $string = trim($string);
+    $string = preg_replace('/([\.!\?]\s+|\A)(\w)/e', '"$1" . strtoupper("$2")', $string);
+    if($string[strlen($string)-1]==','){
+        $string = substr($string, 0, -1).'.';
+    }
+    return $string;
+}
+
+
+// ЗАмена кавычек
+// ЗАмена или удаление html сущностей или удаленеи всех тегов
+ 
+/*
+$new = htmlspecialchars("<a href='test'>Test</a>", ENT_QUOTES);
+echo $new; // &lt;a href=&#039;test&#039;&gt;Test&lt;/a&gt;
+
+// Разрешаем <p> и <a>
+echo strip_tags($text, '<p><a>');
+*/
+
+
+/*
+$str = 'April 15, 2003';
+$str = str_replace('.',',',$str); // ЗАменить точку на запятую 
+$str = preg_replace('/[^0-9,]/', '', $str); /// Удалить все кроме цифр и запятой 
+
+ 
+echo $str;  // 
+
+
+
+
+function validateDate($date, $format = 'Y-m-d H:i:s')
+{
+    $d = DateTime::createFromFormat($format, $date);
+    return $d && $d->format($format) == $date;
+}
+
+var_dump(validateDate('2012-02-28 12:12:12')); # true
+
+https://github.com/samdark/Typograph
+ 
+https://github.com/vitalybaev/mdash-typograph-php
+
+
+
+Валидатор
+https://biznesguide.ru/coding/146.html
+*/
+class unitable_import
+{
+	function __construct( $mainkey )
+	{
+		/*
+		// Имена полей
+  		$fa['adress'] = 'Адрес';
+		$fa['build_type'] = 'Тип здания';
+		$fa['area'] = 'Общая площадь (м2)';
+		$fa['free_plan'] = 'Свободная планировка';
+		$fa['floor'] = 'Этаж';
+		$this->fa=$fa;
+ 
+		// Порядок столбцов по умолчанию
+		$fac[]='build_type';
+		$fac[]='adress';
+		$fac[]='area';
+		$fac[]='free_plan';
+		$fac[]='floor';
+		$this->fac = $fac;
+		
+		
+		// Ключевые поля! (для выявления дубликатов)
+  		$fa_key['adress'] = 1;
+		$fa_key['build_type'] = 1;
+		$fa_key['area'] = 1;
+		$this->fa_key=$fa_key;
+		
+		// Обязательные поля
+		$fa_req['adress'] = 1;
+		$fa_req['build_type'] = 1;
+		$fa_req['area'] = 1;
+			//$this->fa_req=$fa_req;
+		*/
+	
+		$this -> mainkey = $mainkey;
+		$this->mysql = $GLOBALS['mysql'];
+	}
+	
+	
+	// имя, заголовок ,ключевое, обязательное , порядок по умолчанию тот в котором поля обявлены
+	function add_filed($name,$caption,$req=false,$key=false)
+	{
+		$this->fa[$name]=$caption;
+		$this->fac[]=$name;
+		if($key){$this->fa_key[$name]=$key;}
+		if($req){$this->fa_req[$name]=$req;}
+	}
+	
+	// ВЫВОД ПОЛЕЙ В ШАПКЕ РАЗМЕТКИ
+	function select_st($n)
+	{
+		print '<select name="filed['.$n.']">';
+		print '<option value="" >-- 0 --</option>';
+		foreach($this->fa as $k=>$v)
+		{
+			print '<option value="'.$k.'" ';
+
+			 if( $this->fac[$n] == $k ){ print ' selected="selected" '; }
+			print ' />'.$v. '</option>';	 
+		}
+		print '</select>';
+	}
+	
+	
+	// Преобразуем массив строк через tab в массив данных 
+	function post2dataarr($str_arr)
+	{
+			$max_cc =0; $min_cc=0;
+			
+			# ПРЕДОБРАБОТКА ##############################################
+			foreach($str_arr as $k=>$v)
+			{
+				$data_arr[$k] = explode('	',$v);
+				$vc=0;// счетчик значений
+				foreach($data_arr[$k] as $k1=>$v1)
+				{
+					$badchar=array(
+						// control characters
+						chr(0), chr(1), chr(2), chr(3), chr(4), chr(5), chr(6), chr(7), chr(8), chr(9), chr(10),
+						chr(11), chr(12), chr(13), chr(14), chr(15), chr(16), chr(17), chr(18), chr(19), chr(20),
+						chr(21), chr(22), chr(23), chr(24), chr(25), chr(26), chr(27), chr(28), chr(29), chr(30),
+						chr(31),
+						// non-printing characters
+						chr(127)
+					);
+					//replace the unwanted chars
+					$data_arr[$k][$k1] = str_replace($badchar, '', $data_arr[$k][$k1]);
+					//https://qastack.ru/programming/1176904/php-how-to-remove-all-non-printable-characters-in-a-string
+					$data_arr[$k][$k1] = trim($data_arr[$k][$k1]);
+					
+					if($data_arr[$k][$k1]){$vc++;}
+				}
+				if($vc==0){unset($data_arr[$k]);} // удаляем строки без значений НЕ РАБОТАЕТ!
+				
+				// Максимальное количество столбцов
+				$cc = count( $data_arr[$k] ) ;
+				  
+				if($max_cc<$cc){ $max_cc = $cc; }
+				if($min_cc>$cc){ $min_cc = $cc; }
+				
+			} 
+			################################################################
+			$this->max_cc = $max_cc;
+			$this->min_cc = $min_cc;
+			print '<h1>Максимальное количество столбцов - '.$max_cc.' Минимальное - '.$min_cc.'</h1>';
+			
+			return $data_arr;
+	}
+	
+	
+	
+	function edittable($data_arr)
+	{
+		?>
+			<table border="1">
+			<thead>
+				<th></th>
+				<?
+				for($i=0; $i<$this->max_cc; $i++)
+				{
+					?>
+					<th>
+					<?=$this->select_st($i);?>
+					</th>
+					<?
+				}
+				?>
+			</thead>
+			<tbody>
+			<?
+			// По строкам 
+ 
+	        $str=0;
+			foreach($data_arr as $k=>$v )
+			{
+				$vc=0;
+				$tit=0;
+				
+				?><tr><?
+				
+				// По столбам
+				foreach($v as $k1=>$v1)
+				{
+					if( $v1 ){$vc++;}
+				}
+				?><td><?
+					print '<input name="row_check['.$str.']" type="checkbox" value="1" id="row_check_'.$str.'" ';
+					if($vc){ print ' checked="checked" ';}
+					print ' />';
+					print '<label for="row_check_'.$str.'" >';
+					print 'Зн:'.$vc;
+					print ' ';
+					print 'Ст:'.count($v);
+					print ' <b> #:'.$str.'</b>';
+					print '</label>';				
+				?></td><?
+ 
+				$i=0;
+				// По столбам // всегда макс количество
+				foreach($v as $k1=>$v1)
+				{
+				
+					?><td><?
+					if($tit){print '<b>';}
+					
+					print '  <input name="data_value['.$str.']['.$i.']" value="'.$v1.'"  />';
+					
+					if($vl){print '!';}
+					
+					if($tit){print '</b>';}
+					?></td><?
+					
+					$i++;
+				}
+ 
+				?></tr><?
+				
+				$str++;
+			}
+			?>
+			<tbody>
+			</table>
+			<?
+		
+	}
+	
+ 
+	
+	// Валидация данных и правка при необходимости 
+	/*
+	вначале строки без изменений
+	в которых отредактированны столбы
+	новые 
+	
+	форма построчно (метод)
+	
+	*/
+	function edittable_vali($data_arr,$fileds,$row_check,$save=false)
+	{
+		print '<pre>';
+		// print_r($fileds); // Порядок полей выбранный селектами [номер]=имя переменной
+		// print_r($data_arr); // массив нумерных данный [0]- "значение столб 0" 
+		// row_check [0]=1 // Отмеченные строки которые подлежат обработке 
+		print '</pre>';
+		?>
+		<script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+		<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+		<script>
+		$( document ).ready(function() {
+			$("#ch_all:checkbox").change(function(){
+				if(this.checked)
+				{
+					$(".tr0 input[type=checkbox]").prop('checked', true); 
+					$(".tr1 input[type=checkbox]").prop('checked', true); 
+					$(".tr2 input[type=checkbox]").prop('checked', true); 
+					
+					$("#ch_0").prop('checked', true); 
+					$("#ch_1").prop('checked', true); 
+					$("#ch_2").prop('checked', true); 	
+
+					$(".tr0").show();	 
+					$(".tr1").show();	
+					$(".tr2").show();		
+				}
+				else
+				{
+					$(".tr0 input[type=checkbox]").prop('checked', false);
+					$(".tr1 input[type=checkbox]").prop('checked', false); 
+					$(".tr2 input[type=checkbox]").prop('checked', false); 		
+
+					$(".tr0").hide();	 
+					$(".tr1").hide();	
+					$(".tr2").hide();
+					$('.hide').hide();					
+				}
+			});
+			
+			$("#ch_0:checkbox").change(function(){
+				if(this.checked)
+				{
+					$(".tr0 input[type=checkbox]").prop('checked', true); 
+					$(".tr0").show();
+					$('.hide').hide();
+					
+				}
+				else
+				{
+					$(".tr0 input[type=checkbox]").prop('checked', false);
+					$("#ch_all").prop('checked', false);					
+					$(".tr0").hide();
+					$('.hide').hide();
+				}
+			});
+			
+			$("#ch_1:checkbox").change(function(){
+				if(this.checked)
+				{
+					$(".tr1 input[type=checkbox]").prop('checked', true); 
+					$(".tr1").show();
+					$('.hide').hide();
+				}
+				else
+				{
+					$(".tr1 input[type=checkbox]").prop('checked', false);
+					$("#ch_all").prop('checked', false);
+					$(".tr1").hide();	
+					$('.hide').hide();					
+				 				
+				}
+			});
+			
+			$("#ch_2:checkbox").change(function(){
+				if(this.checked)
+				{
+					$(".tr2 input[type=checkbox]").prop('checked', true);
+					$(".tr2").show();
+					$('.hide').hide();					
+				}
+				else
+				{
+					$(".tr2 input[type=checkbox]").prop('checked', false);
+					$("#ch_all").prop('checked', false);	
+					$(".tr2").hide();	
+					$('.hide').hide();
+					 					
+				}
+			});
+			
+ 
+
+
+
+			$(".slh").click(function(){
+				//alert(1);
+				 $('.sls').hide();
+				$(this).next('.sls').toggle(); 
+ 
+			});
+			
+			
+		});
+		</script>
+		
+		<style>
+		
+		 .sls{display:none;}
+		 
+		 
+		</style>
+		<?
+		if(!$save)
+		{
+			?>
+			<label for="ch_all" style="background:#FFF">Все:</label><input id="ch_all" type="checkbox" checked="checked"  /> &nbsp;&nbsp;  
+			<label for="ch_1" style="background:#FFF">Без изменений:</label><input id="ch_1" type="checkbox" checked="checked" />&nbsp; &nbsp; 
+			<label for="ch_0" style="background: rgb(173, 255, 47);">Обновление:</label><input id="ch_0" type="checkbox" checked="checked" /> &nbsp; &nbsp; 
+			<label for="ch_2" style="background: rgb(255, 192, 203);">Добавление:</label><input id="ch_2" type="checkbox" checked="checked" />
+			<?
+		}
+		?>
+			<table border="1">
+			<thead>
+				<th></th>
+				<?
+				foreach($fileds as $k=>$v)
+				{
+					if($v)
+					{
+					?>
+					<th>
+					 <?=$this->fa[$v]?>
+					</th>
+					<?
+					}
+				}
+				?>
+			</thead>
+			<tbody>
+			
+			<?
+			 // По строкам 
+			 $str=0;
+			 foreach($data_arr as $k=>$v)
+			 {
+				 
+				 if($row_check[$k])
+				 {	
+				 $r = $this->processing($v,$fileds);
+				 ?>
+				 <tr 
+				 <?
+				  if($r['tr']==0){print ' style="background:#ADFF2F;" class="tr0 slh" ';}// Редактирование 
+				  if($r['tr']==1){print ' style="background:#FFF;" class="tr1 slh" ';} // Без изменений
+				  if($r['tr']==2){print ' style="background:#FFC0CB;" class="tr2 slh" ';} // добавление строки
+				 ?>>
+				 
+				 <td>
+				 <?
+				 if(!$save)
+				 {
+					print '<input name="row_check['.$str.']" type="checkbox" value="1" id="row_check_'.$str.'" ';
+					print ' checked="checked" '; 
+					 
+					 if($r['tr']==0){print ' class="tr0" ';}// Редактирование 
+					 if($r['tr']==1){print ' class="tr1" ';} // Без изменений
+					 if($r['tr']==2){print ' class="tr2" ';} // добавление строки
+ 
+					print ' />';
+					print '<label for="row_check_'.$str.'" >';
+					print ' <b> #'.$str.'</b>';
+					print '</label>';
+				 }
+				else
+				{
+					print 	$str;
+				}				 
+				?>
+				</td>
+				<?
+				
+				
+				 
+					
+					
+					
+				// Столбам
+				$i=0;
+				foreach($v as $k1=>$v1)
+				{
+					$filed = $fileds[$k1];
+					
+					if($filed)
+					{
+					?>
+					<td
+					<?
+					if( $r['td'] && $r['td'][$filed]['rav']==0){print ' style="background:#00FA9A;" ';}// Редактирование 
+					?>
+					>
+						<?
+						print ' <input name="data_value['.$str.']['.$k1.']" value="'.$v1.'"  /><br/>';
+						//print $filed;
+							// print $r['td'][$filed]['rav'];
+							 if( $r['td'] && $r['td'][$filed]['rav']==0){print 'Старое значение - "'.$r['td'][$filed]['old'].'"';}
+						?>
+					</td>
+					<?
+					$i++;
+					}
+					
+				}
+				?>
+				<tr
+				<?
+				  if($r['tr']==0){print ' style="background:#ADFF2F;" class="hide  sls tr0" ';}// Редактирование 
+				  if($r['tr']==1){print ' style="background:#FFF;" class=" hide sls tr1" ';} // Без изменений
+				  if($r['tr']==2){print ' style="background:#FFC0CB;" class="hide sls tr2" ';} // добавление строки
+				?>>
+				<td colspan="100">
+				<?
+				  if($r['tr']==0){print '<b>РЕДАКТИРОВАНИЕ</b> - Не все поля строки равны новым данным';}// Редактирование 
+				  if($r['tr']==1){print '<b>БЕЗ ИЗМЕНЕНИЙ</b>';} // Без изменений
+				  if($r['tr']==2){print '<b>ДОБАВЛЕНИЕ</b> - не найдена строка соответствующая ключевым данным';} // добавление строки
+ 
+					//print $k;
+					print '<pre>';
+				 	print_r($r['trtext']); 
+					print '</pre>';
+					//print '<h2>Обработка строки #'.$k.'</h2>';
+					?>
+				</td>
+				</tr>
+				<?
+				 }
+				 else
+				 {
+					//print '<h2>Строка '.$k.' не отмечена</h2>';
+					//print_r($data);
+				 }
+				 $str++;
+			 }
+			?>
+			<tbody>
+			</table>
+			<?
+		
+	}
+	
+	
+	
+	// ОБРАБОТКА ДАННЫХ - ОДНОЙ СТРОКИ 
+	function processing( $v , $fileds )
+	{
+		ob_start();
+		
+		// Разметка полей
+		foreach($fileds as $fk=>$fv )
+		{
+			 $data[$fv] = $v[$fk];
+		}
+					
+		// print_R($this->fa_key)	;
+		// Поиск данных по ключевым полям
+		foreach($this->fa_key as $k=>$v)
+		{
+			// ФОрмируем массив ключ=значение
+			$key_arr[$k]=$data[$k];
+		}
+		
+		// Массив старой информации по ключам
+		$old_data = $this->get_for_keys($key_arr);
+		
+		//print 'Новые данные ';
+		//print '<pre>';
+		//print_r($data);
+		//print '</pre>'; 
+			
+		if($old_data)
+		{
+			//print 'старые данные:';
+			
+			//print '<pre>';
+			//print_r($old_data);
+			//print '</pre>';
+	 
+			// Ставниваем старую и новую информацию
+			$ravno=1;
+			foreach($data as $k=>$v)
+			{
+				
+				 $res[$k]['old']=$old_data[$k];
+				 $res[$k]['new']=$data[$k];
+				 
+				 if($this->fa_key[$k])
+				 {
+				 $res[$k]['key']=1;
+				 }
+				 else{
+					  $res[$k]['key']=0;
+				 }
+				 
+				if( $data[$k]!= $old_data[$k] )
+				{
+					$ravno=0;
+					$res[$k]['rav']=0;
+					$res[$k]['txt']=' поле - '.$k.' Данные <b><u>НЕ совпадают</u></b> '.$data[$k].' != '.$old_data[$k].'<br/>'; 
+				}
+				else{ $res[$k]['rav']=1;   $res[$k]['txt']='поле - '.$k.' Данные <b>cовпадают</b> '.$data[$k].' = '.$old_data[$k].'<br/>';}
+			}
+			
+			if(!$ravno)
+			{
+				print '<h2>UPDATE '.$this->mainkey.'="'.$old_data[$this->mainkey].'"</h2>';
+			}
+			 
+		}
+		else
+		{
+			$ravno=2;
+			//print '<b>Данные не найдены - новая строка</b>';
+			
+			print '<h2>insert</h2>';
+			// $this->mysql->insert('rent_objects',$data);
+			
+		}
+		
+		// Поля по умолчанию + вычисляемые
+		$data=$this->default_data($data);
+ 
+		$x = ob_get_clean();
+		$result=array();
+		$result['tr']=$ravno; // 1 все совпадают,0- не совпадают, 2- не найдены
+		$result['td']=$res;
+		$result['trtext']=$x;
+		 
+		return $result;
+	}
+	
+	
+				
+				
+	# МЕТОДЫ ДЛЯ ПЕРЕПИСИ В ДОЧЕРНИХ КЛАССАХ	
+				
+				
+	function import() 
+	{
+		if(!$_POST)
+		{
+			# ШАГ 0 ввод исходных данных
+			?>
+			<h1>Загрузка данных</h1>
+			<form action="" method="POST">
+			<input type="text" name="action" value="detect" />
+				<textarea name="text" style="width:100%; height:500px;"><?=$_POST['text']?></textarea>
+				<input type="submit" />
+			</form>
+			<?
+		}
+		if( !$_POST['filed'] && !$_POST['data_value'] )
+		{
+			# ШАГ 2 Разметка данных 
+			?>
+			<h1>Разметка данных</h1>
+			<form action="" method="POST">
+			<input type="text" name="action" value="validate" />
+			
+				<?
+				$str_arr = explode(PHP_EOL, $_POST[text]);
+				$data_arr = $this->post2dataarr( $str_arr );
+				$this->edittable($data_arr);
+				?>
+			
+			<input type="submit" />
+			</form>
+			<?
+		}
+		elseif($_POST['filed'] && $_POST['data_value'] &&  ($_POST['action'] == 'validate' || $_POST['action'] == 'save') )
+		{
+			# ШАГ 3 Валидация данных и проверка существующих 
+			
+			?>
+			<h1>Валидация данных+сохранение</h1>
+			<form action="" method="POST">
+			<input type="text" name="action" value="save" />
+			
+			<input type="hidden" name="filed[0]" value="<?=$_POST['filed'][0]?>" />
+			<input type="hidden" name="filed[1]" value="<?=$_POST['filed'][1]?>" />
+			<input type="hidden" name="filed[2]" value="<?=$_POST['filed'][2]?>" />
+			<input type="hidden" name="filed[3]" value="<?=$_POST['filed'][3]?>" />
+			<input type="hidden" name="filed[4]" value="<?=$_POST['filed'][4]?>" />
+			<input type="hidden" name="filed[5]" value="<?=$_POST['filed'][5]?>" />
+			<input type="hidden" name="filed[6]" value="<?=$_POST['filed'][6]?>" />
+			<input type="hidden" name="filed[7]" value="<?=$_POST['filed'][7]?>" />
+			<input type="hidden" name="filed[8]" value="<?=$_POST['filed'][8]?>" />
+			<input type="hidden" name="filed[9]" value="<?=$_POST['filed'][9]?>" />
+			<input type="hidden" name="filed[10]" value="<?=$_POST['filed'][10]?>" />
+			
+			
+			
+			
+				<?
+				if( $_POST['action'] =='save'){$save=1;}else{$save=0;}
+				$this->edittable_vali( $_POST['data_value'] , $_POST['filed'] , $_POST['row_check'],$save );
+				?>
+			<input type="submit" />
+			</form>
+			<?
+		}
+		 
+		
+		
+	}
+	
+	
+	
+	// Значение полей по умолчанию
+	function default_data($data)
+	{
+		if(!$data){$data=array();}
+		$data['home_id']=1;
+		$data['section_id']=1;
+		$data['appart_num']=1;
+		return $data;
+	}
+	
+	 
+	 
+	function insert($data)
+	{
+		 
+	}
+	
+	function del($keys)
+	{
+		
+	}
+	
+	function update($keys,$data)
+	{
+		
+	}
+	
+	
+	function where_notimport(   )
+	{
+		// Список ид которые вошли в импорт 
+		// Сосоавляем запрос на записи которых нет в списке 
+		$q='WHERE '.$this->mainkey.' NOT IN (';
+		 
+		foreach( $this->update_keys as $k=>$v)
+		{
+			if($v)
+			{
+			$q.=$v;
+			if($k<count($this->update_keys)-1){$q.=',';}
+			}
+		}
+		$q.=')';
+		print $q;
+	}
+	
+	 // Выборка данных по ключам - ДЛЯ РАБОТЫ С СУЩЕСТВУЮЩИМИ ДАННЫМИ 
+	 function get_for_keys($keys)
+	 {
+		 
+		 $q='SELECT * FROM rent_objects WHERE 1=1 ';
+		 foreach ($keys as $k=>$v )
+		 {
+			 $q.=' AND '.$k.'="'.$v.'" ' ;
+		 }
+		 print '<br/>'.$q.'<br/>';
+		 $arr =  $this->mysql->get_arr($q);
+		 
+		 //Пишем первичный ключ в масив 
+		 $this->update_keys[]=$arr[0][$this->mainkey];
+		 
+		 if(count($arr)>1)
+		 {
+			 print 'ОШИБКА КЛЮЧЕВЫХ ПОЛЕЙ!';
+			 return false;
+		 }
+		 else
+		 {
+			 return $arr[0];
+		 }
+	 }
+	 
+	
+
+	
+ 
+	 
+
+	 
+	
+	
+	 
+	 function menu()
+	 {
+		 $data = $_SESSION['import_session'];
+		
+		
+		
+		
+		 if( !$_GET['action'] ||  $_GET['action']=='detect' )
+		 {
+			 if($_POST)
+			 {
+				$_SESSION['import_session']['detect']=$_POST;
+			 }
+			 else
+			 {
+				  
+			 }
+		 }
+		 
+		 
+		 ?>
+		 <a href="?action=detect">1. Разметка данных</a> / 
+		 <?
+		 
+		 
+		 if(  $_GET['action']=='validation' )
+		 {
+	 
+			 if($_POST)
+			 {
+				$_SESSION['import_session']['validation']=$_POST;
+			 }
+			 else
+			 {
+				$_POST=$_SESSION['import_session']['detect'];
+			 }
+		 }
+		 
+		 
+		 
+		 if( $_SESSION['import_session']['detect'] )
+		 {
+			 ?>
+			 <a href="?action=validation">2. Валидация</a> / 
+			 <?
+		 }
+		 
+		 
+		 
+		 
+		 
+		 if( $_SESSION['import_session']['validation'] )
+		 {
+		 ?>
+		 <a href="?action=save">3. Сохранение</a> / 
+		 <?
+		 }
+	 }
+	 
+	 
+	 
+	 
+
+	
+	 
+	 
+	 
+	
+}
+
+/*
+Не отображаются обязательные столбы! если пришло меньше полей
+ !!! ОДИН РАЗ МОЖНО ВЫБРАТЬ СТОЛБ ПРИ ВЫБОРЕ ПРОПАДАЕТ ОПШЕН ИЗ ОСТАЛЬНЫХ!
+ 
+ !!! ВАЛИДАЦИЯ СТРОК И АВТО СНЯТИЕ ЧЕКБУКСА НА ЭТАПЕ ВАЛИДАЦИИ ! 
+ в процессенге
+ дополняем массив ошибками итп 
+ 
+ tablesorter
+ 
+ доп столбец с статусом строки 
+ 
+ Разделы советская !
+ строка старт раздела ! + выбор раздела (разделы заданы в конфе!)
+ 
+ 
+ вывод прайса
+ joomla модуль, jqвиджет 
+ 
+Прайс советской!
+Прайс дома ! - загрузка данных
+Прайс аренды!
+*/
+
+
+$x = new unitable_import('rent_objects_id');
+# ДОБАВЛЯЕМ ПОЛЯ В ПОРЯДКЕ СЛЕДОВАНИЯ ПО УМОЛЧАНИЮ
+
+// имя, заголовок ,ключевое, обязательное
+ 
+$x->add_filed('build_type','Тип здания',0,1);
+$x->add_filed('adress','Адрес',0,1);
+$x->add_filed('area','Общая площадь (м2)',0,1);
+$x->add_filed('free_plan','Свободная планировка',0,0);
+$x->add_filed('floor','Этаж',0,0);	
+
+/*
+ // фильтры добавляем 
+ просто циклом со всеми аргументами запускаем метод
+$x->add_filtr('area','float');
+ 
+*/
+
+
+
+	
+$x ->import(); 
+ 
+//$x->where_notimport();
+
+ 
+  

@@ -1,0 +1,14 @@
+
+
+<IfModule mod_headers.c>
+         Header append Cache-Control "no-store, no-cache, must-revalidate"
+</IfModule>
+ 
+# Заголовок Expires
+<IfModule mod_expires.c>
+         ExpiresActive On ExpiresDefault "now"
+</IfModule>
+
+ 
+RewriteRule ^domclick-([0-9]+)\.xml$ domclick_feedx.php?home_id=$1
+
