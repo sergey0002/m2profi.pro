@@ -50,6 +50,12 @@ $curr_apart_status = isset($apartment['status']) ? (int)$apartment['status'] : 0
                 <br><br>
                 <input type="submit" value="Сохранить" style="background-color:#00CDAD; color:#FFF; padding:10px 40px; font-size:16px; font-weight:bold; border-radius:7px;">
             </form>
+
+            <?php
+            if (!empty($_SESSION['sh_id']) && !empty($data['apartament_id'])) {
+                include __DIR__ . '/compred_block.php';
+            }
+            ?>
         </div>
     </div>
 </div>

@@ -784,6 +784,8 @@ if (!class_exists('ProposalManager')) {
     require_once('inc/proposal_manager.php');
 }
 
+include(__DIR__ . '/inc/compred_config.php');
+
  
 
  

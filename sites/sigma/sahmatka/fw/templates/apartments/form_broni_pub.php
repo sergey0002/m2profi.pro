@@ -68,6 +68,12 @@ input, select {
                     <input type="submit" id="submit" disabled="disabled" value="ЗАБРОНИРОВАТЬ" class="stat-top-btn btn btn_arrow-long" style="margin-left:0;">
                 </form>
             <?php } ?>
+
+            <?php
+            if (!empty($_SESSION['sh_id']) && !empty($data['apartament_id'])) {
+                include __DIR__ . '/compred_block.php';
+            }
+            ?>
         </div>
     </div>
 </div>

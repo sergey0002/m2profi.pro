@@ -705,6 +705,31 @@ function act__order()
         return;
     }
 
+    // --- compred: блок «Добавить к предложению» ---
+    $compred_list = [];
+    $compred_msg = '';
+    $compred_err = '';
+    $compred_selected_id = 0;
+    if (!empty($_SESSION['sh_id'])) {
+        if (!empty($_GET['compred_ok'])) {
+            $compred_msg = 'Апартамент добавлен в предложение';
+        }
+        $compred_selected_id = (int)($_GET['compred_id'] ?? 0);
+        if (!empty($_GET['compred_err'])) {
+            $compred_err = urldecode((string)$_GET['compred_err']);
+        }
+        $compred_list = $mysql->get_arr(
+            'SELECT compred_id, caption FROM compred
+             WHERE user_id = ' . (int)$_SESSION['sh_id'] . ' AND del = 0
+             ORDER BY updated_at DESC LIMIT 100'
+        );
+    }
+    $compred_apartament_id = (int)($data['apartament_id'] ?? 0);
+    $compred_return_url = 'iframe_router.php?ctr=apartments&act=order'
+        . '&home_id=' . (int)$home_id
+        . '&apartment_num=' . (int)$apartment_num
+        . '&apartments=' . (int)($_GET['apartments'] ?? 0);
+
     // Извлекаем нужные части
     $apartment = array_filter($data, fn($k) => strpos($k, 'apartment_') === 0 || in_array($k, [
         'apartament_id', 'section_id', 'floor', 'price', 'price_m', 'area', 'rooms',
@@ -878,7 +903,13 @@ function act__order()
         'success' => $success,
         'err_m' => $err_m,
         'show_form' => $show_form,
-        'done_message' => $done_message
+        'done_message' => $done_message,
+        'compred_list' => $compred_list,
+        'compred_msg' => $compred_msg,
+        'compred_err' => $compred_err,
+        'compred_selected_id' => $compred_selected_id,
+        'apartament_id' => $compred_apartament_id,
+        'return_url' => $compred_return_url,
     ];
 
     if ($show_done_template) {

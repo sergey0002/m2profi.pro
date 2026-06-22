@@ -9,7 +9,13 @@ header("Pragma: no-cache");
   
 // Те же контроллеры и экшены без шаблона 
 include('config.php');
+require_once __DIR__ . '/inc/compred_helpers.php';
 $_GET=$_REQUEST;
+
+$compred_page_meta = null;
+if (($_GET['ctr'] ?? '') === 'compred' && ($_GET['act'] ?? '') === 'public') {
+    $compred_page_meta = compred_bootstrap_public_meta((string)($_GET['token'] ?? ''));
+}
 
 if( $_SESSION['sh_login'] || 1==1 )
 {
@@ -18,11 +24,15 @@ if( $_SESSION['sh_login'] || 1==1 )
 
   <head>
     <meta charset="utf-8">
+    <?php if ($compred_page_meta): ?>
+    <?php include __DIR__ . '/fw/templates/compred/_public_meta.php'; ?>
+    <?php else: ?>
     <meta name="robots" content="noindex, nofollow" />
     <meta name="googlebot" content="noindex, nofollow" />
     <meta name="yandex" content="none" />
     <title>M2 Profi</title>
     <meta name="description" content="">
+    <?php endif; ?>
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="/sahmatka/template/default/images/favicon/favicon.png">

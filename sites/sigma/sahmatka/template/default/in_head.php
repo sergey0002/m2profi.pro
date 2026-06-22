@@ -61,6 +61,13 @@ window.M2WidgetConfig = window.M2WidgetConfig || window.M2PROFI_CONFIG;
 			<div style="font-size:7px;"><?=$_SERVER[SERVER_ADDR];?></div>
 			<ul class="sidenav-menu">
 				<li><a href="user.php?action=objects&home=60&sdan=0" class="active"><i><img src="template/default/images/menu-icon-1.svg" alt=""></i>Апартаменты</a></li>
+				<?
+				if ($_SESSION['sh_login'] != 'keys1' && $_SESSION['sh_login'] != 'keys2' && $_SESSION['sh_login'] != 'em_nsv' && $_SESSION['sh_login'] != 'director') {
+				?>
+				<li><a href="/sahmatka/ctrind.php?ctr=compred&act=index"<?= (($_GET['ctr'] ?? '') === 'compred') ? ' class="active"' : '' ?>><i><img src="template/default/images/menu-icon-8.svg" alt=""></i>Мои предложения</a></li>
+				<?
+				}
+				?>
 				 
 				 
 				<?
