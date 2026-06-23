@@ -1,6 +1,9 @@
 <?php
  
- 
+$GLOBALS['config']['admin_logins'] = array(
+	'admin',
+	'nodar',
+);
   
 ######################
 #### ОбРАБОТКА ОШИБОК И ОТЛАДКА
@@ -768,12 +771,6 @@ function multi_attach_mail2($to, $subject, $message, $senderEmail, $senderName, 
 		return $mess;
 	}
  
-
-// Список логинов с правами супер-админа (используется check_access('admin') в core/functions.php)
-$GLOBALS['config']['admin_logins'] = array(
-	'admin',
-	'nodar',
-);
 
 include('../../../core/functions.php');	
  
