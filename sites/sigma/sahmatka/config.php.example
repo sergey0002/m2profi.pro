@@ -191,8 +191,23 @@ $kvartal_style[7] = ' background-color: #eb5b04; color: #3e3c51; font-weight: bo
 
 $GLOBALS['config']['object_unit'] = [
 	'mode' => 'custom',
-	'label' => 'апартаменты',
-	'abbrev' => 'ап.',
+	'label' => 'резиденции',
+	'abbrev' => 'рез.',
+	'forms' => [
+		'nom' => 'резиденция', 'gen' => 'резиденции', 'dat' => 'резиденции', 'acc' => 'резиденцию',
+		'ins' => 'резиденцией', 'pl_nom' => 'резиденции', 'pl_gen' => 'резиденций', 'pl_acc' => 'резиденции',
+	],
+	'count_forms' => [
+		'one' => 'резиденция',
+		'few' => 'резиденции',
+		'many' => 'резиденций',
+	],
+	'phrase_templates' => [
+		'compred_index_intro' => 'Коммерческое предложение — это подборка {pl_gen} с вашими примечаниями и персональной ссылкой для клиента.',
+		'compred_index_step_open' => 'Откройте нужную {acc} на шахматке.',
+		'compred_index_step_card' => 'В карточке {gen} нажмите «Добавить к предложению» — создайте новое или выберите существующее.',
+		'compred_index_step_more' => 'Добавьте другие {pl_nom}, напишите примечания и вводный текст.',
+	],
 	'legacy' => [
 		'nom' => 'квартира', 'gen' => 'квартиры', 'dat' => 'квартире', 'acc' => 'квартиру',
 		'ins' => 'квартирой', 'pl_nom' => 'квартиры', 'pl_gen' => 'квартир', 'pl_acc' => 'квартиры',
@@ -209,7 +224,11 @@ if (!function_exists('unit_label')) {
 	function unit_label($case = 'nom') {
 		$cfg = unit_cfg();
 		if (($cfg['mode'] ?? '') === 'custom') {
-			return $cfg['label'] ?? 'апартаменты';
+			$forms = isset($cfg['forms']) ? $cfg['forms'] : [];
+			if (isset($forms[$case])) {
+				return $forms[$case];
+			}
+			return $cfg['label'] ?? 'резиденции';
 		}
 		$legacy = isset($cfg['legacy']) ? $cfg['legacy'] : [];
 		return isset($legacy[$case]) ? $legacy[$case] : (isset($legacy['nom']) ? $legacy['nom'] : 'квартира');
@@ -225,7 +244,7 @@ if (!function_exists('unit_abbrev')) {
 	function unit_abbrev() {
 		$cfg = unit_cfg();
 		if (($cfg['mode'] ?? '') === 'custom') {
-			return $cfg['abbrev'] ?? 'ап.';
+			return $cfg['abbrev'] ?? 'рез.';
 		}
 		return isset($cfg['legacy']['abbrev']) ? $cfg['legacy']['abbrev'] : 'кв.';
 	}
@@ -251,49 +270,114 @@ if (!function_exists('unit_rate_abbrev')) {
 		return rtrim(unit_abbrev(), '.') . '/мес';
 	}
 }
+if (!function_exists('unit_count_label')) {
+	function unit_count_label($count) {
+		$cfg = unit_cfg();
+		$cf = isset($cfg['count_forms']) ? $cfg['count_forms'] : [];
+		$n = abs((int)$count) % 100;
+		$n1 = $n % 10;
+		if ($n > 10 && $n < 20) {
+			return isset($cf['many']) ? $cf['many'] : unit_label('pl_gen');
+		}
+		if ($n1 > 1 && $n1 < 5) {
+			return isset($cf['few']) ? $cf['few'] : unit_label('pl_nom');
+		}
+		if ($n1 === 1) {
+			return isset($cf['one']) ? $cf['one'] : unit_label('nom');
+		}
+		return isset($cf['many']) ? $cf['many'] : unit_label('pl_gen');
+	}
+}
+if (!function_exists('unit_badge')) {
+	function unit_badge() {
+		$cfg = unit_cfg();
+		if (!empty($cfg['badge_upper'])) {
+			return $cfg['badge_upper'];
+		}
+		return mb_strtoupper(unit_label('nom'));
+	}
+}
+if (!function_exists('unit_template')) {
+	function unit_template($key) {
+		$cfg = unit_cfg();
+		$tpl = isset($cfg['phrase_templates'][$key]) ? $cfg['phrase_templates'][$key] : '';
+		if ($tpl === '') {
+			return $key;
+		}
+		$repl = [
+			'{nom}' => unit_label('nom'),
+			'{gen}' => unit_label('gen'),
+			'{dat}' => unit_label('dat'),
+			'{acc}' => unit_label('acc'),
+			'{pl_nom}' => unit_label('pl_nom'),
+			'{pl_gen}' => unit_label('pl_gen'),
+			'{nom_cap}' => unit_label_cap('nom'),
+			'{pl_nom_cap}' => unit_label_cap('pl_nom'),
+			'{pl_gen_cap}' => unit_label_cap('pl_gen'),
+		];
+		return strtr($tpl, $repl);
+	}
+}
+if (!function_exists('unit_js_export')) {
+	function unit_js_export() {
+		return [
+			'nom' => unit_label('nom'),
+			'nomCap' => unit_label_cap('nom'),
+			'acc' => unit_label('acc'),
+			'pl_nom' => unit_label('pl_nom'),
+			'pl_nomCap' => unit_label_cap('pl_nom'),
+			'pl_gen' => unit_label('pl_gen'),
+			'abbrev' => unit_abbrev(),
+			'compred_delete_confirm' => unit_phrase('compred_delete_confirm'),
+		];
+	}
+}
 if (!function_exists('unit_phrase')) {
 	function unit_phrase($key) {
 		static $map = null;
 		if ($map === null) {
 			$u = unit_label('nom');
+			$u_acc = unit_label('acc');
+			$u_pl = unit_label('pl_nom');
 			$U = unit_label_cap('nom');
+			$U_pl = unit_label_cap('pl_nom');
 			$ug = unit_label('pl_gen');
 			$map = [
-				'not_found' => $U . ' не найдены',
-				'select' => 'Выбрать ' . $u,
-				'select_empty' => $U,
-				'booking_title' => 'Заявка на бронирование ' . $u,
+				'not_found' => $U_pl . ' не найдены',
+				'select' => 'Выбрать ' . $u_acc,
+				'select_empty' => $U_pl,
+				'booking_title' => 'Заявка на бронирование ' . unit_label('gen'),
 				'stats_title' => 'Статистика ' . $ug,
 				'catalog_title' => 'Каталог ' . $ug,
-				'contractor' => $U . ' подрядчика',
-				'already_booked' => $U . ' уже забронированы другим пользователем',
-				'booked_success' => $U . ' успешно забронированы',
-				'available_again' => $U . ' снова доступны для бронирования',
-				'booked_label' => $U . ' забронированы',
-				'column_header' => $U,
-				'count_label' => $U . ':',
+				'contractor' => $U_pl . ' подрядчика',
+				'already_booked' => $U_pl . ' уже забронированы другим пользователем',
+				'booked_success' => $U_pl . ' успешно забронированы',
+				'available_again' => $U_pl . ' снова доступны для бронирования',
+				'booked_label' => $U_pl . ' забронированы',
+				'column_header' => $U_pl,
+				'count_label' => $U_pl . ':',
 				'back_to_list' => 'Назад к выбору ' . $ug,
 				'num_column' => '№ ' . unit_abbrev(),
-				'search_not_found' => $U . ' соответствующих условиям поиска не найдено',
-				'email_card_subject' => 'ФОРМА КАРТОЧКИ ' . mb_strtoupper($U),
+				'search_not_found' => $U_pl . ', соответствующие условиям поиска, не найдено',
+				'email_card_subject' => 'ФОРМА КАРТОЧКИ ' . mb_strtoupper($U_pl),
 				'id_not_set' => 'Не указан ID ' . unit_label('gen'),
 				'status_changed' => 'Статус ' . $ug . ' изменён',
 				'status_changed_admin' => 'Статус ' . unit_label('gen') . ' изменен администратором',
 				'price_changed' => 'Цена ' . unit_label('gen') . ' изменилась',
 				'price_changed_actual' => 'Актуальная цена ' . unit_label('gen') . ' изменилась',
-				'booked_at_price' => $U . ' забронированы по цене',
-				'no_active_booking' => 'На эти ' . $u . ' нет активной брони',
-				'booking_expired' => 'Ваша бронь на эти ' . $u . ' истекла',
-				'existing_booking' => 'У вас уже есть действующая бронь на эти ' . $u,
+				'booked_at_price' => $U_pl . ' забронированы по цене',
+				'no_active_booking' => 'На эти ' . $u_pl . ' нет активной брони',
+				'booking_expired' => 'Ваша бронь на эти ' . $u_pl . ' истекла',
+				'existing_booking' => 'У вас уже есть действующая бронь на эти ' . $u_pl,
 				'history_title' => 'История броней по ' . unit_label('dat'),
-				'no_bookings_yet' => 'Броней по этим ' . $u . ' пока не было',
+				'no_bookings_yet' => 'Броней по этим ' . $u_pl . ' пока не было',
 				'room_numbers' => 'Номера ' . $ug . ':',
 				'properties' => 'Свойства ' . unit_label('gen'),
 				'statuses' => 'Статусы ' . $ug,
 				'other_properties' => 'Другие свойства ' . unit_label('gen'),
-				'not_sold' => $U . ' не продано',
+				'not_sold' => $U_pl . ' не проданы',
 				'show_units' => 'Показать ' . $ug . ':',
-				'ready_units' => 'готовые ' . $u . ' с ремонтом',
+				'ready_units' => 'готовые ' . $u_pl . ' с ремонтом',
 				'free_units' => 'Свободные ' . $ug,
 				'apply_markup' => 'ПРИМЕНИТЬ НАЦЕНКУ К СВОБОДНЫМ ' . mb_strtoupper($ug),
 				'calc_prices' => 'Расчет цен для ' . $ug . ' с учетом наценки',
@@ -302,20 +386,20 @@ if (!function_exists('unit_phrase')) {
 				'markup_free' => 'Необходимая наценка на свободные ' . $ug,
 				'new_free_sum' => 'Новая сумарная стоимость свободных ' . $ug,
 				'round_prices' => 'округления цен на ' . $ug . ' в большую сторону',
-				'book_unit' => 'Забронировать ' . unit_label('acc'),
+				'book_unit' => 'Забронировать ' . $u_acc,
 				'feed_subject' => 'Фид ' . $ug,
 				'feed_email' => 'Фид содержит данные по всем ' . $ug . ' в домах',
 				'feed_statuses' => 'Статусы ' . $ug,
 				'csv_unique_id' => 'Уникальный ID ' . unit_label('gen'),
 				'csv_num' => 'Номер ' . unit_label('gen'),
 				'csv_status' => 'Статус ' . unit_label('gen'),
-				'api_not_found' => unit_label_cap('nom') . ' не найдены или недоступны',
+				'api_not_found' => $U_pl . ' не найдены или недоступны',
 				'api_fetch_error' => 'Ошибка при получении ' . $ug,
 				'email_booking' => 'Бронирование ' . unit_label('gen'),
 				'email_booking_keys' => 'Запись на выдачу ключей',
 				'bron_expires' => 'истекает бронь',
-				'you_booked' => 'Вы бронировали ' . unit_label('acc'),
-				'will_be_freed' => 'иначе ' . unit_label('nom') . ' будут автоматически освобождены',
+				'you_booked' => 'Вы бронировали ' . $u_acc,
+				'will_be_freed' => 'иначе ' . $u_pl . ' будут автоматически освобождены',
 				'monthly_sales' => 'Месячная динамика продаж по типам ' . $ug,
 				'sales_pct' => 'Продажи в % от кол-ва ' . $ug . ' в выборке (накопительно)',
 				'bookings_pct' => 'Брони в % от кол-ва ' . $ug . ' в выборке (накопительно)',
@@ -325,6 +409,20 @@ if (!function_exists('unit_phrase')) {
 				'count_col' => 'Кол-во ' . $ug,
 				'sales_speed' => 'Скорость продажи (' . unit_rate_abbrev() . ')',
 				'room_type_desc' => '%s-комн. ' . unit_abbrev(),
+				'menu_pl_nom' => $U_pl,
+				'page_title_pl_nom' => $U_pl,
+				'compred_collection' => 'Подборка ' . $ug,
+				'compred_collection_personal' => 'Персональная подборка ' . $ug . ' от M2 Profi',
+				'compred_collection_count' => 'Подборка из %d %s — M2 Profi',
+				'compred_not_found' => $U . ' не найдена',
+				'compred_added' => 'Добавлена ' . $u . ' в предложение',
+				'compred_delete_confirm' => 'Удалить ' . $u_acc . ' из предложения?',
+				'compred_index_list_hint' => 'Здесь все ваши подборки для клиентов. Откройте предложение, чтобы добавить ' . $u_pl . ', изменить текст и получить ссылку.',
+				'compred_index_count_label' => unit_label_cap('pl_gen') . ':',
+				'compred_edit_count_label' => unit_label_cap('pl_gen') . ' в подборке:',
+				'compred_edit_intro_placeholder' => 'Например: Добрый день! Подготовили для вас подборку ' . $ug . ' с учётом ваших пожеланий…',
+				'compred_edit_empty_title' => 'В этом предложении пока нет ' . $ug,
+				'compred_edit_empty_hint' => 'Откройте ' . $u_acc . ' на шахматке и нажмите «Добавить к предложению», выбрав эту подборку в списке.',
 			];
 		}
 		return isset($map[$key]) ? $map[$key] : $key;

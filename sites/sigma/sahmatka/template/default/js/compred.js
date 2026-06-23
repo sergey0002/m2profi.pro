@@ -187,7 +187,7 @@
                 alert('Не удалось определить объект');
                 return;
             }
-            if (!confirm('Удалить апартамент из предложения?')) {
+            if (!confirm((window.UNIT_LABEL && window.UNIT_LABEL.compred_delete_confirm) || 'Удалить из предложения?')) {
                 return;
             }
             var $card = $btn.closest('.cp-card');

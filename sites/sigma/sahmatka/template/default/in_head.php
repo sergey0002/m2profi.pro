@@ -21,6 +21,9 @@ $m2PublicConfig = json_encode(array(
 <script>
 window.M2PROFI_CONFIG = <?=$m2PublicConfig?>;
 window.M2WidgetConfig = window.M2WidgetConfig || window.M2PROFI_CONFIG;
+<?php if (function_exists('unit_js_export')): ?>
+window.UNIT_LABEL = <?= json_encode(unit_js_export(), JSON_UNESCAPED_UNICODE) ?>;
+<?php endif; ?>
 </script>
 <header class="header-lk">
 	<div class="container">
@@ -60,7 +63,7 @@ window.M2WidgetConfig = window.M2WidgetConfig || window.M2PROFI_CONFIG;
 			<a href="<?=$m2ClientSiteUrl?>" class="sidenav__backlink sidenav__backlink_mob">Вернуться на сайт</a>
 			<div style="font-size:7px;"><?=$_SERVER[SERVER_ADDR];?></div>
 			<ul class="sidenav-menu">
-				<li><a href="user.php?action=objects&home=60&sdan=0" class="active"><i><img src="template/default/images/menu-icon-1.svg" alt=""></i>Апартаменты</a></li>
+				<li><a href="user.php?action=objects&home=60&sdan=0" class="active"><i><img src="template/default/images/menu-icon-1.svg" alt=""></i><?= unit_phrase('menu_pl_nom') ?></a></li>
 				<?
 				if ($_SESSION['sh_login'] != 'keys1' && $_SESSION['sh_login'] != 'keys2' && $_SESSION['sh_login'] != 'em_nsv' && $_SESSION['sh_login'] != 'director') {
 				?>

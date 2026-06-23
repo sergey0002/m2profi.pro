@@ -4,12 +4,12 @@
         <div class="cp-empty cp-empty--index">
             <h2 class="cp-empty__title">Пока нет предложений для клиентов</h2>
             <p class="cp-empty__lead">
-                Коммерческое предложение — это подборка апартаментов с вашими примечаниями и персональной ссылкой для клиента.
+                <?= unit_template('compred_index_intro') ?>
             </p>
             <ol class="cp-empty__steps">
-                <li>Откройте нужный апартамент на шахматке.</li>
-                <li>В карточке апартамента нажмите «Добавить к предложению» — создайте новое или выберите существующее.</li>
-                <li>Добавьте другие апартаменты, напишите примечания и вводный текст.</li>
+                <li><?= unit_template('compred_index_step_open') ?></li>
+                <li><?= unit_template('compred_index_step_card') ?></li>
+                <li><?= unit_template('compred_index_step_more') ?></li>
                 <li>Нажмите «Поделиться предложением» и отправьте ссылку клиенту.</li>
             </ol>
             <p class="cp-empty__note">
@@ -19,7 +19,7 @@
         </div>
     <?php else: ?>
         <p class="cp-index-page__intro">
-            Здесь все ваши подборки для клиентов. Откройте предложение, чтобы добавить апартаменты, изменить текст и получить ссылку.
+            <?= unit_phrase('compred_index_list_hint') ?>
         </p>
         <div class="cp-index-list">
             <?php foreach ($data['list'] as $item):
@@ -36,7 +36,7 @@
                         <?= htmlspecialchars($caption) ?>
                     </a>
                     <div class="cp-index-item__meta">
-                        Апартаментов: <?= (int)($item['obj_count'] ?? 0) ?>
+                        <?= unit_phrase('compred_index_count_label') ?> <?= (int)($item['obj_count'] ?? 0) ?>
                         <?php if ($updated !== ''): ?> · обновлено <?= htmlspecialchars($updated) ?><?php endif; ?>
                     </div>
                 </div>

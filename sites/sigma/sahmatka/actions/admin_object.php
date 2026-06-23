@@ -193,7 +193,7 @@ if(trim($_POST[newstatus]) &&  check_access('admin') ) // Массовая ре�
 	
 		<div class="page-header" style="margin-bottom:0;">
 			<div class="page-header__logo"><img src="template/default/images/logo.svg" alt="" /></div>
-			<div class="page-header__title">Апартаменты</div>
+			<div class="page-header__title"><?= unit_phrase('page_title_pl_nom') ?></div>
 		</div>
 <?
 		object_menu();		

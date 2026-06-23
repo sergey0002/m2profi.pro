@@ -293,9 +293,9 @@ class ctr__compred extends ctr__
 
         if (!$this->resolve_apartment($obj_id)) {
             if ($return_url) {
-                $this->redirect_with_error($return_url, 'Апартамент не найден');
+                $this->redirect_with_error($return_url, unit_phrase('compred_not_found'));
             }
-            $this->json_response(['ok' => 0, 'error' => 'Апартамент не найден']);
+            $this->json_response(['ok' => 0, 'error' => unit_phrase('compred_not_found')]);
             return;
         }
 
@@ -352,7 +352,7 @@ class ctr__compred extends ctr__
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        add_log('Добавлен апартамент в предложение #' . $compred_id);
+        add_log(unit_phrase('compred_added') . ' #' . $compred_id);
 
         if ($return_url !== '') {
             $sep = (strpos($return_url, '?') !== false) ? '&' : '?';

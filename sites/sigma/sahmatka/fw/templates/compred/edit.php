@@ -18,7 +18,7 @@ $share_caption = (string)($compred['caption'] ?? '');
             <div class="cp-edit-header__main">
                 <h1 class="cp-edit-header__title" id="cp-main-title"><?= htmlspecialchars($compred['caption'] ?? '') ?></h1>
                 <p class="cp-edit-header__meta">
-                    Апартаментов в подборке: <span id="cp-objects-count" style="font-weight:700;color:var(--cp-accent);"><?= count($objects) ?></span>
+                    <?= unit_phrase('compred_edit_count_label') ?> <span id="cp-objects-count" style="font-weight:700;color:var(--cp-accent);"><?= count($objects) ?></span>
                 </p>
             </div>
             <div class="cp-edit-actions">
@@ -38,7 +38,7 @@ $share_caption = (string)($compred['caption'] ?? '');
                 <label for="cp-edit-intro" class="cp-intro-edit__label">Вводный текст для клиента</label>
                 <p class="cp-intro-edit__hint">Появится под названием на публичной странице. Можно написать приветствие, условия или краткое описание подборки.</p>
                 <textarea id="cp-edit-intro" class="cp-intro-edit__input" rows="4"
-                          placeholder="Например: Добрый день! Подготовили для вас подборку апартаментов с учётом ваших пожеланий…"><?= htmlspecialchars($intro_text) ?></textarea>
+                          placeholder="<?= htmlspecialchars(unit_phrase('compred_edit_intro_placeholder')) ?>"><?= htmlspecialchars($intro_text) ?></textarea>
             </div>
         </div>
     </div>
@@ -49,9 +49,9 @@ $share_caption = (string)($compred['caption'] ?? '');
     </div>
     <?php else: ?>
     <div class="cp-empty">
-        <h2 class="cp-empty__title">В этом предложении пока нет апартаментов</h2>
+        <h2 class="cp-empty__title"><?= unit_phrase('compred_edit_empty_title') ?></h2>
         <p class="cp-empty__lead">
-            Откройте апартамент на шахматке и нажмите «Добавить к предложению», выбрав эту подборку в списке.
+            <?= unit_phrase('compred_edit_empty_hint') ?>
         </p>
         <a href="/sahmatka/user.php?action=objects" class="cp-btn">Перейти к объектам</a>
     </div>

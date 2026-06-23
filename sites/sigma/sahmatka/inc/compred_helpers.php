@@ -63,7 +63,7 @@ function compred_apartment_line(array $a): string
     }
 
     return $section_label . ', этаж ' . ($a['floor'] ?? '') . ', '
-        . (function_exists('unit_label_cap') ? unit_label_cap('nom') : 'Апартамент')
+        . (function_exists('unit_label_cap') ? unit_label_cap('nom') : '')
         . ' №' . ($a['apartment_num'] ?? '');
 }
 
@@ -230,25 +230,14 @@ function compred_absolute_url(string $path): string
 
 function compred_apartments_count_label(int $count): string
 {
-    $n = abs($count) % 100;
-    $n1 = $n % 10;
-    if ($n > 10 && $n < 20) {
-        return 'апартаментов';
-    }
-    if ($n1 > 1 && $n1 < 5) {
-        return 'апартамента';
-    }
-    if ($n1 === 1) {
-        return 'апартамент';
-    }
-    return 'апартаментов';
+    return function_exists('unit_count_label') ? unit_count_label($count) : '';
 }
 
 function compred_share_links(string $url, string $title): array
 {
     $text = trim($title);
     if ($text === '') {
-        $text = 'Подборка апартаментов';
+        $text = function_exists('unit_phrase') ? unit_phrase('compred_collection') : '';
     }
     $encodedUrl = rawurlencode($url);
     $encodedText = rawurlencode($text);
@@ -266,7 +255,7 @@ function compred_public_page_meta(array $compred, array $objects, string $public
 {
     $title = trim((string)($compred['caption'] ?? ''));
     if ($title === '') {
-        $title = 'Подборка апартаментов';
+        $title = function_exists('unit_phrase') ? unit_phrase('compred_collection') : '';
     }
 
     $intro = trim(preg_replace('/\s+/u', ' ', strip_tags((string)($compred['intro_text'] ?? ''))));
@@ -274,9 +263,11 @@ function compred_public_page_meta(array $compred, array $objects, string $public
     if ($intro !== '') {
         $description = mb_strlen($intro) > 200 ? mb_substr($intro, 0, 197) . '…' : $intro;
     } elseif ($count > 0) {
-        $description = 'Подборка из ' . $count . ' ' . compred_apartments_count_label($count) . ' — M2 Profi';
+        $description = function_exists('unit_phrase')
+            ? sprintf(unit_phrase('compred_collection_count'), $count, compred_apartments_count_label($count))
+            : '';
     } else {
-        $description = 'Персональная подборка апартаментов от M2 Profi';
+        $description = function_exists('unit_phrase') ? unit_phrase('compred_collection_personal') : '';
     }
 
     $image = '/sahmatka/template/default/images/home-og.jpg';

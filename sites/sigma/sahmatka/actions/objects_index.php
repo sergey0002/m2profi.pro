@@ -22,7 +22,7 @@ $h = $sa->get_homes_arr();
 		
  <div class="page-header" style="margin-bottom:0;">
 			<div class="page-header__logo"><img src="template/default/images/logo.svg" alt="" /></div>
-			<div class="page-header__title">Апартаменты</div>
+			<div class="page-header__title"><?= unit_phrase('page_title_pl_nom') ?></div>
 			 
 			<div style="width:100%; text-align:right; padding-top:30px; cursor:pointer;" class="open_xxpanel hide-mobile">
 				<div style=" display:inline-block; padding: 15px; border-radius:20px; background: #00CDAE; width:500px; max-width:100%;  ">

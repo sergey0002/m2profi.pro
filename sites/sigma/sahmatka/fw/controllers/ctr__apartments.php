@@ -712,7 +712,7 @@ function act__order()
     $compred_selected_id = 0;
     if (!empty($_SESSION['sh_id'])) {
         if (!empty($_GET['compred_ok'])) {
-            $compred_msg = 'Апартамент добавлен в предложение';
+            $compred_msg = unit_phrase('compred_added');
         }
         $compred_selected_id = (int)($_GET['compred_id'] ?? 0);
         if (!empty($_GET['compred_err'])) {
