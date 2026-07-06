@@ -1131,6 +1131,15 @@ $( "#filtrform input,#filtrform select" ).change(function() {
 		}
 	}
 
+	/** zapisx2 есть только в sites/em, get_object() его не находит (ищет etalon_site). */
+	function _get_zapisx2()
+	{
+		if (!class_exists('ctr__zapisx2')) {
+			require_once __DIR__ . '/ctr__zapisx2.php';
+		}
+		return new ctr__zapisx2();
+	}
+
 	function act__backendform()
 	{
 		$this->_zapis_add_check_access();
@@ -1160,7 +1169,7 @@ $( "#filtrform input,#filtrform select" ).change(function() {
 			return;
 		}
 
-		$zx = $r->get_object('zapisx2');
+		$zx = $this->_get_zapisx2();
 		$pom = !empty($_REQUEST['pom']) ? 2 : 1;
 		$dkp = !empty($_REQUEST['dkp']) ? 2 : 1;
 		$zx->get_graficx(1, $pom, $dkp);
@@ -1176,13 +1185,43 @@ $( "#filtrform input,#filtrform select" ).change(function() {
 		}
 	}
 
+	function act__sel_section_add()
+	{
+		$this->_zapis_add_check_access();
+		global $mysql;
+
+		$home_id = (int)$_REQUEST['home_id'];
+		print '<option value="">Выбрать секцию</option>';
+		if (!$home_id) {
+			return;
+		}
+
+		$q = 'SELECT section_id FROM apartaments
+			WHERE home_id = "' . $home_id . '"
+			GROUP BY section_id
+			ORDER BY section_id';
+		$rows = $mysql->get_arr($q);
+
+		foreach ($rows as $v) {
+			if ($home_id == 49 && (string)$v['section_id'] === '3') {
+				continue;
+			}
+			printf(
+				'<option value="%d">Секция №%d</option>',
+				(int)$v['section_id'],
+				(int)$v['section_id']
+			);
+		}
+	}
+
 	function act__sel_apartament_add()
 	{
 		$this->_zapis_add_check_access();
 		global $mysql;
 
 		$home_id = (int)$_REQUEST['home_id'];
-		if (!$home_id) {
+		$section_id = (int)$_REQUEST['section_id'];
+		if (!$home_id || !$section_id) {
 			print '<option value="">Выбрать квартиру</option>';
 			return;
 		}
@@ -1192,7 +1231,8 @@ $( "#filtrform input,#filtrform select" ).change(function() {
 			LEFT JOIN zapis z ON z.home_id = a.home_id
 				AND z.apartment_num = a.apartment_num AND z.del = "0"
 			WHERE a.home_id = "' . $home_id . '"
-			ORDER BY a.section_id, a.apartment_num';
+			AND a.section_id = "' . $section_id . '"
+			ORDER BY a.apartment_num';
 		$rows = $mysql->get_arr($q);
 
 		print '<option value="">Выбрать квартиру</option>';
@@ -1202,13 +1242,11 @@ $( "#filtrform input,#filtrform select" ).change(function() {
 			$class = $taken ? 'opt-apt-taken' : 'opt-apt-free';
 			$suffix = $taken ? ' — есть запись' : '';
 			printf(
-				'<option value="%d" data-section="%d" class="%s" style="%s">№%d (сек. %d)%s</option>',
+				'<option value="%d" class="%s" style="%s">№%d%s</option>',
 				(int)$v['apartment_num'],
-				(int)$v['section_id'],
 				$class,
 				$style,
 				(int)$v['apartment_num'],
-				(int)$v['section_id'],
 				htmlspecialchars($suffix)
 			);
 		}
@@ -1218,7 +1256,7 @@ $( "#filtrform input,#filtrform select" ).change(function() {
 	{
 		$this->_zapis_add_check_access();
 		global $r;
-		$zx = $r->get_object('zapisx2');
+		$zx = $this->_get_zapisx2();
 		$zx->render_sel_date_add($_REQUEST);
 	}
 
@@ -1226,7 +1264,7 @@ $( "#filtrform input,#filtrform select" ).change(function() {
 	{
 		$this->_zapis_add_check_access();
 		global $r;
-		$zx = $r->get_object('zapisx2');
+		$zx = $this->_get_zapisx2();
 		$zx->render_sel_time_add($_REQUEST);
 	}
 
@@ -1279,7 +1317,7 @@ $( "#filtrform input,#filtrform select" ).change(function() {
 		$data['email'] = $_POST['email'];
 		$data['at'] = time();
 
-		$zx2 = $r->get_object('zapisx2');
+		$zx2 = $this->_get_zapisx2();
 
 		if (!$vne_grafika) {
 			$free = $zx2->act__testfree($home_id, $_POST['date'], $_POST['time'], $pom, $dkp);

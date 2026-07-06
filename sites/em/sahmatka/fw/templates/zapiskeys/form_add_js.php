@@ -2,7 +2,7 @@
 function blocked_child_select(indexselect)
 {
 	if (!indexselect && indexselect !== 0) { indexselect = 1; }
-	$('*[data-bl]').each(function () {
+	$('#zapisform_add select[data-bl]').each(function () {
 		var ind = Number($(this).attr('data-bl'));
 		if (ind > indexselect) {
 			$(this).fwreset_select_options();
@@ -35,13 +35,16 @@ function blocked_child_select(indexselect)
 				$calback();
 			}
 			$(obj).trigger('change');
-			$('#form_progressbar').hide();
+			$('#form_progressbar').removeClass('is-active').hide();
 		});
 		return this;
 	};
 
 	$.fn.fwreset_select_options = function () {
 		var sel = this;
+		if (!sel.is('select')) {
+			return this;
+		}
 		sel.prop('selected', false);
 		$('option[value=""]', sel).prop('selected', true);
 		var option = $('option[value!=""]', sel);
@@ -60,6 +63,8 @@ $(document).ready(function () {
 	function reloadGraficDependent() {
 		if ($('#apartament_num').val()) {
 			$('#date').fwloadx(AJAX + '&act=sel_date_add');
+		} else if ($('#section_id').val()) {
+			$('#section_id').fwloadx(AJAX + '&act=sel_section_add');
 		} else if ($('#home_id').val()) {
 			$('#home_id').fwloadx(AJAX + '&act=sel_home_add');
 		}
@@ -67,16 +72,24 @@ $(document).ready(function () {
 
 	$('#home_id').fwloadx(AJAX + '&act=sel_home_add');
 
-	$('#vne_grafika').change(function () {
-		blocked_child_select(Number($(this).attr('data-bl')));
+	$('#zapis_add_vne').on('change', function () {
+		blocked_child_select(-1);
 		$('#home_id').fwloadx(AJAX + '&act=sel_home_add');
 	});
 
-	$('#pom, #dkp').change(function () {
+	$('#zapis_add_pom, input[name="dkp"]').on('change', function () {
 		reloadGraficDependent();
 	});
 
 	$('#home_id').change(function () {
+		if ($(this).val()) {
+			$('#section_id').fwloadx(AJAX + '&act=sel_section_add');
+		} else {
+			blocked_child_select(Number($(this).attr('data-bl')));
+		}
+	});
+
+	$('#section_id').change(function () {
 		if ($(this).val()) {
 			$('#apartament_num').fwloadx(AJAX + '&act=sel_apartament_add');
 		} else {
@@ -85,8 +98,6 @@ $(document).ready(function () {
 	});
 
 	$('#apartament_num').change(function () {
-		var section = $('#apartament_num option:selected').data('section');
-		$('#section_id').val(section || '');
 		if ($(this).val()) {
 			$('#date').fwloadx(AJAX + '&act=sel_date_add');
 		} else {

@@ -27,6 +27,42 @@
 	font-size: 20px;
 	left: 0;
 	top: 0;
+	pointer-events: none;
+}
+
+.zapis-add-form__progress.is-active {
+	display: block;
+	pointer-events: auto;
+}
+
+.zapis-add-form__static {
+	position: relative;
+	z-index: 2;
+}
+
+.zapis-add-form__label {
+	font-weight: bold;
+}
+
+.zapis-add-form__check,
+.zapis-add-form__radio {
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	margin-right: 16px;
+}
+
+.zapis-add-form__check input,
+.zapis-add-form__radio input {
+	width: 16px !important;
+	height: 16px !important;
+	min-width: 16px;
+	opacity: 1 !important;
+	pointer-events: auto !important;
+	position: static !important;
+	margin: 0;
+	flex-shrink: 0;
 }
 
 .zapis-add-form select option.opt-free {
