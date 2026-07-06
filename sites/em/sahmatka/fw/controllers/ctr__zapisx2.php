@@ -1708,6 +1708,143 @@ $_GET['date'] = '29.07.2025';
 	 
 
 	/**
+	 * @return array{free:int, total:int, in_grafic:bool}
+	 */
+	function slot_stats($home_id, $date_dmY, $time_Hi, $group_id = null)
+	{
+		if ($group_id === null) {
+			$group_id = $this->graficx_i_grra[$home_id][$date_dmY] ?? null;
+		}
+		if (!$group_id || !isset($this->graficx_i_gr_c2[$group_id][$time_Hi])) {
+			return ['free' => 0, 'total' => 0, 'in_grafic' => false];
+		}
+		$total = (int)($this->graficx_i_gr_c2[$group_id][$time_Hi] ?? 0);
+		$free = (int)($this->graficx_i_za_gr_free2[$group_id][$time_Hi] ?? 0);
+		return ['free' => $free, 'total' => $total, 'in_grafic' => true];
+	}
+
+	/** Админ-форма: даты (без промо-хардкода и isApartmentAllowed). */
+	function render_sel_date_add($req)
+	{
+		$home_id = (int)($req['home_id'] ?? 0);
+		$vne = !empty($req['vne_grafika']);
+		$pom = !empty($req['pom']) ? 2 : 1;
+		$dkp = !empty($req['dkp']) ? 2 : 1;
+		$this->get_graficx(1, $pom, $dkp);
+
+		print '<option value="">Выбрать дату</option>';
+
+		if (!$vne) {
+			if (empty($this->graficx_i_za_gr_free[$home_id])) {
+				return;
+			}
+			$h = (int)date('H');
+			$date_t = date('d.m.Y');
+			$tom_date = (new DateTime('+1 days'))->format('d.m.Y');
+			$wn_t = (int)date('w');
+			$next_mondayt = (new DateTime('next monday'))->format('d.m.Y');
+
+			foreach ($this->graficx_i_za_gr_free[$home_id] as $k => $v) {
+				if (empty($this->graficx_i_za_gr_free2[$k])) {
+					continue;
+				}
+				$fd = $this->graficx_i_grra2[$k];
+				$wn = date('w', strtotime($fd));
+
+				if ($h >= 16 && (($fd == $date_t || $fd == $tom_date) || ($wn_t > 4 && $fd == $next_mondayt))) {
+					continue;
+				}
+				if ($fd == $date_t) {
+					continue;
+				}
+
+				$free_sum = 0;
+				$total_sum = 0;
+				foreach ($this->graficx_i_za_gr_free2[$k] as $ti => $free) {
+					$free_sum += (int)$free;
+					$total_sum += (int)($this->graficx_i_gr_c2[$k][$ti] ?? 0);
+				}
+				$label = $fd . ' (' . $free_sum . '/' . $total_sum . ')';
+				print '<option value="' . htmlspecialchars($fd) . '" class="opt-in-grafic">' . htmlspecialchars($label) . '</option>';
+			}
+			return;
+		}
+
+		$start = new DateTime('tomorrow');
+		$end = (new DateTime())->modify('+1 month');
+		for ($d = clone $start; $d <= $end; $d->modify('+1 day')) {
+			$fd = $d->format('d.m.Y');
+			$group = $this->graficx_i_grra[$home_id][$fd] ?? null;
+			if ($group) {
+				$free_sum = 0;
+				$total_sum = 0;
+				if (!empty($this->graficx_i_za_gr_free2[$group])) {
+					foreach ($this->graficx_i_za_gr_free2[$group] as $ti => $free) {
+						$free_sum += (int)$free;
+						$total_sum += (int)($this->graficx_i_gr_c2[$group][$ti] ?? 0);
+					}
+				}
+				$label = $fd . ' (' . $free_sum . '/' . $total_sum . ')';
+				$class = 'opt-in-grafic';
+			} else {
+				$label = $fd;
+				$class = 'opt-vne-date';
+			}
+			print '<option value="' . htmlspecialchars($fd) . '" class="' . $class . '">' . htmlspecialchars($label) . '</option>';
+		}
+	}
+
+	/** Админ-форма: время (без промо-хардкода и isApartmentAllowed). */
+	function render_sel_time_add($req)
+	{
+		$home_id = (int)($req['home_id'] ?? 0);
+		$date = $req['date'] ?? '';
+		$vne = !empty($req['vne_grafika']);
+		$pom = !empty($req['pom']) ? 2 : 1;
+		$dkp = !empty($req['dkp']) ? 2 : 1;
+		$this->get_graficx(1, $pom, $dkp);
+
+		print '<option value="">Выбрать время</option>';
+		$group = $this->graficx_i_grra[$home_id][$date] ?? null;
+
+		if (!$vne) {
+			if (!$group || empty($this->graficx_i_za_gr_free2[$group])) {
+				return;
+			}
+			foreach ($this->graficx_i_za_gr_free2[$group] as $t => $free) {
+				$total = (int)($this->graficx_i_gr_c2[$group][$t] ?? 0);
+				if ($free <= 0) {
+					print '<option value="' . htmlspecialchars($t) . '" class="opt-full" style="color:#999;" disabled>'
+						. htmlspecialchars($t . ' (0/' . $total . ')') . '</option>';
+					continue;
+				}
+				print '<option value="' . htmlspecialchars($t) . '" class="opt-free" style="font-weight:bold;color:#000;">'
+					. htmlspecialchars($t . ' (' . $free . '/' . $total . ')') . '</option>';
+			}
+			return;
+		}
+
+		foreach ($this->time_arr as $t => $_) {
+			$stats = $this->slot_stats($home_id, $date, $t, $group);
+			if (!$stats['in_grafic']) {
+				$style = 'color:#0066cc;';
+				$class = 'opt-vne-time';
+				$label = $t . ' (?/—)';
+			} elseif ($stats['free'] > 0) {
+				$style = 'font-weight:bold;color:#000;';
+				$class = 'opt-in-grafic';
+				$label = $t . ' (' . $stats['free'] . '/' . $stats['total'] . ')';
+			} else {
+				$style = 'color:#c45c00;';
+				$class = 'opt-full-warn';
+				$label = $t . ' (0/' . $stats['total'] . ')';
+			}
+			print '<option value="' . htmlspecialchars($t) . '" class="' . $class . '" style="' . $style . '">'
+				. htmlspecialchars($label) . '</option>';
+		}
+	}
+
+	/**
 	 * Проверка свободности слота с учетом типа записи
 	 * 
 	 * @param int $home ID дома
@@ -1846,7 +1983,43 @@ $_GET['date'] = '29.07.2025';
 		}
 	}
 
+	/**
+	 * Вставка записи из админ-формы zapiskeys (поддержка «вне графика»).
+	 * atomic_insert_zapis() не изменяется.
+	 */
+	function admin_insert_zapis($data, $vne_grafika = false)
+	{
+		global $mysql;
 
+		if (!$vne_grafika) {
+			return $this->atomic_insert_zapis($data);
+		}
+
+		$mysql->sql('START TRANSACTION');
+		try {
+			$q_check_apt = 'SELECT zapis_id FROM zapis
+				WHERE home_id = "' . (int)$data['home_id'] . '"
+				AND apartment_num = "' . (int)$data['apartment_num'] . '"
+				AND del = "0" FOR UPDATE';
+			$existing = $mysql->get_arr($q_check_apt, 1);
+			if ($existing) {
+				$mysql->sql('ROLLBACK');
+				return ['success' => false, 'message' => 'Квартира уже записана', 'id' => null];
+			}
+
+			$insert_id = $mysql->insert('zapis', $data);
+			if (!$insert_id) {
+				$mysql->sql('ROLLBACK');
+				return ['success' => false, 'message' => 'Ошибка вставки записи', 'id' => null];
+			}
+
+			$mysql->sql('COMMIT');
+			return ['success' => true, 'message' => 'Запись успешно создана', 'id' => $insert_id];
+		} catch (Exception $e) {
+			$mysql->sql('ROLLBACK');
+			return ['success' => false, 'message' => 'Ошибка: ' . $e->getMessage(), 'id' => null];
+		}
+	}
 
 	/**
 	 * AJAX: Проверка конфликтов правил

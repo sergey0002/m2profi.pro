@@ -533,6 +533,15 @@ $GLOBALS['config']['mysql_password'] = 'root';
 $GLOBALS['config']['mysql_base'] = 'm2profi_em';
 $GLOBALS['config']['server'] = '127.0.0.1';
 
+// Панель статистики на user.php?action=objects (objects_index.php)
+$GLOBALS['booking_guard'] = [
+	'enabled' => true,
+	'free_statuses' => [0, 2],
+	'free_percent_threshold' => 10.0,
+	'admin_service_panel_enabled' => true,
+	'admin_service_panel_logins' => ['admin', 'fd'],
+];
+
 include(__DIR__ . '/../../../core/classes.php');
 
 

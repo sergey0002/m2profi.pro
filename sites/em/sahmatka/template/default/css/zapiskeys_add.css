@@ -1,0 +1,64 @@
+.zapis-add-form {
+	position: relative;
+	color: #000;
+	padding: 10px;
+}
+
+.zapis-add-form input,
+.zapis-add-form select {
+	padding: 5px;
+	max-width: 100%;
+}
+
+.zapis-add-form label {
+	font-weight: bold;
+}
+
+.zapis-add-form__progress {
+	width: 100%;
+	display: none;
+	position: absolute;
+	background: #fff;
+	height: 100%;
+	z-index: 1000;
+	opacity: 0.8;
+	text-align: center;
+	padding-top: 20%;
+	font-size: 20px;
+	left: 0;
+	top: 0;
+}
+
+.zapis-add-form select option.opt-free {
+	font-weight: bold;
+	color: #000;
+}
+
+.zapis-add-form select option.opt-full {
+	color: #999;
+}
+
+.zapis-add-form select option.opt-full-warn {
+	color: #c45c00;
+}
+
+.zapis-add-form select option.opt-vne-date {
+	color: #c45c00;
+}
+
+.zapis-add-form select option.opt-vne-time {
+	color: #0066cc;
+}
+
+.zapis-add-form select option.opt-apt-free {
+	font-weight: bold;
+	color: #000;
+}
+
+.zapis-add-form select option.opt-apt-taken {
+	color: #333;
+}
+
+.zapis-add-form select option.opt-in-grafic {
+	color: #000;
+}

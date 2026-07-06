@@ -845,9 +845,11 @@ class ctr__zapiskeys extends ctr__
 		
 		?>
 		<a href="/sahmatka/ajax_router.php?ctr=zapiskeys&act=archive">Скачать архив</a>
-		<div style="text-align:right; width:100%; padding:20px; padding-left:0; padding-right:0;">
-			<a style="display:none;" href="<?=$r->acturl('zapiskeys','backendform','iframe_router.php');?>" class="btn_2  iframe_r">Запись </a>
-			<a href="form_zapis_editor.php" style="display:none;"  class="btn_2  iframe_r">Запись </a>
+		<div style="text-align:right; width:100%; padding:20px 0;">
+			<?php if (check_access('admin') || $_SESSION['sh_login'] == 'op15'): ?>
+			<a href="<?= $r->acturl('zapiskeys', 'backendform', 'iframe_router.php') ?>"
+			   class="btn_2 iframe_r">Добавить запись</a>
+			<?php endif; ?>
 		</div>
  
 			<?	
@@ -1120,6 +1122,204 @@ $( "#filtrform input,#filtrform select" ).change(function() {
 		
 		$v['date'] = date("d.m.Y",strtotime($v['date']));
 		$this->tpl($v,'zapiskeys','zapis_card2'); 
+	}
+
+	function _zapis_add_check_access()
+	{
+		if (!check_access('admin') && $_SESSION['sh_login'] != 'op15') {
+			die('Ошибка доступа');
+		}
+	}
+
+	function act__backendform()
+	{
+		$this->_zapis_add_check_access();
+		global $r;
+		$tpl = [
+			'form_action' => $r->acturl('zapiskeys', 'zapisform_add', 'ajax_router.php'),
+			'ajax_base'   => '/sahmatka/ajax_router.php?ctr=zapiskeys',
+		];
+		$this->tpl($tpl, 'zapiskeys', 'form_add');
+	}
+
+	function act__sel_home_add()
+	{
+		$this->_zapis_add_check_access();
+		global $r, $mysql;
+
+		$vne = !empty($_REQUEST['vne_grafika']);
+		print '<option value="">Выбрать дом</option>';
+
+		if ($vne) {
+			$arr = $mysql->get_arr('SELECT * FROM homes WHERE show_keys="1" ORDER BY title');
+			foreach ($arr as $v) {
+				$title = $v['long_title'] ?: $v['title'];
+				print '<option value="' . (int)$v['home_id'] . '" style="font-weight:bold;">Дом №'
+					. htmlspecialchars($title) . '</option>';
+			}
+			return;
+		}
+
+		$zx = $r->get_object('zapisx2');
+		$pom = !empty($_REQUEST['pom']) ? 2 : 1;
+		$dkp = !empty($_REQUEST['dkp']) ? 2 : 1;
+		$zx->get_graficx(1, $pom, $dkp);
+
+		foreach ($zx->homes_arr as $k => $v) {
+			if (!empty($zx->graficx_i_za_gr_free[$k])) {
+				print '<option value="' . (int)$k . '" style="font-weight:bold;">Дом №'
+					. htmlspecialchars($zx->select_homes[$k]) . '</option>';
+			} else {
+				print '<option value="' . (int)$k . '" disabled>Дом №'
+					. htmlspecialchars($zx->select_homes[$k]) . '</option>';
+			}
+		}
+	}
+
+	function act__sel_apartament_add()
+	{
+		$this->_zapis_add_check_access();
+		global $mysql;
+
+		$home_id = (int)$_REQUEST['home_id'];
+		if (!$home_id) {
+			print '<option value="">Выбрать квартиру</option>';
+			return;
+		}
+
+		$q = 'SELECT a.apartment_num, a.section_id, z.zapis_id
+			FROM apartaments a
+			LEFT JOIN zapis z ON z.home_id = a.home_id
+				AND z.apartment_num = a.apartment_num AND z.del = "0"
+			WHERE a.home_id = "' . $home_id . '"
+			ORDER BY a.section_id, a.apartment_num';
+		$rows = $mysql->get_arr($q);
+
+		print '<option value="">Выбрать квартиру</option>';
+		foreach ($rows as $v) {
+			$taken = !empty($v['zapis_id']);
+			$style = $taken ? 'color:#333;' : 'color:#000; font-weight:bold;';
+			$class = $taken ? 'opt-apt-taken' : 'opt-apt-free';
+			$suffix = $taken ? ' — есть запись' : '';
+			printf(
+				'<option value="%d" data-section="%d" class="%s" style="%s">№%d (сек. %d)%s</option>',
+				(int)$v['apartment_num'],
+				(int)$v['section_id'],
+				$class,
+				$style,
+				(int)$v['apartment_num'],
+				(int)$v['section_id'],
+				htmlspecialchars($suffix)
+			);
+		}
+	}
+
+	function act__sel_date_add()
+	{
+		$this->_zapis_add_check_access();
+		global $r;
+		$zx = $r->get_object('zapisx2');
+		$zx->render_sel_date_add($_REQUEST);
+	}
+
+	function act__sel_time_add()
+	{
+		$this->_zapis_add_check_access();
+		global $r;
+		$zx = $r->get_object('zapisx2');
+		$zx->render_sel_time_add($_REQUEST);
+	}
+
+	function act__zapisform_add()
+	{
+		$this->_zapis_add_check_access();
+		global $mysql, $r;
+
+		$required_fields = ['home_id', 'section_id', 'apartament_num', 'date', 'time', 'phone', 'fio', 'email'];
+		foreach ($required_fields as $field) {
+			if (empty($_POST[$field])) {
+				die('<center><br/><br/><br/>Ошибка: не заполнено поле ' . htmlspecialchars($field) . '</center>');
+			}
+		}
+
+		$home_id = (int)$_POST['home_id'];
+		$section_id = (int)$_POST['section_id'];
+		$apartament_num = (int)$_POST['apartament_num'];
+		$pom = !empty($_POST['pom']) ? 1 : 0;
+		$dkp = !empty($_POST['dkp']) ? 1 : 0;
+		$vne_grafika = !empty($_POST['vne_grafika']);
+
+		$q_apt = 'SELECT apartment_num FROM apartaments
+			WHERE home_id = "' . $home_id . '"
+			AND section_id = "' . $section_id . '"
+			AND apartment_num = "' . $apartament_num . '"';
+		if (!$mysql->get_arr($q_apt, 1)) {
+			die('<center><br/><br/><br/>Ошибка: квартира не найдена в базе данных</center>');
+		}
+
+		$date_check = DateTime::createFromFormat('d.m.Y', $_POST['date']);
+		if (!$date_check) {
+			die('<center><br/><br/><br/>Ошибка: некорректный формат даты</center>');
+		}
+		if (!preg_match('/^\d{2}:\d{2}$/', $_POST['time'])) {
+			die('<center><br/><br/><br/>Ошибка: некорректный формат времени</center>');
+		}
+
+		$data = [];
+		$data['home_id'] = $home_id;
+		$data['date'] = date('Y-m-d', strtotime($_POST['date']));
+		$data['section'] = $section_id;
+		$data['apartment_num'] = $apartament_num;
+		$data['time'] = $_POST['time'] . ':00';
+		$data['phone'] = $_POST['phone'];
+		$data['new_passport'] = isset($_POST['passprot']) ? (int)$_POST['passprot'] : 0;
+		$data['fio'] = $_POST['fio'];
+		$data['pom'] = $pom;
+		$data['dkp'] = $dkp;
+		$data['email'] = $_POST['email'];
+		$data['at'] = time();
+
+		$zx2 = $r->get_object('zapisx2');
+
+		if (!$vne_grafika) {
+			$free = $zx2->act__testfree($home_id, $_POST['date'], $_POST['time'], $pom, $dkp);
+			if (!$free) {
+				die('<center><br/><br/><br/>Произошла ошибка - выбранное время недоступно<br/>попробуйте записаться на другое время</center>');
+			}
+		}
+
+		$result = $zx2->admin_insert_zapis($data, $vne_grafika);
+
+		if (!$result['success'] && $result['message'] === 'Квартира уже записана') {
+			$q = 'SELECT zapis.*, homes.title, homes.keys_adress FROM zapis
+				LEFT JOIN homes ON homes.home_id = zapis.home_id
+				WHERE zapis.del="0"
+				AND zapis.home_id = "' . $home_id . '"
+				AND zapis.apartment_num = "' . $apartament_num . '"';
+			$row = $mysql->get_arr($q, 1);
+			$this->card('', $row, 'Вы были записаны ранее');
+			return;
+		}
+
+		if (!$result['success']) {
+			print '<center><br/><br/><br/>Произошла ошибка - ' . htmlspecialchars($result['message']) . '</center>';
+			return;
+		}
+
+		$insid = $result['id'];
+		ob_start();
+		$this->card($insid, '', 'Запись создана');
+		$con = ob_get_clean();
+
+		$home_title = $zx2->homes_arr[$home_id]['title'] ?? $home_id;
+		$subj = 'Запись на выдачу ключей - дом:' . $home_title
+			. ' кв.:' . $apartament_num . ' дата:' . $_POST['date'] . ' время:' . $data['time'];
+
+		multi_attach_mail('89236470002@mail.ru', $subj, $con, 'sdsasd@m2profi.pro', $GLOBALS['config']['domain']);
+		multi_attach_mail($data['email'], $subj, $con, 'admin@m2profi.pro', $GLOBALS['config']['domain']);
+		multi_attach_mail('op15@em-nsk.group', $subj, $con, 'admin@m2profi.pro', $GLOBALS['config']['domain']);
+
+		print $con;
 	}
 	
 	
