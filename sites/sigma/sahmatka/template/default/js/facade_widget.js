@@ -353,8 +353,8 @@
     '.fw-stage img { display: block; width: 100%; height: auto; border: 0; max-width: none; pointer-events: none; -webkit-user-drag: none; vertical-align: top; }',
     '.fw-stage svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }',
     '.fw-poly { fill-opacity: var(--fw-facade-idle-opacity, 0.12); stroke-width: 1.5; stroke-opacity: 0.55; cursor: pointer; transition: fill-opacity 0.18s ease, stroke-width 0.18s ease, stroke-opacity 0.18s ease, fill 0.18s ease, stroke 0.18s ease; outline: none; }',
-    '.fw-poly.is-hover, .fw-poly.is-active, .fw-poly:focus-visible { fill: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; stroke: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; fill-opacity: var(--fw-facade-hl-opacity, 0.58); stroke-opacity: 1; stroke-width: 2.5; }',
-    '.fw-poly.is-scroll-reveal { fill: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; stroke: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; fill-opacity: var(--fw-facade-reveal-opacity, 0.65); stroke-opacity: 1; stroke-width: 2.75; }',
+    '.fw-poly.is-hover, .fw-poly.is-active, .fw-poly:focus-visible { fill: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; stroke: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; fill-opacity: var(--fw-facade-hl-opacity, 0.58); stroke-opacity: var(--fw-facade-stroke-opacity, 0.4); stroke-width: 2; }',
+    '.fw-poly.is-scroll-reveal { fill: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; stroke: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; fill-opacity: var(--fw-facade-reveal-opacity, 0.65); stroke-opacity: var(--fw-facade-reveal-stroke-opacity, 0.45); stroke-width: 2; }',
     '@media (prefers-reduced-motion: reduce) { .fw-poly { transition: none; } }',
     /* тултип фасада = тот же glass-стиль, что у плана (fw-apt-tooltip) */
     '.fw-tooltip, .fw-apt-tooltip { position: absolute; z-index: 8; pointer-events: none; padding: 12px 16px; border-radius: 0; background: rgba(36,36,40,0.58); color: #fff; text-align: left; line-height: 1.3; opacity: 0; transform: translate(-50%, calc(-100% - 12px)); transition: none; white-space: nowrap; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 2px 12px rgba(0,0,0,0.22); }',
@@ -1296,6 +1296,9 @@
     root.style.setProperty('--fw-facade-hl-opacity', String(f.opacity));
     root.style.setProperty('--fw-facade-idle-opacity', String(f.idleOpacity));
     root.style.setProperty('--fw-facade-reveal-opacity', String(f.revealOpacity));
+    /* обводка = тот же цвет, чуть прозрачнее заливки — мягкий край */
+    root.style.setProperty('--fw-facade-stroke-opacity', String(Math.max(0, Math.min(1, f.opacity * 0.7))));
+    root.style.setProperty('--fw-facade-reveal-stroke-opacity', String(Math.max(0, Math.min(1, f.revealOpacity * 0.7))));
     root.style.setProperty('--fw-apt-hl-color', a.color);
     root.style.setProperty('--fw-apt-hl-opacity', String(a.opacity));
     root.style.setProperty('--fw-apt-hover-opacity', String(a.hoverOpacity));
@@ -3404,7 +3407,7 @@
 
   var api = {
     mount: mount,
-    version: '1.2.23'
+    version: '1.2.24'
   };
 
   global.FacadeWidget = api;
