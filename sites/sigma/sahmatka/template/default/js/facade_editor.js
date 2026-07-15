@@ -82,11 +82,19 @@
     var saveBtn = document.getElementById('facade_floor_save');
     var cancelBtn = document.getElementById('facade_floor_cancel');
     var dirtyActions = document.getElementById('facade_dirty_actions');
+    var uploadInput = document.getElementById('facade_upload_input');
+    var uploadBtn = document.getElementById('facade_upload_btn');
+    var clearFloorBtn = document.getElementById('facade_clear_floor');
+    var clearAllBtn = document.getElementById('facade_clear_all');
 
     var drawToolActive = false;
     var deleteModeActive = false;
     var savingGeometry = false;
     var reverting = false;
+    var uploadInProgress = false;
+    var clearingMarkup = false;
+    var hasImage = !!(cfg.imageUrl && cfg.imageWidth && cfg.imageHeight);
+    var currentOverlay = null;
     /** @type {Object.<string, {id:number,section:number,floor:number,label:string,color:string,points:Array}>} */
     var pendingDeletes = {};
     var flushingDeletes = false;
@@ -240,7 +248,7 @@
      * remount/restore vs. in-flight save может задублировать слои или потерять id.
      */
     function isBusy() {
-        return savingGeometry || flushingDeletes || reverting;
+        return savingGeometry || flushingDeletes || reverting || uploadInProgress || clearingMarkup;
     }
 
     function setControlsBusy(busy) {
@@ -248,6 +256,9 @@
         if (cancelBtn) cancelBtn.disabled = !!busy;
         if (sectionSelect) sectionSelect.disabled = !!busy;
         if (floorSelect) floorSelect.disabled = !!busy;
+        if (uploadBtn) uploadBtn.disabled = !!busy;
+        if (clearFloorBtn) clearFloorBtn.disabled = !!busy;
+        if (clearAllBtn) clearAllBtn.disabled = !!busy;
     }
 
     /**
@@ -580,8 +591,13 @@
         attributionControl: false
     });
 
-    var imageBounds = L.latLngBounds([[0, 0], [cfg.imageHeight, cfg.imageWidth]]);
-    L.imageOverlay(cfg.imageUrl, imageBounds).addTo(map);
+    var imageBounds = hasImage
+        ? L.latLngBounds([[0, 0], [cfg.imageHeight, cfg.imageWidth]])
+        : L.latLngBounds([[0, 0], [1000, 1000]]);
+
+    if (hasImage) {
+        currentOverlay = L.imageOverlay(cfg.imageUrl, imageBounds).addTo(map);
+    }
 
     /**
      * Минимальный zoom = «вписать картинку в контейнер» (contain).
@@ -589,6 +605,7 @@
      * все грани «оторваны» от краёв (как на скрине).
      */
     function updateMinZoomFromImage() {
+        if (!hasImage) return;
         var size = map.getSize();
         if (!size.x || !size.y) return;
 
@@ -601,10 +618,32 @@
         }
     }
 
-    map.fitBounds(imageBounds);
-    updateMinZoomFromImage();
-    // M2: не даём утащить картинку далеко за контейнер панорамированием
-    map.setMaxBounds(imageBounds.pad(0.5));
+    function setFacadeImage(url, w, h) {
+        if (currentOverlay) {
+            try { map.removeLayer(currentOverlay); } catch (e) { /* ignore */ }
+            currentOverlay = null;
+        }
+        cfg.imageUrl = url;
+        cfg.imageWidth = w;
+        cfg.imageHeight = h;
+        hasImage = !!(url && w && h);
+        if (!hasImage) {
+            imageBounds = L.latLngBounds([[0, 0], [1000, 1000]]);
+            map.setMaxBounds(null);
+            return;
+        }
+        imageBounds = L.latLngBounds([[0, 0], [h, w]]);
+        currentOverlay = L.imageOverlay(url, imageBounds).addTo(map);
+        map.fitBounds(imageBounds);
+        updateMinZoomFromImage();
+        map.setMaxBounds(imageBounds.pad(0.5));
+    }
+
+    if (hasImage) {
+        map.fitBounds(imageBounds);
+        updateMinZoomFromImage();
+        map.setMaxBounds(imageBounds.pad(0.5));
+    }
     map.on('resize', updateMinZoomFromImage);
 
     map.on('zoom', function () {
@@ -726,6 +765,10 @@
     }
 
     function startPolygonDraw() {
+        if (!hasImage) {
+            showMessage('Вначале загрузите файл фасада', 'info');
+            return;
+        }
         stopPolygonDraw();
         polygonDrawer = new L.Draw.Polygon(map, drawControl.options.draw.polygon);
         polygonDrawer.enable();
@@ -844,6 +887,14 @@
         }
         if (editablePolygons.hasLayer(layer)) editablePolygons.removeLayer(layer);
         if (otherPolygons.hasLayer(layer)) otherPolygons.removeLayer(layer);
+    }
+
+    function clearAllMapPolygons() {
+        var all = [];
+        eachPolygon(function (l) { all.push(l); });
+        all.forEach(removeLayerFromMap);
+        selectedLayers = [];
+        pendingDeletes = {};
     }
 
     function savePolygon(layer, section, floor, id, label) {
@@ -1223,7 +1274,9 @@
                 savedLabel = '';
                 if (labelInput) labelInput.value = '';
                 clearDirtyFlags();
-                if (autoDraw !== false) {
+                if (!hasImage) {
+                    showMessage('Вначале загрузите файл фасада', 'info');
+                } else if (autoDraw !== false) {
                     startPolygonDraw();
                     showMessage(getSectionCaption(activeSection) + ', этаж ' + floor + ' не размечен — включено рисование полигона на фасаде.', 'info');
                 } else {
@@ -1519,6 +1572,291 @@
         cancelBtn.addEventListener('click', function () {
             if (isBusy()) return;
             revertCurrentFloorChanges();
+        });
+    }
+
+    var UPLOAD_ALLOWED_EXT = ['png', 'jpg', 'jpeg', 'webp'];
+
+    function localExtOk(fileName) {
+        var m = /\.([a-z0-9]+)$/i.exec(fileName || '');
+        if (!m) return false;
+        return UPLOAD_ALLOWED_EXT.indexOf(m[1].toLowerCase()) !== -1;
+    }
+
+    function doUploadFacadeImage(file) {
+        uploadInProgress = true;
+        setControlsBusy(true);
+        showMessage('Загрузка фасада…', 'info');
+
+        var body = new FormData();
+        body.append('home_id', String(cfg.homeId));
+        body.append('file', file);
+
+        return new Promise(function (resolve) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', cfg.ajaxBase + '&act=upload_facade_image');
+            xhr.withCredentials = true;
+
+            xhr.onload = function () {
+                uploadInProgress = false;
+                setControlsBusy(false);
+                var res = null;
+                try { res = JSON.parse(xhr.responseText); } catch (e) { /* ignore */ }
+                if (!res || !res.success) {
+                    showMessage((res && res.message) || 'Ошибка загрузки файла', 'error');
+                    resolve({ ok: false });
+                    return;
+                }
+                setFacadeImage(res.imageUrl, res.imageWidth, res.imageHeight);
+                showMessage('Фасад сохранён (.' + res.ext + ')', 'success');
+                applyFloorSelection(activeFloor, false);
+                resolve({ ok: true });
+            };
+
+            xhr.onerror = function () {
+                uploadInProgress = false;
+                setControlsBusy(false);
+                showMessage('Сеть/сервер недоступен — попробуйте ещё раз', 'error');
+                resolve({ ok: false });
+            };
+
+            xhr.send(body);
+        });
+    }
+
+    function uploadFacadeImage(file) {
+        if (isBusy() || !file) return;
+
+        if (!localExtOk(file.name)) {
+            showMessage('Неподдерживаемый формат файла. Разрешены: PNG, JPG, WEBP', 'error');
+            return;
+        }
+        if (cfg.maxUploadBytes && file.size > cfg.maxUploadBytes) {
+            showMessage('Файл больше ' + Math.round(cfg.maxUploadBytes / 1024 / 1024) + ' МБ — уменьшите размер и попробуйте снова', 'error');
+            return;
+        }
+
+        function go() {
+            if (hasImage) {
+                var proceed = window.confirm(
+                    'Файл фасада уже есть. Он будет перезаписан.\n' +
+                    'Существующую разметку этажей придётся сверить (полигоны не удалятся).\n\n' +
+                    'Продолжить?'
+                );
+                if (!proceed) return;
+            }
+            doUploadFacadeImage(file);
+        }
+
+        if (!isDirty()) {
+            go();
+            return;
+        }
+
+        showUnsavedChangesDialog(
+            'Есть несохранённые изменения.\n\n' +
+            '«Сохранить и перейти» — записать правки, затем загрузить фасад.\n' +
+            '«Не сохранять» — отменить правки и загрузить фасад.\n' +
+            '«Остаться» — отменить загрузку.'
+        ).then(function (action) {
+            if (action === 'save') {
+                saveCurrentFloorChanges().then(function (res) {
+                    if (res && res.ok) go();
+                });
+            } else if (action === 'discard') {
+                revertCurrentFloorChanges().then(function () { go(); });
+            }
+        });
+    }
+
+    function doClearFloorPolygons() {
+        clearingMarkup = true;
+        setControlsBusy(true);
+        showMessage('Очистка разметки этажа…', 'info');
+
+        var body = new URLSearchParams({
+            home_id: String(cfg.homeId),
+            section: String(activeSection),
+            floor: String(activeFloor)
+        });
+
+        return fetch(cfg.ajaxBase + '&act=clear_floor_polygons', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                clearingMarkup = false;
+                setControlsBusy(false);
+                if (!res || !res.success) {
+                    showMessage((res && res.message) || 'Ошибка очистки этажа', 'error');
+                    return { ok: false };
+                }
+                findLayersByFloor(activeFloor).slice().forEach(removeLayerFromMap);
+                Object.keys(pendingDeletes).forEach(function (id) {
+                    var d = pendingDeletes[id];
+                    if (d && parseInt(d.section, 10) === activeSection && parseInt(d.floor, 10) === activeFloor) {
+                        delete pendingDeletes[id];
+                    }
+                });
+                clearDirtyFlags();
+                rebuildFloorSelect(activeFloor);
+                applyFloorSelection(activeFloor, true);
+                showMessage('Разметка этажа очищена (' + (res.cleared || 0) + ' полигон(ов)). Файл фасада остался.', 'success');
+                return { ok: true };
+            })
+            .catch(function () {
+                clearingMarkup = false;
+                setControlsBusy(false);
+                showMessage('Ошибка сети при очистке этажа', 'error');
+                return { ok: false };
+            });
+    }
+
+    function clearCurrentFloorMarkup() {
+        if (isBusy()) return;
+
+        var layers = findLayersByFloor(activeFloor);
+        if (!layers.length && !hasPendingDeletes() && !hasPendingNews()) {
+            showMessage('На этом этаже нет разметки для очистки', 'info');
+            return;
+        }
+
+        function go() {
+            var proceed = window.confirm(
+                'Очистить разметку этажа ' + activeFloor + ' (' + getSectionCaption(activeSection) + ')?\n' +
+                'Полигоны этого этажа будут удалены. Файл фасада останется.'
+            );
+            if (proceed) doClearFloorPolygons();
+        }
+
+        if (!isDirty()) {
+            go();
+            return;
+        }
+
+        showUnsavedChangesDialog(
+            'Есть несохранённые изменения. Перед очисткой этажа их нужно либо сохранить, либо отменить.\n\n' +
+            '«Сохранить и перейти» — записать правки, затем подтверждение очистки.\n' +
+            '«Не сохранять» — отменить правки, затем подтверждение очистки.\n' +
+            '«Остаться» — не очищать.'
+        ).then(function (action) {
+            if (action === 'save') {
+                saveCurrentFloorChanges().then(function (res) {
+                    if (res && res.ok) go();
+                });
+            } else if (action === 'discard') {
+                revertCurrentFloorChanges().then(function () { go(); });
+            }
+        });
+    }
+
+    function doClearFacade() {
+        clearingMarkup = true;
+        setControlsBusy(true);
+        showMessage('Очистка всего фасада…', 'info');
+
+        return fetch(cfg.ajaxBase + '&act=clear_facade', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ home_id: String(cfg.homeId) }).toString()
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                clearingMarkup = false;
+                setControlsBusy(false);
+                if (!res || !res.success) {
+                    showMessage((res && res.message) || 'Ошибка очистки фасада', 'error');
+                    return { ok: false };
+                }
+                stopPolygonDraw();
+                clearAllMapPolygons();
+                clearDirtyFlags();
+                setFacadeImage('', 0, 0);
+                rebuildFloorSelect(activeFloor);
+                applyFloorSelection(activeFloor, false);
+                showMessage(
+                    'Весь фасад очищен: полигонов ' + (res.cleared || 0) +
+                    ', файлов ' + (res.removedFiles || 0) + '.',
+                    'success'
+                );
+                return { ok: true };
+            })
+            .catch(function () {
+                clearingMarkup = false;
+                setControlsBusy(false);
+                showMessage('Ошибка сети при очистке фасада', 'error');
+                return { ok: false };
+            });
+    }
+
+    function clearWholeFacade() {
+        if (isBusy()) return;
+
+        var hasAny = false;
+        eachPolygon(function () { hasAny = true; });
+        if (!hasAny && !hasImage) {
+            showMessage('Нечего очищать — нет ни файла фасада, ни разметки', 'info');
+            return;
+        }
+
+        function go() {
+            var proceed = window.confirm(
+                'Очистить ВЕСЬ фасад дома?\n' +
+                'Будут удалены все полигоны ВСЕХ секций/этажей И файл фасада.\n\n' +
+                'Это действие нельзя отменить.'
+            );
+            if (proceed) doClearFacade();
+        }
+
+        if (!isDirty()) {
+            go();
+            return;
+        }
+
+        showUnsavedChangesDialog(
+            'Есть несохранённые изменения. Перед полной очисткой фасада их нужно либо сохранить, либо отменить.\n\n' +
+            '«Сохранить и перейти» — записать правки, затем подтверждение очистки.\n' +
+            '«Не сохранять» — отменить правки, затем подтверждение очистки.\n' +
+            '«Остаться» — не очищать.'
+        ).then(function (action) {
+            if (action === 'save') {
+                saveCurrentFloorChanges().then(function (res) {
+                    if (res && res.ok) go();
+                });
+            } else if (action === 'discard') {
+                revertCurrentFloorChanges().then(function () { go(); });
+            }
+        });
+    }
+
+    if (uploadBtn && uploadInput) {
+        uploadBtn.addEventListener('click', function () {
+            if (isBusy()) return;
+            uploadInput.value = '';
+            uploadInput.click();
+        });
+        uploadInput.addEventListener('change', function () {
+            var file = uploadInput.files && uploadInput.files[0];
+            uploadInput.value = '';
+            if (file) uploadFacadeImage(file);
+        });
+    }
+
+    if (clearFloorBtn) {
+        clearFloorBtn.addEventListener('click', function () {
+            if (isBusy()) return;
+            clearCurrentFloorMarkup();
+        });
+    }
+
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function () {
+            if (isBusy()) return;
+            clearWholeFacade();
         });
     }
 

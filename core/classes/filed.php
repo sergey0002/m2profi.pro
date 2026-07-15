@@ -429,156 +429,126 @@ class filed
     function map($name_perf = 'map', $values = '')
     {
         $idx = 'ym_' . $name_perf;
+        static $ymaps_assets_printed = false;
+        $lat = isset($values['lat']) ? $values['lat'] : '';
+        $lon = isset($values['lon']) ? $values['lon'] : '';
+        $adress = isset($values['adress']) ? $values['adress'] : '';
 ?>
 		<div style="width:100%;" class="input_edit">
-		Поместите метку на объект, для получения координат и адреса 
-		<div id="<?=$idx
-?>" style="width: 100%; height: 400px;"></div> 
-		  
+		Поместите метку на объект, для получения координат и адреса
+		<div id="<?= htmlspecialchars($idx, ENT_QUOTES, 'UTF-8') ?>" style="width: 100%; height: 400px;"></div>
+
 		<span class="input_title">Адрес</span>
-		<input type="text" id="<?=$idx
-?>yam_adress" name="<?=$name_perf
-?>_adress" value = "<?=$values['adress'] ?>"  style="width:100%" class="input_edit" />
- 	 
+		<input type="text" id="<?= htmlspecialchars($idx, ENT_QUOTES, 'UTF-8') ?>yam_adress" name="<?= htmlspecialchars($name_perf, ENT_QUOTES, 'UTF-8') ?>_adress" value="<?= htmlspecialchars($adress, ENT_QUOTES, 'UTF-8') ?>" style="width:100%" class="input_edit" />
+
 		<span class="input_title">Координаты</span>
-		<input type="text" id="<?=$idx ?>yam_point_lat" name="<?=$name_perf ?>_lat" value = "<?=$values['lat'] ?>"  style="width:100%" class="input_edit" />
-		<input type="text" id="<?=$idx ?>yam_point_lon" name="<?=$name_perf ?>_lon" value = "<?=$values['lon'] ?>"  style="width:100%" class="input_edit" />
-		 
-		<script src="https://yandex.st/jquery/2.1.1/jquery.min.js"></script>
+		<input type="text" id="<?= htmlspecialchars($idx, ENT_QUOTES, 'UTF-8') ?>yam_point_lat" name="<?= htmlspecialchars($name_perf, ENT_QUOTES, 'UTF-8') ?>_lat" value="<?= htmlspecialchars($lat, ENT_QUOTES, 'UTF-8') ?>" style="width:100%" class="input_edit" />
+		<input type="text" id="<?= htmlspecialchars($idx, ENT_QUOTES, 'UTF-8') ?>yam_point_lon" name="<?= htmlspecialchars($name_perf, ENT_QUOTES, 'UTF-8') ?>_lon" value="<?= htmlspecialchars($lon, ENT_QUOTES, 'UTF-8') ?>" style="width:100%" class="input_edit" />
+
+		<?php if (!$ymaps_assets_printed): ?>
 		<script src="https://api-maps.yandex.ru/2.1/?apikey=9998badd-d4f7-462f-b4a5-9c3aa51768c0&lang=ru_RU"></script>
+		<?php
+            $ymaps_assets_printed = true;
+        endif;
+        ?>
 
 		<script type="text/javascript">
-		ymaps.ready(init<?=$idx ?>);        
-		function init<?=$idx ?>() {
-			var myPlacemark,  coord, 
-			myMap = new ymaps.Map("<?=$idx ?>", {
-				center: [55.76, 37.64],
-				zoom: 12
-			}, {
-				// searchControlProvider: 'yandex#search'
-			});
-			
-			/*  адрес по умолчанию на карте */
-			var address = 'Россия, Новосибирск, Тюленина, д. 26';
-			 
-			
-			// координаты из текстового поля
-			if( $('#<?=$idx ?>yam_point_lat').attr('value') && $('#<?=$idx ?>yam_point_lon').attr('value')  )
-			{
-					coord = [$('#<?=$idx ?>yam_point_lat').val(), $('#<?=$idx ?>yam_point_lon').val()]; 
-			}
-			else
-			{
-				if( $('#<?=$idx ?>yam_adress').attr('value') )
-				{
-					address =  $('#<?=$idx ?>yam_adress').val();
+		(function () {
+			var idx = <?= json_encode($idx, JSON_UNESCAPED_UNICODE) ?>;
+			function boot() {
+				if (typeof ymaps === 'undefined') {
+					setTimeout(boot, 40);
+					return;
 				}
-			} 
-			
-			
-			ymaps.geocode(address).then(function(res) {
-			
-			// Нет координат получаем по адресу
-			if(!coord)
-			{
-				  coord = res.geoObjects.get(0).geometry.getCoordinates();
-			}	
-			else // Есть координаты получаем по ним адрес?! 
-			{
-			
-				// нет координат из текстовых полей
-				//  alert('1');
-				// adress2 = getAddress(coord);
-			//	alert(adress2);
-			}
-			
-			var myPlacemark = new ymaps.Placemark(coord, null, {
-					preset: 'islands#blueDotIcon',
-					draggable: true
-			});
-			
-				
-				// Слушаем клик на карте.
-					myMap.events.add('click', function (e) {
-						
-						 
-						var coords = e.get('coords');
-
-						// Если метка уже создана – просто передвигаем ее.
-						if (myPlacemark) {
-							myPlacemark.geometry.setCoordinates(coords);
-						}
-						// Если нет – создаем.
-						else {
-							myPlacemark = createPlacemark(coords);
-							myMap.geoObjects.add(myPlacemark);
-							// Слушаем событие окончания перетаскивания на метке.
-							myPlacemark.events.add('dragend', function () {
-								getAddress(myPlacemark.geometry.getCoordinates());
-							});
-						}
-						getAddress(coords);
+				ymaps.ready(function () {
+					var $lat = document.getElementById(idx + 'yam_point_lat');
+					var $lon = document.getElementById(idx + 'yam_point_lon');
+					var $adr = document.getElementById(idx + 'yam_adress');
+					var latVal = $lat ? String($lat.value || '').trim() : '';
+					var lonVal = $lon ? String($lon.value || '').trim() : '';
+					var address = ($adr && $adr.value) ? $adr.value : 'Россия, Новосибирск';
+					var coord = (latVal && lonVal) ? [parseFloat(latVal), parseFloat(lonVal)] : null;
+					var myPlacemark;
+					var myMap = new ymaps.Map(idx, {
+						center: coord || [55.03, 82.92],
+						zoom: coord ? 17 : 12
 					});
-					
-					
-					
-					// Создание метки.
+
 					function createPlacemark(coords) {
-						return new ymaps.Placemark(coords, {
-							iconCaption: 'поиск...'
-						}, {
+						return new ymaps.Placemark(coords, { iconCaption: 'поиск...' }, {
 							preset: 'islands#violetDotIconWithCaption',
 							draggable: true
 						});
 					}
-					
-					
-					// Определяем адрес по координатам (обратное геокодирование).
+
 					function getAddress(coords) {
+						if (!myPlacemark) return;
 						myPlacemark.properties.set('iconCaption', 'поиск...');
 						ymaps.geocode(coords).then(function (res) {
-							var firstGeoObject = res.geoObjects.get(0);	 
-							
-							myPlacemark.properties
-								.set({
-									// Формируем строку с данными об объекте.
-									iconCaption: [
-										// Название населенного пункта или вышестоящее административно-территориальное образование.
-										firstGeoObject.getLocalities().length ? firstGeoObject.getLocalities() : firstGeoObject.getAdministrativeAreas(),
-										// Получаем путь до топонима, если метод вернул null, запрашиваем наименование здания.
-										firstGeoObject.getThoroughfare() || firstGeoObject.getPremise()
-									].filter(Boolean).join(', '),
-									// В качестве контента балуна задаем строку с адресом объекта.
-									balloonContent: firstGeoObject.getAddressLine()
-								});
-								
-								$('#<?=$idx ?>yam_point_lat').val(coords[0]);
-								$('#<?=$idx ?>yam_point_lon').val(coords[1]);
-								
-								$('#<?=$idx ?>yam_adress').val( firstGeoObject.getAddressLine() );
-								 
+							var firstGeoObject = res.geoObjects.get(0);
+							if (!firstGeoObject) return;
+							myPlacemark.properties.set({
+								iconCaption: [
+									firstGeoObject.getLocalities().length ? firstGeoObject.getLocalities() : firstGeoObject.getAdministrativeAreas(),
+									firstGeoObject.getThoroughfare() || firstGeoObject.getPremise()
+								].filter(Boolean).join(', '),
+								balloonContent: firstGeoObject.getAddressLine()
+							});
+							if ($lat) $lat.value = coords[0];
+							if ($lon) $lon.value = coords[1];
+							if ($adr) $adr.value = firstGeoObject.getAddressLine();
 						});
 					}
-		 
-				/* Событие dragend - получение нового адреса */
-				myPlacemark.events.add('dragend', function(e){
-					var cord = e.get('target').geometry.getCoordinates();
-		 
-					$('#<?=$idx ?>yam_point_lat').val(cord[0]);
-					$('#<?=$idx ?>yam_point_lon').val(cord[1]);
-								
-					ymaps.geocode(cord).then(function(res) {
-						var data = res.geoObjects.get(0).properties.getAll();
-						$('#<?=$idx ?>yam_adress').val(data.text);
-					});
-				});
-				
-				myMap.geoObjects.add(myPlacemark);	
-				myMap.setCenter(coord, 17);
-			 	//myMap.setBounds(myMap.geoObjects.getBounds(),{checkZoomRange:true, zoomMargin:7}); // Авто масштаб и центрироание 
 
-			});
-		}
+					function bindPlacemark() {
+						myMap.events.add('click', function (e) {
+							var coords = e.get('coords');
+							if (myPlacemark) {
+								myPlacemark.geometry.setCoordinates(coords);
+							} else {
+								myPlacemark = createPlacemark(coords);
+								myMap.geoObjects.add(myPlacemark);
+								myPlacemark.events.add('dragend', function () {
+									getAddress(myPlacemark.geometry.getCoordinates());
+								});
+							}
+							getAddress(coords);
+						});
+						myPlacemark.events.add('dragend', function (e) {
+							var cord = e.get('target').geometry.getCoordinates();
+							if ($lat) $lat.value = cord[0];
+							if ($lon) $lon.value = cord[1];
+							ymaps.geocode(cord).then(function (res) {
+								var go = res.geoObjects.get(0);
+								if (go && $adr) $adr.value = go.properties.getAll().text;
+							});
+						});
+						myMap.geoObjects.add(myPlacemark);
+						myMap.setCenter(coord, 17);
+					}
+
+					function placeAt(c) {
+						coord = c;
+						myPlacemark = new ymaps.Placemark(coord, null, {
+							preset: 'islands#blueDotIcon',
+							draggable: true
+						});
+						bindPlacemark();
+					}
+
+					if (coord && isFinite(coord[0]) && isFinite(coord[1])) {
+						placeAt(coord);
+					} else {
+						ymaps.geocode(address).then(function (res) {
+							var go = res.geoObjects.get(0);
+							if (!go) return;
+							placeAt(go.geometry.getCoordinates());
+						});
+					}
+				});
+			}
+			boot();
+		})();
 		</script>
 
 		</div>

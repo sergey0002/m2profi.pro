@@ -6,6 +6,9 @@ class ctr__facades extends ctr__
     var $ctr = 'facades';
     var $title = 'Разметка фасадов';
 
+    const FACADE_IMAGE_EXT_PRIORITY = ['jpg', 'jpeg', 'png', 'webp'];
+    const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
     function require_admin()
     {
         if (!check_access('admin')) {
@@ -15,16 +18,49 @@ class ctr__facades extends ctr__
         }
     }
 
-    /** @return string абсолютный путь к JPG фасада */
-    function facade_image_fs_path($home_id)
+    /** @return string абсолютный путь к каталогу fasades/ */
+    function fasades_dir()
+    {
+        return dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'fasades';
+    }
+
+    /**
+     * Найти файл фасада среди поддерживаемых расширений.
+     * @return array{ext:string, path:string}|null
+     */
+    function facade_image_resolve($home_id)
     {
         $home_id = (int) $home_id;
-        return dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'fasades' . DIRECTORY_SEPARATOR . $home_id . '.jpg';
+        $dir = $this->fasades_dir();
+        foreach (self::FACADE_IMAGE_EXT_PRIORITY as $ext) {
+            $path = $dir . DIRECTORY_SEPARATOR . $home_id . '.' . $ext;
+            if (is_file($path)) {
+                return ['ext' => $ext, 'path' => $path];
+            }
+        }
+        return null;
+    }
+
+    /** @return string абсолютный путь к файлу фасада (или ожидаемый .jpg, если файла нет) */
+    function facade_image_fs_path($home_id)
+    {
+        $found = $this->facade_image_resolve($home_id);
+        if ($found) {
+            return $found['path'];
+        }
+        return $this->fasades_dir() . DIRECTORY_SEPARATOR . (int) $home_id . '.jpg';
+    }
+
+    function facade_image_target_path($home_id, $ext)
+    {
+        return $this->fasades_dir() . DIRECTORY_SEPARATOR . (int) $home_id . '.' . $ext;
     }
 
     function facade_image_url($home_id)
     {
-        return '/fasades/' . (int) $home_id . '.jpg';
+        $found = $this->facade_image_resolve($home_id);
+        $ext = $found ? $found['ext'] : 'jpg';
+        return '/fasades/' . (int) $home_id . '.' . $ext;
     }
 
     /**
@@ -34,15 +70,61 @@ class ctr__facades extends ctr__
     function facade_image_absolute_url($home_id)
     {
         $home_id = (int) $home_id;
-        $path = $this->facade_image_fs_path($home_id);
+        $found = $this->facade_image_resolve($home_id);
         $rel = $this->facade_image_url($home_id);
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $url = $scheme . '://' . $host . $rel;
-        if (is_file($path)) {
-            $url .= '?v=' . (int) @filemtime($path);
+        if ($found) {
+            $url .= '?v=' . (int) @filemtime($found['path']);
         }
         return $url;
+    }
+
+    function assert_within_fasades($target_path)
+    {
+        $base = realpath($this->fasades_dir());
+        $real = realpath(dirname($target_path));
+        if ($base === false || $real === false || strpos($real, $base) !== 0) {
+            throw new RuntimeException('Path containment check failed for ' . $target_path);
+        }
+    }
+
+    function raster_ext_for_imagetype($imagetype)
+    {
+        switch ($imagetype) {
+            case IMAGETYPE_JPEG:
+                return 'jpg';
+            case IMAGETYPE_PNG:
+                return 'png';
+            case IMAGETYPE_WEBP:
+                return 'webp';
+        }
+        return null;
+    }
+
+    function upload_error_message($code)
+    {
+        switch ((int) $code) {
+            case UPLOAD_ERR_OK:
+                return null;
+            case UPLOAD_ERR_INI_SIZE:
+                return 'Файл больше лимита сервера (upload_max_filesize)';
+            case UPLOAD_ERR_FORM_SIZE:
+                return 'Файл больше лимита формы';
+            case UPLOAD_ERR_PARTIAL:
+                return 'Файл загружен частично — попробуйте ещё раз';
+            case UPLOAD_ERR_NO_FILE:
+                return 'Файл не выбран';
+            case UPLOAD_ERR_NO_TMP_DIR:
+                return 'Ошибка сервера: нет временной директории для загрузки';
+            case UPLOAD_ERR_CANT_WRITE:
+                return 'Ошибка сервера: не удалось записать файл на диск';
+            case UPLOAD_ERR_EXTENSION:
+                return 'Загрузка остановлена расширением PHP на сервере';
+            default:
+                return 'Неизвестная ошибка загрузки файла';
+        }
     }
 
     function widget_json_error($message)
@@ -502,7 +584,7 @@ class ctr__facades extends ctr__
 
         $homes = $mysql->get_arr('SELECT home_id, title, `floor` FROM homes WHERE 1=1 ORDER BY `order`, title');
         ?>
-        <p>Загрузите фото в <code>sites/sigma/fasades/{home_id}.jpg</code>, затем откройте редактор.</p>
+        <p>Файл фасада: загрузите в редакторе или положите вручную в <code>sites/sigma/fasades/{home_id}.jpg</code> (также png/webp).</p>
         <table border="0" class="dtable">
             <thead>
             <tr>
@@ -516,7 +598,7 @@ class ctr__facades extends ctr__
             <tbody>
             <?php foreach ($homes as $h):
                 $hid = (int) $h['home_id'];
-                $has_file = file_exists($this->facade_image_fs_path($hid));
+                $has_file = $this->facade_image_resolve($hid) !== null;
                 $cnt = $mysql->get_arr('SELECT COUNT(*) AS c FROM facade_polygons WHERE home_id="' . $hid . '" AND del="0"', 1);
                 $poly_count = (int) ($cnt['c'] ?? 0);
                 ?>
@@ -526,17 +608,15 @@ class ctr__facades extends ctr__
                     <td><?= $has_file ? '<span style="color:green">есть</span>' : '<span style="color:#c45c00">нет</span>' ?></td>
                     <td><?= $poly_count ? $poly_count . ' полиг.' : '—' ?></td>
                     <td>
+                        <a href="<?= htmlspecialchars($r->acturl('facades', 'editor', 'ctrind.php') . '&home_id=' . $hid) ?>">Редактор</a>
+                        &nbsp;|&nbsp;
+                        <a href="<?= htmlspecialchars($r->acturl('facades', 'editor', 'iframe_router.php') . '&home_id=' . $hid) ?>" class="iframe_r">iframe</a>
                         <?php if ($has_file): ?>
-                            <a href="<?= htmlspecialchars($r->acturl('facades', 'editor', 'ctrind.php') . '&home_id=' . $hid) ?>">Редактор</a>
-                            &nbsp;|&nbsp;
-                            <a href="<?= htmlspecialchars($r->acturl('facades', 'editor', 'iframe_router.php') . '&home_id=' . $hid) ?>" class="iframe_r">iframe</a>
                             &nbsp;|&nbsp;
                             <a href="<?= htmlspecialchars($r->acturl('facades', 'widget_demo', 'ctrind.php') . '&home_id=' . $hid) ?>">Виджет</a>
-                            &nbsp;|&nbsp;
-                            <a href="<?= htmlspecialchars($r->acturl('floor_plans', 'editor', 'ctrind.php') . '&home_id=' . $hid) ?>">Планы этажей</a>
-                        <?php else: ?>
-                            —
                         <?php endif; ?>
+                        &nbsp;|&nbsp;
+                        <a href="<?= htmlspecialchars($r->acturl('floor_plans', 'editor', 'ctrind.php') . '&home_id=' . $hid) ?>">Планы этажей</a>
                     </td>
                 </tr>
             <?php endforeach; ?>
@@ -564,17 +644,17 @@ class ctr__facades extends ctr__
             return;
         }
 
-        $path = $this->facade_image_fs_path($home_id);
-        if (!is_file($path)) {
-            print 'Файл фасада не найден: <code>' . htmlspecialchars($path) . '</code><br/>';
-            print 'Положите <b>' . $home_id . '.jpg</b> в <code>sites/sigma/fasades/</code>';
-            return;
-        }
-
-        $size = @getimagesize($path);
-        if (!$size) {
-            print 'Не удалось прочитать изображение';
-            return;
+        $found = $this->facade_image_resolve($home_id);
+        $image_url = '';
+        $image_w = 0;
+        $image_h = 0;
+        if ($found) {
+            $size = @getimagesize($found['path']);
+            if ($size) {
+                $image_url = $this->facade_image_url($home_id) . '?v=' . (int) @filemtime($found['path']);
+                $image_w = (int) $size[0];
+                $image_h = (int) $size[1];
+            }
         }
 
         $sections = $this->get_home_sections($home);
@@ -585,17 +665,18 @@ class ctr__facades extends ctr__
             }
         }
 
-        $t['h1'] = 'Разметка фасада — ' . $home['title'];
+        $t['h1'] = 'Разметка фасада';
 
         $tpl = [
-            'home_id'    => $home_id,
-            'home_title' => $home['title'],
-            'image_url'  => $this->facade_image_url($home_id),
-            'image_w'    => (int) $size[0],
-            'image_h'    => (int) $size[1],
-            'max_floor'  => $max_floor,
-            'sections'   => $sections,
-            'ajax_base'  => '/sahmatka/ajax_router.php?ctr=facades',
+            'home_id'          => $home_id,
+            'home_title'       => $home['title'],
+            'image_url'        => $image_url,
+            'image_w'          => $image_w,
+            'image_h'          => $image_h,
+            'max_floor'        => $max_floor,
+            'sections'         => $sections,
+            'ajax_base'        => '/sahmatka/ajax_router.php?ctr=facades',
+            'max_upload_bytes' => self::MAX_UPLOAD_BYTES,
         ];
         $this->tpl($tpl, 'facades', 'editor');
     }
@@ -832,5 +913,182 @@ class ctr__facades extends ctr__
             }
         }
         return null;
+    }
+
+    function act__upload_facade_image()
+    {
+        $this->require_admin();
+        global $mysql;
+        header('Content-Type: application/json; charset=utf-8');
+
+        $home_id = (int) ($_POST['home_id'] ?? 0);
+        if (!$home_id) {
+            echo json_encode(['success' => false, 'message' => 'Не указан home_id']);
+            return;
+        }
+
+        $home = $mysql->get_for_key('homes', 'home_id', $home_id);
+        if (!$home) {
+            echo json_encode(['success' => false, 'message' => 'Дом не найден']);
+            return;
+        }
+
+        if (!isset($_FILES['file'])) {
+            echo json_encode(['success' => false, 'message' => 'Файл не передан']);
+            return;
+        }
+
+        $file = $_FILES['file'];
+        $errMsg = $this->upload_error_message($file['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($errMsg !== null) {
+            echo json_encode(['success' => false, 'message' => $errMsg]);
+            return;
+        }
+
+        if (!is_uploaded_file($file['tmp_name'])) {
+            echo json_encode(['success' => false, 'message' => 'Некорректная загрузка файла']);
+            return;
+        }
+
+        if ((int) $file['size'] <= 0 || (int) $file['size'] > self::MAX_UPLOAD_BYTES) {
+            echo json_encode(['success' => false, 'message' => 'Размер файла должен быть до ' . (int) (self::MAX_UPLOAD_BYTES / 1024 / 1024) . ' МБ']);
+            return;
+        }
+
+        $imgInfo = @getimagesize($file['tmp_name']);
+        $ext = null;
+        $dims = null;
+        if ($imgInfo && isset($imgInfo[2])) {
+            $rasterExt = $this->raster_ext_for_imagetype($imgInfo[2]);
+            if ($rasterExt) {
+                $ext = $rasterExt;
+                $dims = ['width' => (int) $imgInfo[0], 'height' => (int) $imgInfo[1]];
+            }
+        }
+
+        if (!$ext || !$dims) {
+            echo json_encode(['success' => false, 'message' => 'Неподдерживаемый или повреждённый файл. Разрешены: JPG, PNG, WEBP']);
+            return;
+        }
+
+        $dir = $this->fasades_dir();
+        if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+            echo json_encode(['success' => false, 'message' => 'Не удалось создать каталог на сервере']);
+            return;
+        }
+
+        $existing = $this->facade_image_resolve($home_id);
+        $replaced = $existing !== null;
+
+        $target = $this->facade_image_target_path($home_id, $ext);
+        try {
+            $this->assert_within_fasades($target);
+        } catch (Throwable $e) {
+            echo json_encode(['success' => false, 'message' => 'Ошибка проверки пути сохранения']);
+            return;
+        }
+
+        if (!@move_uploaded_file($file['tmp_name'], $target)) {
+            echo json_encode(['success' => false, 'message' => 'Не удалось сохранить файл на сервере']);
+            return;
+        }
+        @chmod($target, 0644);
+
+        foreach (self::FACADE_IMAGE_EXT_PRIORITY as $otherExt) {
+            if ($otherExt === $ext) {
+                continue;
+            }
+            $siblingPath = $this->facade_image_target_path($home_id, $otherExt);
+            if (is_file($siblingPath)) {
+                @unlink($siblingPath);
+            }
+        }
+
+        echo json_encode([
+            'success'     => true,
+            'imageUrl'    => $this->facade_image_url($home_id) . '?v=' . (int) @filemtime($target),
+            'imageWidth'  => $dims['width'],
+            'imageHeight' => $dims['height'],
+            'ext'         => $ext,
+            'replaced'    => $replaced,
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    /** Очистить разметку выбранного этажа секции (файл фасада не трогает). */
+    function act__clear_floor_polygons()
+    {
+        $this->require_admin();
+        global $mysql;
+        header('Content-Type: application/json; charset=utf-8');
+
+        $home_id = (int) ($_POST['home_id'] ?? 0);
+        $section = (int) ($_POST['section'] ?? 1);
+        $floor   = (int) ($_POST['floor'] ?? 0);
+        if ($section < 1) {
+            $section = 1;
+        }
+
+        if (!$home_id || !$floor) {
+            echo json_encode(['success' => false, 'message' => 'Не указаны home_id/floor']);
+            return;
+        }
+
+        $home = $mysql->get_for_key('homes', 'home_id', $home_id);
+        if (!$home) {
+            echo json_encode(['success' => false, 'message' => 'Дом не найден']);
+            return;
+        }
+
+        $mysql->sql(
+            'UPDATE facade_polygons SET del="1"
+             WHERE home_id="' . $home_id . '" AND section="' . $section . '" AND floor="' . $floor . '" AND del="0"'
+        );
+        $cleared = (int) $mysql->count;
+
+        echo json_encode(['success' => true, 'cleared' => $cleared]);
+    }
+
+    /** Очистить весь фасад: все полигоны дома + удаление файла изображения. */
+    function act__clear_facade()
+    {
+        $this->require_admin();
+        global $mysql;
+        header('Content-Type: application/json; charset=utf-8');
+
+        $home_id = (int) ($_POST['home_id'] ?? 0);
+        if (!$home_id) {
+            echo json_encode(['success' => false, 'message' => 'Не указан home_id']);
+            return;
+        }
+
+        $home = $mysql->get_for_key('homes', 'home_id', $home_id);
+        if (!$home) {
+            echo json_encode(['success' => false, 'message' => 'Дом не найден']);
+            return;
+        }
+
+        $mysql->sql(
+            'UPDATE facade_polygons SET del="1" WHERE home_id="' . $home_id . '" AND del="0"'
+        );
+        $cleared = (int) $mysql->count;
+
+        $removedFiles = 0;
+        foreach (self::FACADE_IMAGE_EXT_PRIORITY as $ext) {
+            $path = $this->facade_image_target_path($home_id, $ext);
+            try {
+                $this->assert_within_fasades($path);
+            } catch (Throwable $e) {
+                continue;
+            }
+            if (is_file($path) && @unlink($path)) {
+                $removedFiles++;
+            }
+        }
+
+        echo json_encode([
+            'success'      => true,
+            'cleared'      => $cleared,
+            'removedFiles' => $removedFiles,
+        ]);
     }
 }

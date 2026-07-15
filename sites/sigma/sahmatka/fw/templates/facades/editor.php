@@ -6,6 +6,7 @@ $image_w    = (int) $data['image_w'];
 $image_h    = (int) $data['image_h'];
 $max_floor  = (int) $data['max_floor'];
 $ajax_base  = $data['ajax_base'];
+$max_upload_bytes = (int) ($data['max_upload_bytes'] ?? (20 * 1024 * 1024));
 $sections   = isset($data['sections']) && is_array($data['sections']) ? $data['sections'] : [
     ['id' => 1, 'caption' => 'Секция 1', 'maxFloor' => $max_floor ?: 30],
 ];
@@ -16,7 +17,7 @@ $sections   = isset($data['sections']) && is_array($data['sections']) ? $data['s
 
 <div class="facade-editor" id="facade_editor">
     <div class="facade-editor__head">
-        <h2 class="facade-editor__title">Разметка фасада — <?= htmlspecialchars($home_title) ?></h2>
+        <h2 class="facade-editor__title">Разметка фасада</h2>
     </div>
 
     <div class="facade-editor__panel-card">
@@ -42,6 +43,12 @@ $sections   = isset($data['sections']) && is_array($data['sections']) ? $data['s
                 <button type="button" id="facade_floor_cancel" class="facade-editor__btn">Отменить</button>
             </span>
         </div>
+        <div id="facade_upload_panel" class="facade-editor__upload-panel">
+            <input type="file" id="facade_upload_input" accept=".png,.jpg,.jpeg,.webp,image/*" hidden />
+            <button type="button" id="facade_upload_btn" class="facade-editor__btn">Загрузить фасад</button>
+            <button type="button" id="facade_clear_floor" class="facade-editor__btn facade-editor__btn--danger">Очистить этаж</button>
+            <button type="button" id="facade_clear_all" class="facade-editor__btn facade-editor__btn--danger">Очистить весь фасад</button>
+        </div>
         <div id="facade_messages" class="facade-editor__messages" role="status" aria-live="polite"></div>
     </div>
 
@@ -58,7 +65,8 @@ window.FACADE_CONFIG = {
     imageHeight: <?= $image_h ?>,
     maxFloor: <?= $max_floor ?>,
     sections: <?= json_encode(array_values($sections), JSON_UNESCAPED_UNICODE) ?>,
-    ajaxBase: <?= json_encode($ajax_base) ?>
+    ajaxBase: <?= json_encode($ajax_base) ?>,
+    maxUploadBytes: <?= (int) $max_upload_bytes ?>
 };
 </script>
 <script src="/sahmatka/template/default/js/facade_editor.js"></script>

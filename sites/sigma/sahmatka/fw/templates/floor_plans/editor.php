@@ -1,6 +1,5 @@
 <?php
 $home_id    = (int) $data['home_id'];
-$home_title = $data['home_title'];
 $ajax_base  = $data['ajax_base'];
 $sections   = isset($data['sections']) && is_array($data['sections']) ? $data['sections'] : [
     ['id' => 1, 'caption' => 'Секция 1', 'maxFloor' => 30],
@@ -13,8 +12,7 @@ $max_upload_bytes = (int) ($data['max_upload_bytes'] ?? (20 * 1024 * 1024));
 
 <div class="fp-editor" id="floor_plan_editor">
     <div class="fp-editor__head">
-        <h2 class="fp-editor__title">Разметка планов этажей — <?= htmlspecialchars($home_title) ?></h2>
-        <p class="fp-editor__hint">Планы — PNG/JPG/WEBP/SVG в <code>pbplans/<?= $home_id ?>/floor/{секция}/{этаж}.{ext}</code>, загружаются кнопкой «Загрузить фон». У <?= htmlspecialchars(function_exists('unit_label') ? unit_label('gen') : 'квартиры') ?> не может быть больше одного активного полигона.</p>
+        <h2 class="fp-editor__title">Разметка планов этажей</h2>
     </div>
 
     <div class="fp-editor__panel-card">
@@ -49,8 +47,10 @@ $max_upload_bytes = (int) ($data['max_upload_bytes'] ?? (20 * 1024 * 1024));
         </div>
         <div id="fp_upload_panel" class="fp-editor__upload-panel">
             <input type="file" id="fp_upload_input" accept=".png,.jpg,.jpeg,.svg,.webp,image/*" hidden />
-            <button type="button" id="fp_upload_btn" class="fp-editor__btn">Загрузить фон</button>
-            <button type="button" id="fp_clear_markup" class="fp-editor__btn fp-editor__btn--danger">Очистить разметку</button>
+            <button type="button" id="fp_upload_btn" class="fp-editor__btn">Загрузить план этажа</button>
+            <button type="button" id="fp_clear_apartment" class="fp-editor__btn fp-editor__btn--danger">Очистить квартиру</button>
+            <button type="button" id="fp_clear_markup" class="fp-editor__btn fp-editor__btn--danger">Очистить разметку этажа</button>
+            <button type="button" id="fp_clear_plan" class="fp-editor__btn fp-editor__btn--danger">Очистить весь план</button>
         </div>
         <div id="fp_messages" class="fp-editor__messages" role="status" aria-live="polite"></div>
     </div>

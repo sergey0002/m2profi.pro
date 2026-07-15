@@ -242,6 +242,57 @@ class ctr__homeseditor extends ctr__
 			<form action="<?=$r->acturl( $this->ctr , 'edit' );?>&id=<?=$id?>" method="POST" id="editform"  >
 			<br/><br/>
 			<?=$this->formpanel($r->acturl($this->ctr,'index'));?>
+
+			<?php
+			// homes_id (?id=) ≠ home_id (бизнес-ID для фасада/планов)
+			$home_id_val = (int) ((!empty($data['home_id'])) ? $data['home_id'] : 0);
+			$facade_path = $home_id_val
+				? (dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'fasades' . DIRECTORY_SEPARATOR . $home_id_val . '.jpg')
+				: '';
+			?>
+			<style>
+				.he-markup-row { margin: 0 0 20px; }
+				.he-markup-card {
+					background: #f5f7f8;
+					border: 1px solid #d6dde2;
+					border-radius: 8px;
+					padding: 16px 18px 18px;
+					min-height: 100%;
+					box-sizing: border-box;
+				}
+				.he-markup-card h2 { margin: 0 0 12px; font-size: 18px; }
+				.he-markup-card .btn_2 { margin-right: 8px; margin-bottom: 6px; display: inline-block; }
+				.he-markup-card .he-markup-note { display: block; margin-top: 8px; font-size: 13px; }
+			</style>
+			<div class="row he-markup-row">
+				<div class="col-md-6">
+					<div class="he-markup-card">
+						<h2>Разметка фасада</h2>
+						<?php if ($home_id_val): ?>
+							<a href="/sahmatka/ctrind.php?ctr=facades&amp;act=editor&amp;home_id=<?= $home_id_val ?>" class="btn_2">Открыть редактор разметки фасада</a>
+							<a href="/sahmatka/iframe_router.php?ctr=facades&amp;act=editor&amp;home_id=<?= $home_id_val ?>" target="_blank" rel="noopener">полный экран</a>
+							<?php if ($facade_path && !is_file($facade_path)): ?>
+								<span class="he-markup-note" style="color:#c45c00;">Файл fasades/<?= $home_id_val ?>.jpg не найден — положите JPG на сервер</span>
+							<?php elseif ($facade_path): ?>
+								<span class="he-markup-note" style="color:#1a7f37;">Файл fasades/<?= $home_id_val ?>.jpg найден</span>
+							<?php endif; ?>
+						<?php else: ?>
+							<span class="he-markup-note" style="color:#999;">Доступно после сохранения дома и заполнения «home_id»</span>
+						<?php endif; ?>
+					</div>
+				</div>
+				<div class="col-md-6">
+					<div class="he-markup-card">
+						<h2>Разметка планов этажей</h2>
+						<?php if ($home_id_val): ?>
+							<a href="/sahmatka/ctrind.php?ctr=floor_plans&amp;act=editor&amp;home_id=<?= $home_id_val ?>" class="btn_2">Открыть редактор планов этажей</a>
+							<a href="/sahmatka/iframe_router.php?ctr=floor_plans&amp;act=editor&amp;home_id=<?= $home_id_val ?>" target="_blank" rel="noopener">полный экран</a>
+						<?php else: ?>
+							<span class="he-markup-note" style="color:#999;">Доступно после сохранения дома и заполнения «home_id»</span>
+						<?php endif; ?>
+					</div>
+				</div>
+			</div>
 			
 			<div class="row">
 				<div class="col-md-6">
@@ -337,43 +388,6 @@ class ctr__homeseditor extends ctr__
 				     <?=$filed->text('avito_id','avito_id',$data['avito_id']);?><br/>
  				 https://xdemo.m2profi.pro/sahmatka/avito_feedx.php 
 				 https://autoload.avito.ru/format/xmlcheck/ 
-
-				<hr/>
-				<h2>Разметка фасада</h2>
-				<?php
-				// ВАЖНО: $id — это homes_id (внутренний PK таблицы homes, из URL ?id=),
-				// а фасад/планы этажей/квартиры завязаны на другое, отдельно редактируемое
-				// поле — home_id (бизнес-идентификатор дома). Для одной и той же записи
-				// они могут отличаться (напр. id=53, но home_id=60), поэтому здесь и везде
-				// ниже используем именно $data['home_id'], а не $id.
-				$home_id_val = (int) ($data['home_id'] ?? 0);
-				?>
-				<?php if ($home_id_val): ?>
-					<a href="/sahmatka/iframe_router.php?ctr=facades&amp;act=editor&amp;home_id=<?= $home_id_val ?>" class="iframe_r btn_2">Открыть редактор разметки фасада</a>
-					&nbsp;
-					<a href="/sahmatka/ctrind.php?ctr=facades&amp;act=editor&amp;home_id=<?= $home_id_val ?>">полный экран</a>
-					<?php
-					$facade_path = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'fasades' . DIRECTORY_SEPARATOR . $home_id_val . '.jpg';
-					if (!is_file($facade_path)):
-					?>
-						<br/><span style="color:#c45c00;">Файл fasades/<?= $home_id_val ?>.jpg не найден — положите JPG на сервер</span>
-					<?php else: ?>
-						<br/><span style="color:#1a7f37;">Файл fasades/<?= $home_id_val ?>.jpg найден</span>
-					<?php endif; ?>
-				<?php else: ?>
-					<span style="color:#999;">Разметка фасада доступна после сохранения дома и заполнения поля «home_id»</span>
-				<?php endif; ?>
-
-				<hr/>
-				<h2>Разметка планов этажей</h2>
-				<?php if ($home_id_val): ?>
-					<a href="/sahmatka/iframe_router.php?ctr=floor_plans&amp;act=editor&amp;home_id=<?= $home_id_val ?>" class="iframe_r btn_2">Открыть редактор планов этажей</a>
-					&nbsp;
-					<a href="/sahmatka/ctrind.php?ctr=floor_plans&amp;act=editor&amp;home_id=<?= $home_id_val ?>">полный экран</a>
-					<br/><span style="color:#666;">JPG планов кладутся вручную: <code>sahmatka/pbplans/<?= $home_id_val ?>/floor/{секция}/{этаж}.jpg</code></span>
-				<?php else: ?>
-					<span style="color:#999;">Разметка планов этажей доступна после сохранения дома и заполнения поля «home_id»</span>
-				<?php endif; ?>
 
 			</form>
 			

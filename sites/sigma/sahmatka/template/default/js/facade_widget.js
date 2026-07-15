@@ -40,7 +40,9 @@
     residence: 'Квартира',
     status: 'Статус',
     bookingSuccess: 'Ваша заявка успешно отправлена',
-    bookingError: 'Не удалось отправить заявку'
+    bookingError: 'Не удалось отправить заявку',
+    crumbsLabel: 'Навигация',
+    crumbHome: 'Дом'
   };
 
   // Общий счётчик блокировки скролла страницы (несколько виджетов на одной странице).
@@ -125,9 +127,106 @@
     return s;
   }
 
+  function clamp01(n, fallback) {
+    n = typeof n === 'number' ? n : parseFloat(n);
+    if (!isFinite(n)) return fallback;
+    if (n < 0) return 0;
+    if (n > 1) return 1;
+    return n;
+  }
+
+  function normalizeHexColor(raw, fallback) {
+    if (typeof raw !== 'string') return fallback;
+    var s = raw.trim();
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(s)) return s;
+    if (/^rgba?\(/i.test(s) || /^hsla?\(/i.test(s)) return s;
+    return fallback;
+  }
+
+  /**
+   * facadeHighlight / apartmentHighlight: { color, opacity }
+   * opacity — заливка при выделении (0…1).
+   */
+  function normalizeHighlightOpts(opt, defaults) {
+    opt = opt || {};
+    return {
+      color: normalizeHexColor(opt.color, defaults.color),
+      opacity: clamp01(opt.opacity, defaults.opacity),
+      idleOpacity: clamp01(opt.idleOpacity, defaults.idleOpacity),
+      hoverOpacity: clamp01(opt.hoverOpacity, defaults.hoverOpacity),
+      revealOpacity: clamp01(opt.revealOpacity, defaults.revealOpacity)
+    };
+  }
+
   function formatRoomsK(rooms) {
     if (!rooms && rooms !== 0) return '';
     return String(rooms) + 'K';
+  }
+
+  function prefersReducedMotion() {
+    try {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function normalizeCrumbItem(raw, defaults) {
+    if (raw === false) return { show: false, clickable: false };
+    if (raw === true) return { show: true, clickable: !!defaults.clickable };
+    raw = raw || {};
+    return {
+      show: raw.show != null ? !!raw.show : !!defaults.show,
+      clickable: raw.clickable != null ? !!raw.clickable : !!defaults.clickable
+    };
+  }
+
+  /**
+   * breadcrumbs: { home, section, floor, apartment }
+   * каждый: false | true | { show?, clickable? }
+   * defaults: дом скрыт; секция видима некликабельно; этаж видим кликабельно; квартира видима некликабельно
+   */
+  function normalizeBreadcrumbs(opt) {
+    opt = opt || {};
+    return {
+      home: normalizeCrumbItem(opt.home, { show: false, clickable: false }),
+      section: normalizeCrumbItem(opt.section, { show: true, clickable: false }),
+      floor: normalizeCrumbItem(opt.floor, { show: true, clickable: true }),
+      apartment: normalizeCrumbItem(opt.apartment, { show: true, clickable: false })
+    };
+  }
+
+  /** #fw=1.12.458 → { section, floor, apartmentNum? } */
+  function parseFwHash(hash) {
+    var raw = String(hash || '');
+    if (raw.charAt(0) === '#') raw = raw.slice(1);
+    var m = raw.match(/(?:^|&)fw=([^&]*)/);
+    if (!m) {
+      if (/^\d+\.\d+/.test(raw)) {
+        /* допускаем #1.12.3 без префикса fw только если весь hash — наши числа */
+        m = [null, raw];
+      } else {
+        return null;
+      }
+    }
+    var parts = String(m[1] || '').split('.');
+    if (parts.length < 2) return null;
+    var section = parseInt(parts[0], 10);
+    var floor = parseInt(parts[1], 10);
+    if (!section || !floor) return null;
+    var out = { section: section, floor: floor };
+    if (parts.length >= 3 && parts[2] !== '') {
+      var apt = parseInt(parts[2], 10);
+      if (apt) out.apartmentNum = apt;
+    }
+    return out;
+  }
+
+  function buildFwHashValue(state) {
+    if (!state || !state.section || !state.floor) return '';
+    var s = String(state.section) + '.' + String(state.floor);
+    if (state.apartmentNum) s += '.' + String(state.apartmentNum);
+    return s;
   }
 
   /** Explore (fullscreen pan/zoom + ✕) — только мобильный UX, на десктопе не включаем. */
@@ -169,14 +268,14 @@
   var WIDGET_CSS = [
     ':host { display: block; box-sizing: border-box; }',
     '*, *::before, *::after { box-sizing: border-box; }',
-    '.fw-root { position: relative; width: 100%; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: ' + TEXT_MAIN + '; }',
-    '.fw-viewport { position: relative; overflow: hidden; background: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; }',
+    '.fw-root { position: relative; width: 100%; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: ' + TEXT_MAIN + '; background: #f0f2f4; --fw-fade-ms: 280ms; }',
+    '.fw-viewport { position: relative; overflow: hidden; background: #f0f2f4; touch-action: manipulation; -webkit-user-select: none; user-select: none; }',
     '.fw-stage { position: relative; transform-origin: 0 0; will-change: transform; margin: 0; width: 100%; }',
     '.fw-stage img { display: block; width: 100%; height: auto; border: 0; max-width: none; pointer-events: none; -webkit-user-drag: none; vertical-align: top; }',
     '.fw-stage svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }',
-    '.fw-poly { fill-opacity: 0.12; stroke-width: 1.5; stroke-opacity: 0.55; cursor: pointer; transition: fill-opacity 0.18s ease, stroke-width 0.18s ease, stroke-opacity 0.18s ease; outline: none; }',
-    '.fw-poly.is-hover, .fw-poly.is-active, .fw-poly:focus-visible { fill-opacity: 0.45; stroke-opacity: 1; stroke-width: 2.5; }',
-    '.fw-poly.is-scroll-reveal { fill-opacity: 0.52; stroke-opacity: 1; stroke-width: 2.75; }',
+    '.fw-poly { fill-opacity: var(--fw-facade-idle-opacity, 0.12); stroke-width: 1.5; stroke-opacity: 0.55; cursor: pointer; transition: fill-opacity 0.18s ease, stroke-width 0.18s ease, stroke-opacity 0.18s ease, fill 0.18s ease, stroke 0.18s ease; outline: none; }',
+    '.fw-poly.is-hover, .fw-poly.is-active, .fw-poly:focus-visible { fill: var(--fw-facade-hl-color, ' + ACCENT + ') !important; stroke: var(--fw-facade-hl-color, ' + ACCENT + ') !important; fill-opacity: var(--fw-facade-hl-opacity, 0.45); stroke-opacity: 1; stroke-width: 2.5; }',
+    '.fw-poly.is-scroll-reveal { fill: var(--fw-facade-hl-color, ' + ACCENT + ') !important; stroke: var(--fw-facade-hl-color, ' + ACCENT + ') !important; fill-opacity: var(--fw-facade-reveal-opacity, 0.52); stroke-opacity: 1; stroke-width: 2.75; }',
     '@media (prefers-reduced-motion: reduce) { .fw-poly { transition: none; } }',
     '.fw-tooltip { position: absolute; z-index: 5; pointer-events: none; max-width: min(240px, 80%); padding: 6px 10px; border-radius: 6px; background: rgba(20,20,20,0.88); color: #fff; font-size: 13px; line-height: 1.35; opacity: 0; transform: translate(-50%, -120%); transition: opacity 0.1s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
     '.fw-tooltip.is-visible { opacity: 1; }',
@@ -198,33 +297,46 @@
     '.fw-explore-inner .fw-stage { cursor: grab; }',
     '.fw-explore-inner .fw-stage.is-dragging { cursor: grabbing; }',
     '.fw-body { position: relative; width: 100%; }',
-    '.fw-view { display: block; width: 100%; }',
+    '.fw-view { display: block; width: 100%; opacity: 1; transition: opacity var(--fw-fade-ms) ease; }',
     '.fw-view--floor, .fw-view--card { display: none; }',
     '.fw-root.is-view-floor .fw-view--facade { display: none; }',
     '.fw-root.is-view-floor .fw-view--floor { display: flex; flex-direction: column; }',
     '.fw-root.is-view-card.is-desktop .fw-view--facade, .fw-root.is-view-card.is-desktop .fw-view--floor { display: none; }',
     '.fw-root.is-view-card.is-desktop .fw-view--card { display: block; }',
+    '.fw-view.is-fading-out, .fw-view.is-fading-in { opacity: 0; }',
+    '@media (prefers-reduced-motion: reduce) { .fw-view { transition: none; } }',
+    /* хлебные крошки */
+    '.fw-crumbs { display: none; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 10px 16px; background: #e8ecef; border-bottom: 1px solid ' + BORDER_SOFT + '; font-size: 13px; line-height: 1.35; color: ' + TEXT_MUTED + '; }',
+    '.fw-crumbs.is-visible { display: flex; }',
+    '.fw-crumb { appearance: none; border: 0; background: transparent; margin: 0; padding: 0; font: inherit; color: inherit; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+    '.fw-crumb.is-link { color: ' + ACCENT + '; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }',
+    '.fw-crumb.is-link:hover, .fw-crumb.is-link:focus-visible { color: ' + ACCENT_HOVER + '; outline: none; }',
+    '.fw-crumb.is-current { color: ' + TEXT_MAIN + '; font-weight: 600; cursor: default; }',
+    '.fw-crumb-sep { opacity: 0.4; user-select: none; }',
     '.fw-root.is-mobile-ui.is-view-floor .fw-explore-stage-wrap { display: none !important; }',
-    '.fw-root.is-mobile-ui.is-view-floor .fw-explore-plan-host { display: flex !important; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }',
+    '.fw-root.is-mobile-ui.is-view-floor .fw-explore-plan-host { display: flex !important; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; height: 100%; }',
     '.fw-root.is-mobile-ui.is-view-floor .fw-explore-inner { background: #f7f7f7; }',
+    '.fw-root.is-mobile-ui.is-view-floor .fw-explore-plan-host .fw-plan-layer { display: flex !important; flex: 1; flex-direction: column; min-height: 0; height: 100%; }',
+    '.fw-root.is-mobile-ui.is-view-floor .fw-plan-viewport { flex: 1 1 auto; min-height: 200px; height: auto; }',
     '.fw-explore-plan-host { display: none; }',
     '.fw-explore-stage-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }',
     '.fw-explore-inner { display: flex; flex-direction: column; }',
     /* поэтажный план — Stage 3 */
-    '.fw-plan-layer { display: none; flex-direction: column; background: #f7f7f7; color: ' + TEXT_MAIN + '; min-height: 320px; width: 100%; }',
+    '.fw-plan-layer { display: none; flex-direction: column; background: #f0f2f4; color: ' + TEXT_MAIN + '; min-height: 0; width: 100%; }',
     '.fw-root.is-view-floor .fw-plan-layer, .fw-root.is-view-card .fw-plan-layer { display: flex; }',
-    '.fw-plan-head { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px 16px 8px; }',
-    '.fw-plan-back { appearance: none; border: 0; background: #A8BEC6; color: #fff; border-radius: 999px; padding: 10px 18px; font: inherit; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
+    '.fw-plan-head { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 16px 6px; background: #f0f2f4; }',
+    '.fw-plan-back { appearance: none; border: 0; background: #A8BEC6; color: #fff; border-radius: 999px; padding: 8px 16px; font: inherit; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
     '.fw-plan-back:hover, .fw-plan-back:focus-visible { background: ' + ACCENT + '; }',
-    '.fw-plan-title { font-size: 22px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #3d3d3d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }',
-    '.fw-plan-viewport { position: relative; flex: 1 1 auto; overflow: hidden; touch-action: none; display: flex; align-items: center; justify-content: center; min-height: 280px; background: #fff; }',
+    '.fw-plan-title { font-size: 18px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #3d3d3d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }',
+    '.fw-plan-viewport { position: relative; flex: 0 0 auto; overflow: hidden; touch-action: none; min-height: 0; height: auto; background: #f7f8f9; padding: 0; }',
     '.fw-plan-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }',
     '.fw-plan-stage.is-dragging { cursor: grabbing; }',
     '.fw-plan-stage.is-readonly { cursor: default; }',
     '.fw-plan-stage img { display: block; max-width: none; border: 0; pointer-events: none; -webkit-user-drag: none; }',
     '.fw-plan-stage svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }',
     '.fw-apt-poly.is-dim { fill-opacity: 0.06 !important; stroke-opacity: 0.2 !important; pointer-events: none; }',
-    '.fw-apt-poly.is-highlight { fill: ' + ACCENT + ' !important; stroke: ' + ACCENT + ' !important; fill-opacity: 0.28 !important; stroke-opacity: 0.95 !important; stroke-width: 2.5 !important; }',
+    '.fw-apt-poly.is-hover, .fw-apt-poly:focus-visible { fill: var(--fw-apt-hl-color, ' + ACCENT + ') !important; stroke: var(--fw-apt-hl-color, ' + ACCENT + ') !important; fill-opacity: var(--fw-apt-hover-opacity, 0.45) !important; stroke-opacity: 1 !important; stroke-width: 2.5 !important; }',
+    '.fw-apt-poly.is-highlight { fill: var(--fw-apt-hl-color, ' + ACCENT + ') !important; stroke: var(--fw-apt-hl-color, ' + ACCENT + ') !important; fill-opacity: var(--fw-apt-hl-opacity, 0.28) !important; stroke-opacity: 0.95 !important; stroke-width: 2.5 !important; }',
     '.fw-plan-banner { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: min(92%, 520px); padding: 10px 16px; border-radius: 8px; background: rgba(20,20,20,0.85); color: #fff; font-size: 13px; text-align: center; line-height: 1.4; }',
     '.fw-plan-viewport .fw-msg { max-width: min(92%, 420px); text-align: center; }',
     '.fw-apt-tooltip { position: absolute; z-index: 8; pointer-events: none; padding: 10px 16px; border-radius: 10px; background: rgba(45,45,48,0.92); color: #fff; text-align: center; line-height: 1.35; opacity: 0; transform: translate(-50%, calc(-100% - 10px)); transition: opacity 0.12s ease; white-space: nowrap; }',
@@ -232,10 +344,21 @@
     '.fw-apt-tooltip__code { display: block; font-weight: 600; font-size: 14px; margin-bottom: 2px; }',
     '.fw-apt-tooltip__spec { display: block; font-size: 13px; opacity: 0.95; }',
     /* карточка — цветопроба макета */
-    '.fw-card { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 0; background: #fff; min-height: 480px; overflow: hidden; }',
-    '@media (max-width: 899.98px) { .fw-card { grid-template-columns: 1fr; min-height: auto; } }',
-    '.fw-card-side { padding: 28px 32px 36px; border-right: 1px solid #ececec; display: flex; flex-direction: column; gap: 14px; background: #fff; }',
-    '@media (max-width: 899.98px) { .fw-card-side { border-right: 0; border-bottom: 1px solid #ececec; padding: 16px; } }',
+    '.fw-card { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 0; background: #fff; align-items: start; overflow: hidden; }',
+    '@media (max-width: 899.98px) {',
+    '  .fw-card { display: flex; flex-direction: column; grid-template-columns: none; }',
+    '  .fw-card-side { display: contents; border: 0; padding: 0; }',
+    '  .fw-card-head-row { order: 1; padding: 16px 16px 0; }',
+    '  .fw-card-title { order: 2; padding: 8px 16px 4px; margin: 0; }',
+    '  .fw-card-visual { order: 3; }',
+    '  .fw-card-spec { order: 4; padding: 12px 16px 0; }',
+    '  .fw-card-meta { order: 5; padding: 0 16px; }',
+    '  .fw-card-price { order: 6; padding: 0 16px; }',
+    '  .fw-card-status { order: 7; margin: 8px 16px 0; }',
+    '  .fw-card-form { order: 8; padding: 8px 16px 16px; }',
+    '}',
+    '.fw-card-side { padding: 24px 28px 28px; border-right: 1px solid #ececec; display: flex; flex-direction: column; gap: 12px; background: #fff; }',
+    '@media (max-width: 899.98px) { .fw-card-side { border-right: 0; } }',
     '.fw-card-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }',
     '.fw-card-back { appearance: none; border: 0; background: #A8BEC6; color: #fff; border-radius: 999px; padding: 10px 16px; font: inherit; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
     '.fw-card-back:hover { background: ' + ACCENT + '; }',
@@ -265,16 +388,16 @@
     '.fw-card-msg.is-ok { background: #e8f5e9; color: #2e7d32; }',
     '.fw-card-msg.is-err { background: #fdecea; color: #8a1f11; }',
     '.fw-card-msg ul { margin: 6px 0 0; padding-left: 18px; }',
-    '.fw-card-visual { display: flex; flex-direction: column; padding: 24px 28px 28px; min-height: 360px; background: #fafafa; }',
-    '@media (max-width: 899.98px) { .fw-card-visual { padding: 16px; min-height: 280px; } }',
-    '.fw-card-tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }',
+    '.fw-card-visual { display: flex; flex-direction: column; padding: 20px 24px 24px; background: #fafafa; }',
+    '@media (max-width: 899.98px) { .fw-card-visual { padding: 12px 16px 16px; border-bottom: 1px solid #ececec; } }',
+    '.fw-card-tabs { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }',
     '.fw-card-tab { appearance: none; border: 1px solid ' + ACCENT + '; background: #fff; color: ' + ACCENT + '; border-radius: 999px; padding: 10px 22px; font: inherit; font-size: 14px; cursor: pointer; }',
     '.fw-card-tab.is-active { background: ' + ACCENT + '; color: #fff; border-color: ' + ACCENT + '; }',
-    '.fw-card-panel { display: none; flex: 1; flex-direction: column; min-height: 0; }',
+    '.fw-card-panel { display: none; flex-direction: column; }',
     '.fw-card-panel.is-active { display: flex; }',
-    '.fw-card-pln-label { text-align: center; font-size: 13px; color: ' + TEXT_MUTED + '; margin: 8px 0; }',
-    '.fw-card-pln-img { display: block; max-width: 100%; max-height: min(70vh, 520px); margin: 0 auto; object-fit: contain; }',
-    '.fw-card-floor-vp { position: relative; flex: 1; min-height: 280px; overflow: hidden; background: #fff; border-radius: 8px; }',
+    '.fw-card-pln-label { text-align: center; font-size: 13px; color: ' + TEXT_MUTED + '; margin: 4px 0; }',
+    '.fw-card-pln-img { display: block; max-width: 100%; max-height: min(52vh, 420px); margin: 0 auto; object-fit: contain; }',
+    '.fw-card-floor-vp { position: relative; min-height: 240px; height: min(52vh, 420px); overflow: hidden; background: #fff; border-radius: 8px; }',
     '.fw-card-layer-mobile { display: none; position: fixed; inset: 0; z-index: 2147483002; background: #fff; overflow: auto; -webkit-overflow-scrolling: touch; }',
     '.fw-root.is-view-card.is-mobile-ui .fw-card-layer-mobile { display: block; }',
     '@media print { .fw-card-back, .fw-card-tools, .fw-card-tabs, .fw-card-form, .fw-card-consent, .fw-btn-close { display: none !important; } }'
@@ -323,6 +446,42 @@
     this._hostHovered = false;
     this._onHostPointerEnter = this._onHostPointerEnter.bind(this);
     this._onHostPointerLeave = this._onHostPointerLeave.bind(this);
+
+    // Stage 4: fade / breadcrumbs / optional hash
+    this._fadeMs = typeof options.fadeMs === 'number'
+      ? Math.max(0, options.fadeMs)
+      : (typeof options.fadeDuration === 'number' ? Math.max(0, options.fadeDuration) : 280);
+    this._breadcrumbs = normalizeBreadcrumbs(options.breadcrumbs);
+    this._urlState = options.urlState === true;
+    this._facadeHighlight = normalizeHighlightOpts(options.facadeHighlight, {
+      color: ACCENT,
+      opacity: 0.45,
+      idleOpacity: 0.12,
+      hoverOpacity: 0.45,
+      revealOpacity: 0.52
+    });
+    this._apartmentHighlight = normalizeHighlightOpts(options.apartmentHighlight, {
+      color: ACCENT,
+      opacity: 0.28,
+      idleOpacity: 0.12,
+      hoverOpacity: 0.45,
+      revealOpacity: 0.28
+    });
+    // Зум плана: desktop выкл., mobile вкл. — floorPlanZoom: true|false|{desktop,mobile}
+    this._planZoom = (function (opt) {
+      if (opt === true) return { desktop: true, mobile: true };
+      if (opt === false) return { desktop: false, mobile: false };
+      opt = opt || {};
+      return {
+        desktop: opt.desktop === true,
+        mobile: opt.mobile !== false
+      };
+    })(options.floorPlanZoom != null ? options.floorPlanZoom : options.planZoom);
+    this._fadeTimer = null;
+    this._fadeTimer2 = null;
+    this._fadeLock = false;
+    this._urlApplying = false;
+    this._onHashChange = this._onHashChange.bind(this);
 
     this._onResize = this._onResize.bind(this);
     this._onKeyDown = this._onKeyDown.bind(this);
@@ -375,6 +534,7 @@
     root.setAttribute('aria-label', 'Интерактивный фасад');
     this.shadow.appendChild(root);
     this._els.root = root;
+    this._applyHighlightCssVars();
 
     var msg = document.createElement('div');
     msg.className = 'fw-msg is-loading';
@@ -396,6 +556,9 @@
   FacadeWidgetInstance.prototype.destroy = function () {
     if (this.destroyed) return;
     this.destroyed = true;
+    clearTimeout(this._fadeTimer);
+    clearTimeout(this._fadeTimer2);
+    window.removeEventListener('hashchange', this._onHashChange);
     // Порядок важен (аудит C3/§5.4): сначала план, потом explore — так refcount
     // scroll-lock гарантированно опустошается только для ЭТОГО инстанса.
     if (this.currentView !== 'facade') {
@@ -492,6 +655,12 @@
     body.className = 'fw-body';
     root.appendChild(body);
     this._els.body = body;
+
+    var crumbs = document.createElement('nav');
+    crumbs.className = 'fw-crumbs';
+    crumbs.setAttribute('aria-label', this.locale.crumbsLabel || 'Навигация');
+    root.insertBefore(crumbs, body);
+    this._els.crumbs = crumbs;
 
     var facadeView = document.createElement('div');
     facadeView.className = 'fw-view fw-view--facade';
@@ -592,7 +761,11 @@
     }
     window.addEventListener('resize', this._onResize);
 
+    this._els.root.style.setProperty('--fw-fade-ms', this._fadeMs + 'ms');
     this._layoutFit();
+    this._updateBreadcrumbs();
+    this._bindUrlState();
+    this._applyUrlStateOnLoad();
   };
 
   FacadeWidgetInstance.prototype._buildStage = function (storeEls) {
@@ -894,8 +1067,308 @@
   };
 
   /* ------------------------------------------------------------------ */
-  /* Stage 3: навигация + поэтажный план + карточка квартиры             */
+  /* Stage 3–4: навигация + fade + крошки + hash + план + карточка       */
   /* ------------------------------------------------------------------ */
+
+  FacadeWidgetInstance.prototype._viewEl = function (view) {
+    if (view === 'facade') return this._els.facadeView;
+    if (view === 'floor') return this._els.floorView;
+    if (view === 'card') return this._els.cardView;
+    return null;
+  };
+
+  FacadeWidgetInstance.prototype._applyHighlightCssVars = function () {
+    var root = this._els.root;
+    if (!root) return;
+    var f = this._facadeHighlight;
+    var a = this._apartmentHighlight;
+    root.style.setProperty('--fw-facade-hl-color', f.color);
+    root.style.setProperty('--fw-facade-hl-opacity', String(f.opacity));
+    root.style.setProperty('--fw-facade-idle-opacity', String(f.idleOpacity));
+    root.style.setProperty('--fw-facade-reveal-opacity', String(f.revealOpacity));
+    root.style.setProperty('--fw-apt-hl-color', a.color);
+    root.style.setProperty('--fw-apt-hl-opacity', String(a.opacity));
+    root.style.setProperty('--fw-apt-hover-opacity', String(a.hoverOpacity));
+  };
+
+  FacadeWidgetInstance.prototype._clearViewFadeStyles = function () {
+    ['facadeView', 'floorView', 'cardView'].forEach(function (key) {
+      var el = this._els[key];
+      if (!el) return;
+      el.classList.remove('is-fading-out', 'is-fading-in');
+      el.style.opacity = '';
+      el.style.transition = '';
+    }, this);
+  };
+
+  /**
+   * Плавный переход между экранами. currentView меняется сразу (для API/fetch),
+   * визуальная смена классов — после fade-out (или мгновенно).
+   */
+  FacadeWidgetInstance.prototype._transitionTo = function (nextView, mutate) {
+    var self = this;
+    var fromView = this.currentView;
+    if (typeof mutate === 'function') mutate();
+    this.currentView = nextView;
+    if (nextView === 'floor') this.planOpen = true;
+    if (nextView === 'card') this.planOpen = false;
+    if (nextView === 'facade') this.planOpen = false;
+
+    document.removeEventListener('keydown', this._onNavKeyDown);
+    if (nextView !== 'facade') {
+      document.addEventListener('keydown', this._onNavKeyDown);
+    }
+
+      var finishVisual = function () {
+      self._syncUiClasses();
+      self._reparentPlanLayer();
+      self._updateBreadcrumbs();
+      self._writeUrlState();
+      if (nextView === 'floor') {
+        self._layoutFloorView();
+        if (self._planImgW) self._planFitAndCenter(self._planEls.viewport, self._planEls);
+      }
+      if (typeof self.options.onNavigate === 'function') {
+        try { self.options.onNavigate(self.getState()); } catch (e) { /* host */ }
+      }
+    };
+
+    var ms = this._fadeMs;
+    if (!ms || prefersReducedMotion() || fromView === nextView || !this._els.body) {
+      clearTimeout(this._fadeTimer);
+      clearTimeout(this._fadeTimer2);
+      this._clearViewFadeStyles();
+      this._fadeLock = false;
+      finishVisual();
+      return;
+    }
+
+    clearTimeout(this._fadeTimer);
+    clearTimeout(this._fadeTimer2);
+    this._fadeLock = true;
+    var body = this._els.body;
+    var fromEl = this._viewEl(fromView);
+    body.style.minHeight = body.offsetHeight + 'px';
+
+    if (fromEl) {
+      fromEl.style.transition = 'opacity ' + ms + 'ms ease';
+      fromEl.classList.add('is-fading-out');
+    }
+
+    this._fadeTimer = setTimeout(function () {
+      if (self.destroyed) return;
+      finishVisual();
+      var toEl = self._viewEl(nextView);
+      if (fromEl) fromEl.classList.remove('is-fading-out');
+      if (toEl) {
+        toEl.style.transition = 'opacity ' + ms + 'ms ease';
+        toEl.classList.add('is-fading-in');
+        void toEl.offsetWidth;
+        toEl.classList.remove('is-fading-in');
+      }
+      self._fadeTimer2 = setTimeout(function () {
+        if (self.destroyed) return;
+        self._clearViewFadeStyles();
+        body.style.minHeight = '';
+        self._fadeLock = false;
+      }, ms);
+    }, ms);
+  };
+
+  FacadeWidgetInstance.prototype.getState = function () {
+    var ctx = this._navContext || {};
+    var card = this._cardData || {};
+    return {
+      view: this.currentView,
+      homeId: this.options.homeId,
+      section: ctx.section || (this._planData && this._planData.section) || null,
+      floor: ctx.floor || (this._planData && this._planData.floor) || null,
+      apartmentNum: ctx.apartmentNum || card.apartmentNum || null,
+      apartamentId: ctx.apartamentId || card.apartamentId || null,
+      displayCode: ctx.displayCode || card.displayCode || ''
+    };
+  };
+
+  FacadeWidgetInstance.prototype._updateBreadcrumbs = function () {
+    var nav = this._els.crumbs;
+    if (!nav) return;
+    nav.innerHTML = '';
+    var cfg = this._breadcrumbs;
+    var view = this.currentView;
+    if (view === 'facade') {
+      nav.classList.remove('is-visible');
+      return;
+    }
+
+    var state = this.getState();
+    var items = [];
+    var self = this;
+
+    if (cfg.home.show) {
+      items.push({
+        key: 'home',
+        label: (this.data && this.data.title) || this.locale.crumbHome || 'Дом',
+        clickable: cfg.home.clickable,
+        current: false,
+        action: function () { self._crumbGoHome(); }
+      });
+    }
+    if (cfg.section.show && state.section) {
+      var secLabel = this.sectionCaptions[String(state.section)]
+        || ((this.locale.section || 'секция') + ' ' + state.section);
+      items.push({
+        key: 'section',
+        label: secLabel,
+        clickable: cfg.section.clickable,
+        current: view === 'floor' && !cfg.floor.show,
+        action: function () { self._crumbGoHome(); }
+      });
+    }
+    if (cfg.floor.show && state.floor) {
+      items.push({
+        key: 'floor',
+        label: (this.locale.floorLabel || 'Этаж') + ' ' + state.floor,
+        clickable: cfg.floor.clickable && view === 'card',
+        current: view === 'floor',
+        action: function () { self._crumbGoFloor(); }
+      });
+    }
+    if (cfg.apartment.show && view === 'card') {
+      var aptLabel = state.displayCode
+        || (state.apartmentNum ? ('№' + state.apartmentNum) : (this.locale.residence || 'Квартира'));
+      items.push({
+        key: 'apartment',
+        label: aptLabel,
+        clickable: cfg.apartment.clickable,
+        current: true,
+        action: function () { /* already here */ }
+      });
+    }
+
+    if (!items.length) {
+      nav.classList.remove('is-visible');
+      return;
+    }
+    nav.classList.add('is-visible');
+
+    items.forEach(function (item, idx) {
+      if (idx > 0) {
+        var sep = document.createElement('span');
+        sep.className = 'fw-crumb-sep';
+        sep.setAttribute('aria-hidden', 'true');
+        sep.textContent = '/';
+        nav.appendChild(sep);
+      }
+      var el;
+      if (item.clickable && !item.current) {
+        el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'fw-crumb is-link';
+        el.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          item.action();
+        });
+      } else {
+        el = document.createElement('span');
+        el.className = 'fw-crumb' + (item.current ? ' is-current' : '');
+        if (item.current) el.setAttribute('aria-current', 'page');
+      }
+      el.textContent = item.label;
+      nav.appendChild(el);
+    });
+  };
+
+  FacadeWidgetInstance.prototype._crumbGoHome = function () {
+    if (this.currentView === 'facade') return;
+    this._closeFloorPlan(false);
+  };
+
+  FacadeWidgetInstance.prototype._crumbGoFloor = function () {
+    if (this.currentView !== 'card') return;
+    var self = this;
+    this._transitionTo('floor', function () {
+      self._cardData = null;
+      self.planOpen = true;
+    });
+  };
+
+  FacadeWidgetInstance.prototype._hostHashIsOurs = function () {
+    var h = String(location.hash || '');
+    if (!h || h === '#') return true;
+    if (/^#fw=/.test(h)) return true;
+    if (/^#\d+\.\d+/.test(h)) return true;
+    return false;
+  };
+
+  FacadeWidgetInstance.prototype._writeUrlState = function () {
+    if (!this._urlState || this._urlApplying || this.destroyed) return;
+    if (!this._hostHashIsOurs()) return;
+    var state = this.getState();
+    var value = '';
+    if (this.currentView === 'floor' || this.currentView === 'card') {
+      value = buildFwHashValue({
+        section: state.section,
+        floor: state.floor,
+        apartmentNum: this.currentView === 'card' ? state.apartmentNum : null
+      });
+    }
+    var target = value ? ('#fw=' + value) : '';
+    var cur = location.hash || '';
+    if (cur === target) return;
+    if (!target && (!cur || cur === '#')) return;
+    this._urlApplying = true;
+    try {
+      var url = location.pathname + location.search + target;
+      history.replaceState(null, '', url);
+    } catch (e) {
+      try { location.hash = target ? target.slice(1) : ''; } catch (e2) { /* ignore */ }
+    }
+    var self = this;
+    setTimeout(function () { self._urlApplying = false; }, 0);
+  };
+
+  FacadeWidgetInstance.prototype._bindUrlState = function () {
+    if (!this._urlState) return;
+    window.addEventListener('hashchange', this._onHashChange);
+  };
+
+  FacadeWidgetInstance.prototype._onHashChange = function () {
+    if (!this._urlState || this._urlApplying || this.destroyed) return;
+    this._applyUrlStateOnLoad();
+  };
+
+  FacadeWidgetInstance.prototype._applyUrlStateOnLoad = function () {
+    if (!this._urlState || this.destroyed) return;
+    var parsed = parseFwHash(location.hash);
+    if (!parsed) {
+      if (this.currentView !== 'facade' && this._hostHashIsOurs()) {
+        this._crumbGoHome();
+      }
+      return;
+    }
+    this._urlApplying = true;
+    var self = this;
+    var payload = { section: parsed.section, floor: parsed.floor };
+    Promise.resolve(this._openFloorPlan(payload)).then(function () {
+      if (self.destroyed) return;
+      if (parsed.apartmentNum) {
+        self._openApartmentCard({
+          section: parsed.section,
+          floor: parsed.floor,
+          apartmentNum: parsed.apartmentNum,
+          apartamentId: 0,
+          displayCode: '',
+          rooms: '',
+          area: ''
+        });
+      }
+      self._urlApplying = false;
+      self._writeUrlState();
+    }).catch(function () {
+      self._urlApplying = false;
+    });
+  };
 
   FacadeWidgetInstance.prototype._syncUiClasses = function () {
     if (!this._els.root) return;
@@ -929,30 +1402,29 @@
   };
 
   FacadeWidgetInstance.prototype._navPush = function (view, ctx) {
-    this.currentView = view;
-    this._navContext = Object.assign({}, this._navContext, ctx || {});
-    if (view === 'floor') this.planOpen = true;
-    if (view === 'card') this.planOpen = false;
-    this._syncUiClasses();
-    this._reparentPlanLayer();
-    document.removeEventListener('keydown', this._onNavKeyDown);
-    if (view !== 'facade') {
-      document.addEventListener('keydown', this._onNavKeyDown);
-    }
+    var self = this;
+    this._transitionTo(view, function () {
+      self._navContext = Object.assign({}, self._navContext, ctx || {});
+    });
   };
 
   FacadeWidgetInstance.prototype._navPop = function (fromDestroy) {
+    if (fromDestroy) {
+      if (this.currentView === 'card' || this.currentView === 'floor') {
+        this.currentView = 'facade';
+        this.planOpen = false;
+        this._navContext = {};
+        this._cardData = null;
+        this._syncUiClasses();
+      }
+      return;
+    }
     if (this.currentView === 'card') {
-      this.currentView = 'floor';
-      this.planOpen = true;
-      this._cardData = null;
-      this._syncUiClasses();
-      this._reparentPlanLayer();
-      if (!fromDestroy) this._resumeRevealHighlight();
+      this._crumbGoFloor();
       return;
     }
     if (this.currentView === 'floor') {
-      this._closeFloorPlan(fromDestroy);
+      this._closeFloorPlan(false);
       return;
     }
   };
@@ -997,6 +1469,7 @@
 
     viewport.addEventListener('wheel', function (ev) {
       if (!self.planOpen || self.currentView !== 'floor') return;
+      if (!self._isPlanZoomEnabled()) return;
       ev.preventDefault();
       var factor = ev.deltaY < 0 ? 1.08 : 1 / 1.08;
       self._setPlanScaleAt(self._planScale * factor, ev.clientX, ev.clientY, viewport);
@@ -1053,7 +1526,12 @@
   };
 
   FacadeWidgetInstance.prototype._openFloorPlan = function (payload) {
-    if (this.destroyed || this.planOpen) return;
+    if (this.destroyed) return Promise.resolve(null);
+    if (this.planOpen && this.currentView !== 'facade') {
+      this._navContext = Object.assign({}, this._navContext, payload || {});
+      this._layoutFloorView();
+      return this._loadFloorPlan(payload);
+    }
     this._applyScrollRevealIndex(-1);
     this._navContext.floorPayload = payload;
     this._navPush('floor', payload);
@@ -1063,33 +1541,43 @@
         this._enterExplore();
       }
       this._reparentPlanLayer();
-      if (this._scrollLockHeld === 0 && this.exploring) {
-        /* explore уже держит lock */
-      }
     }
 
     if (this._planEls.layer) this._planEls.layer.setAttribute('aria-hidden', 'false');
     if (this._planEls.backBtn) this._planEls.backBtn.focus();
-    this._layoutFloorView();
-    this._loadFloorPlan(payload);
+    var self = this;
+    // После explore/reparent высота viewport стабилизируется на следующем кадре
+    requestAnimationFrame(function () {
+      if (self.destroyed) return;
+      self._layoutFloorView();
+      if (self._planImgW) self._planFitAndCenter(self._planEls.viewport, self._planEls);
+    });
+    return this._loadFloorPlan(payload);
   };
 
   FacadeWidgetInstance.prototype._closeFloorPlan = function (fromDestroy) {
-    if (this.currentView !== 'floor' && !this.planOpen) return;
-    this.planOpen = false;
-    this.currentView = 'facade';
-    this._navContext = {};
-    this._syncUiClasses();
-    if (this._planEls.layer) this._planEls.layer.setAttribute('aria-hidden', 'true');
-    if (this._planEls.viewport) this._planEls.viewport.innerHTML = '';
-    if (this._planEls.title) this._planEls.title.textContent = '';
-    this._planData = null;
-    this._planPointers.clear();
-    document.removeEventListener('keydown', this._onNavKeyDown);
-    document.removeEventListener('keydown', this._onPlanKeyDown);
-    if (!fromDestroy) {
-      this._resumeRevealHighlight();
+    if (this.currentView !== 'floor' && this.currentView !== 'card' && !this.planOpen) return;
+    var self = this;
+    var finish = function () {
+      self.planOpen = false;
+      self._navContext = {};
+      self._cardData = null;
+      if (self._planEls.layer) self._planEls.layer.setAttribute('aria-hidden', 'true');
+      if (self._planEls.viewport) self._planEls.viewport.innerHTML = '';
+      if (self._planEls.title) self._planEls.title.textContent = '';
+      self._planData = null;
+      self._planPointers.clear();
+      document.removeEventListener('keydown', self._onNavKeyDown);
+      document.removeEventListener('keydown', self._onPlanKeyDown);
+    };
+    if (fromDestroy) {
+      this.currentView = 'facade';
+      finish();
+      this._syncUiClasses();
+      return;
     }
+    this._transitionTo('facade', finish);
+    this._resumeRevealHighlight();
   };
 
   FacadeWidgetInstance.prototype._onPlanKeyDown = function (ev) {
@@ -1137,6 +1625,12 @@
       }
       if (!options.forCard) {
         self._planData = json;
+        self._navContext = Object.assign({}, self._navContext, {
+          section: json.section || self._navContext.section,
+          floor: json.floor || self._navContext.floor
+        });
+        self._updateBreadcrumbs();
+        self._writeUrlState();
       }
       self._renderPlanStage(json, els, options);
       return json;
@@ -1169,6 +1663,12 @@
     img.src = data.imageUrl;
     img.alt = titleText || 'План этажа';
     img.draggable = false;
+    var selfFit = this;
+    img.addEventListener('load', function () {
+      if (selfFit.destroyed) return;
+      selfFit._layoutFloorView();
+      selfFit._planFitAndCenter(vp, els);
+    });
     stage.appendChild(img);
 
     var svgNS = 'http://www.w3.org/2000/svg';
@@ -1229,20 +1729,6 @@
     this._planFitAndCenter(vp, els);
   };
 
-  FacadeWidgetInstance.prototype._planFitAndCenter = function (viewport, els) {
-    var vp = viewport || this._planEls.viewport;
-    if (!vp || !this._planImgW || !this._planImgH) return;
-    var vw = vp.clientWidth || 300;
-    var vh = vp.clientHeight || 280;
-    var fit = Math.min(vw / this._planImgW, vh / this._planImgH);
-    this._planMinScale = fit;
-    this._planMaxScale = Math.max(fit * 6, 6);
-    this._planScale = fit;
-    this._planTx = (vw - this._planImgW * this._planScale) / 2;
-    this._planTy = (vh - this._planImgH * this._planScale) / 2;
-    this._applyPlanTransform(els);
-  };
-
   FacadeWidgetInstance.prototype._applyPlanTransform = function (els) {
     els = els || this._planEls;
     var stage = els.stage;
@@ -1264,14 +1750,16 @@
     } else {
       this._planTx = Math.min(0, Math.max(vw - sw, this._planTx));
     }
+    // Не центрируем по вертикали — иначе над планом появляется пустое поле.
     if (sh <= vh) {
-      this._planTy = (vh - sh) / 2;
+      this._planTy = Math.min(12, Math.max(0, vh - sh));
     } else {
       this._planTy = Math.min(0, Math.max(vh - sh, this._planTy));
     }
   };
 
   FacadeWidgetInstance.prototype._setPlanScaleAt = function (nextScale, clientX, clientY, viewport, els) {
+    if (!this._isPlanZoomEnabled()) return;
     nextScale = Math.max(this._planMinScale, Math.min(this._planMaxScale, nextScale));
     var rect = viewport.getBoundingClientRect();
     var cx = clientX - rect.left;
@@ -1382,7 +1870,14 @@
       if (json.unitLabelNomCap) self.locale.residence = json.unitLabelNomCap;
       self._cardHighlightId = payload.apartamentId || json.apartamentId;
       self._cardTab = 'layout';
+      self._navContext = Object.assign({}, self._navContext, {
+        apartmentNum: json.apartmentNum || payload.apartmentNum,
+        apartamentId: json.apartamentId || payload.apartamentId,
+        displayCode: json.displayCode || payload.displayCode || ''
+      });
       self._renderApartmentCard(json, payload);
+      self._updateBreadcrumbs();
+      self._writeUrlState();
     }).catch(function (err) {
       if (self.destroyed) return;
       shell.innerHTML = '<div class="fw-msg is-error">' + self.locale.error + (err && err.message ? ' (' + err.message + ')' : '') + '</div>';
@@ -1485,7 +1980,15 @@
       }
 
       makeField('input', { type: 'text', name: 'fio', placeholder: L.fio || 'ФИО', required: true, autocomplete: 'name' });
-      makeField('input', { type: 'tel', name: 'phone', placeholder: L.phone || 'Телефон', required: true, autocomplete: 'tel' });
+      var phoneInput = makeField('input', {
+        type: 'tel',
+        name: 'phone',
+        placeholder: '+7 (___) ___-__-__',
+        required: true,
+        autocomplete: 'tel',
+        inputMode: 'tel'
+      });
+      this._bindPhoneMask(phoneInput);
       makeField('textarea', { name: 'message', placeholder: L.message || 'Сообщение' });
 
       var booking = data.booking || {};
@@ -1640,6 +2143,85 @@
     }
   };
 
+  FacadeWidgetInstance.prototype._phoneDigits = function (raw) {
+    var digits = String(raw || '').replace(/\D/g, '');
+    if (!digits) return '';
+    // 8XXXXXXXXXX → 7XXXXXXXXXX
+    if (digits.charAt(0) === '8') digits = '7' + digits.slice(1);
+    // 9XXXXXXXXX (10 цифр без кода страны) → 79XXXXXXXXX
+    if (digits.length === 10 && digits.charAt(0) === '9') digits = '7' + digits;
+    // если вставили только хвост без 7/8 — дополняем 7
+    if (digits.charAt(0) !== '7') digits = '7' + digits;
+    return digits.slice(0, 11);
+  };
+
+  /** +7 (999) 123-45-67 из цифр (частичный ввод тоже) */
+  FacadeWidgetInstance.prototype._formatRuPhone = function (digits) {
+    digits = this._phoneDigits(digits);
+    if (!digits) return '';
+    var rest = digits.slice(1);
+    var out = '+7';
+    if (rest.length === 0) return out;
+    out += ' (' + rest.slice(0, Math.min(3, rest.length));
+    if (rest.length < 3) return out;
+    out += ')';
+    if (rest.length > 3) out += ' ' + rest.slice(3, Math.min(6, rest.length));
+    if (rest.length > 6) out += '-' + rest.slice(6, Math.min(8, rest.length));
+    if (rest.length > 8) out += '-' + rest.slice(8, Math.min(10, rest.length));
+    return out;
+  };
+
+  FacadeWidgetInstance.prototype._isValidRuPhone = function (raw) {
+    var digits = this._phoneDigits(raw);
+    return digits.length === 11 && digits.charAt(0) === '7';
+  };
+
+  FacadeWidgetInstance.prototype._bindPhoneMask = function (input) {
+    if (!input) return;
+    var self = this;
+    var applying = false;
+
+    function applyMask(fromPaste) {
+      if (applying) return;
+      applying = true;
+      var start = input.selectionStart;
+      var before = input.value;
+      var formatted = self._formatRuPhone(before);
+      input.value = formatted;
+      // Курсор к концу при печати/вставке — проще предсказуемо для маски
+      try {
+        var pos = fromPaste || start >= before.length - 1 ? formatted.length : Math.min(start + (formatted.length - before.length), formatted.length);
+        if (pos < 4) pos = formatted.length;
+        input.setSelectionRange(pos, pos);
+      } catch (e) { /* ignore */ }
+      applying = false;
+    }
+
+    input.addEventListener('focus', function () {
+      if (!String(input.value || '').trim()) {
+        input.value = '+7 (';
+        try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) { /* ignore */ }
+      }
+    });
+
+    input.addEventListener('blur', function () {
+      var v = String(input.value || '').trim();
+      if (v === '+7' || v === '+7 (' || v === '+7 ()') {
+        input.value = '';
+        return;
+      }
+      if (v) input.value = self._formatRuPhone(v);
+    });
+
+    input.addEventListener('paste', function () {
+      setTimeout(function () { applyMask(true); }, 0);
+    });
+
+    input.addEventListener('input', function () {
+      applyMask(false);
+    });
+  };
+
   FacadeWidgetInstance.prototype._setFieldError = function (form, name, message) {
     var input = form.querySelector('[name="' + name + '"]');
     if (!input || input.type === 'hidden') return false;
@@ -1667,11 +2249,8 @@
     if (fio.length < 3) errors.fio = 'Минимальная длина — 3 символа';
     if (!phone) {
       errors.phone = 'Обязательное поле';
-    } else {
-      var digits = phone.replace(/\D/g, '');
-      var phoneOk = /^(?:\+7|8)\d{10}$/.test(phone.replace(/[\s\-()]/g, ''))
-        || (digits.length === 11 && (digits[0] === '7' || digits[0] === '8'));
-      if (!phoneOk) errors.phone = 'Номер телефона не соответствует формату';
+    } else if (!this._isValidRuPhone(phone)) {
+      errors.phone = 'Введите номер полностью: +7 (XXX) XXX-XX-XX';
     }
     if (message.length > 300) errors.message = 'Максимальная длина — 300 символов';
     if (/https?:\/\//i.test(message) || /www\./i.test(message)) {
@@ -1748,6 +2327,9 @@
       return;
     }
 
+    var phoneEl = form.querySelector('[name="phone"]');
+    if (phoneEl) phoneEl.value = this._formatRuPhone(phoneEl.value);
+
     var fd = new FormData(form);
     if (!fd.get('_fp_js')) fd.set('_fp_js', '1');
     submitBtn.disabled = true;
@@ -1795,6 +2377,7 @@
       self._planMoved = false;
 
       if (self._planPointers.size === 2) {
+        if (!self._isPlanZoomEnabled()) return;
         var pts = Array.from(self._planPointers.values());
         var dx = pts[0].x - pts[1].x;
         var dy = pts[0].y - pts[1].y;
@@ -1805,6 +2388,11 @@
       }
 
       var poly = targetPoly(ev);
+      if (!self._isPlanZoomEnabled()) {
+        // без зума — только тап по квартире, без pan
+        self._planPanStart = { x: ev.clientX, y: ev.clientY, tx: self._planTx, ty: self._planTy, poly: poly, time: Date.now(), noPan: true };
+        return;
+      }
       self._planPanStart = { x: ev.clientX, y: ev.clientY, tx: self._planTx, ty: self._planTy, poly: poly, time: Date.now() };
     });
 
@@ -1815,6 +2403,7 @@
       }
 
       if (self._planPointers.size === 2) {
+        if (!self._isPlanZoomEnabled()) return;
         var pts = Array.from(self._planPointers.values());
         var dx = pts[0].x - pts[1].x;
         var dy = pts[0].y - pts[1].y;
@@ -1832,6 +2421,12 @@
         } else {
           self._setPlanHover(stage, null, 0, 0, viewport, els);
         }
+        return;
+      }
+
+      if (self._planPanStart.noPan || !self._isPlanZoomEnabled()) {
+        var dNo = Math.hypot(ev.clientX - self._planPanStart.x, ev.clientY - self._planPanStart.y);
+        if (dNo > 6) self._planMoved = true;
         return;
       }
 
@@ -2101,23 +2696,98 @@
     this._syncUiClasses();
   };
 
+  FacadeWidgetInstance.prototype._isPlanZoomEnabled = function () {
+    if (!this._planZoom) return !isDesktopUi();
+    return isDesktopUi() ? !!this._planZoom.desktop : !!this._planZoom.mobile;
+  };
+
   FacadeWidgetInstance.prototype._layoutFloorView = function () {
-    if (!this._els.floorView || !isDesktopUi()) return;
-    var maxH = typeof this.options.maxHeight === 'number'
-      ? this.options.maxHeight
-      : Math.min(window.innerHeight * 0.85, 720);
-    this._els.floorView.style.minHeight = maxH + 'px';
-    if (this._planEls.viewport) {
-      this._planEls.viewport.style.minHeight = (maxH - 80) + 'px';
+    if (!this._planEls.viewport) return;
+
+    // Mobile (explore): viewport обязан занять остаток высоты — иначе absolute-stage → height:0 → белый экран
+    if (!isDesktopUi()) {
+      var vp = this._planEls.viewport;
+      var layer = this._planEls.layer;
+      var head = this._planEls.head;
+      var inner = this._els.exploreInner;
+      if (layer) {
+        layer.style.flex = '1';
+        layer.style.minHeight = '0';
+        layer.style.height = '100%';
+        layer.style.display = 'flex';
+        layer.style.flexDirection = 'column';
+      }
+      var headH = (head && head.offsetHeight) || 64;
+      var avail = 0;
+      if (inner && inner.clientHeight) {
+        avail = Math.max(180, inner.clientHeight - headH);
+      } else {
+        avail = Math.max(180, Math.round((window.innerHeight || 600) * 0.75) - headH);
+      }
+      vp.style.flex = '1 1 auto';
+      vp.style.minHeight = '180px';
+      vp.style.height = avail + 'px';
+      return;
     }
+
+    if (!this._els.floorView) return;
+    // Desktop: высота viewport ≈ высоте плана по ширине (не options.maxHeight).
+    var hostW = (this.host && (this.host.clientWidth || this.host.offsetWidth)) || 300;
+    var headH2 = (this._planEls.head && this._planEls.head.offsetHeight) || 56;
+    var facadeCap = this._stageH || (this._els.viewport && this._els.viewport.clientHeight) || 520;
+    var maxVp = Math.max(220, facadeCap);
+    var vpH = 280;
+    if (this._planImgW && this._planImgH) {
+      vpH = Math.ceil((hostW / this._planImgW) * this._planImgH) + 16;
+      vpH = Math.max(200, Math.min(vpH, maxVp));
+    } else {
+      vpH = Math.max(220, Math.min(maxVp, facadeCap > headH2 ? facadeCap - headH2 : 280));
+    }
+
+    this._els.floorView.style.minHeight = '';
+    this._els.floorView.style.height = 'auto';
+    if (this._planEls.layer) {
+      this._planEls.layer.style.minHeight = '';
+      this._planEls.layer.style.height = '';
+      this._planEls.layer.style.flex = '';
+    }
+    if (this._planEls.viewport) {
+      this._planEls.viewport.style.minHeight = '';
+      this._planEls.viewport.style.flex = '';
+      this._planEls.viewport.style.height = vpH + 'px';
+    }
+  };
+
+  FacadeWidgetInstance.prototype._planFitAndCenter = function (viewport, els) {
+    var vp = viewport || this._planEls.viewport;
+    if (!vp || !this._planImgW || !this._planImgH) return;
+    if (els === this._planEls || (!els && this._planEls && vp === this._planEls.viewport)) {
+      this._layoutFloorView();
+    }
+    var vw = vp.clientWidth || 300;
+    var vh = vp.clientHeight || 280;
+    if (vh < 40) vh = 280;
+    var fit = vw / this._planImgW;
+    if (vh > 0 && fit * this._planImgH > vh) {
+      fit = vh / this._planImgH;
+    }
+    this._planMinScale = fit;
+    if (this._isPlanZoomEnabled()) {
+      this._planMaxScale = Math.max(fit * 6, 6);
+    } else {
+      this._planMaxScale = fit;
+    }
+    this._planScale = fit;
+    this._planTx = (vw - this._planImgW * this._planScale) / 2;
+    this._planTy = 8;
+    this._applyPlanTransform(els);
   };
 
   FacadeWidgetInstance.prototype._layoutCardView = function () {
     if (!isDesktopUi() || !this._els.cardView) return;
-    var maxH = typeof this.options.maxHeight === 'number'
-      ? this.options.maxHeight
-      : Math.min(window.innerHeight * 0.9, 800);
-    this._els.cardView.style.minHeight = maxH + 'px';
+    // Высота по контенту — не options.maxHeight (в демо он огромный ради полной ширины фасада).
+    this._els.cardView.style.minHeight = '';
+    this._els.cardView.style.height = 'auto';
   };
 
   FacadeWidgetInstance.prototype._onResize = function () {
@@ -2246,7 +2916,7 @@
 
   var api = {
     mount: mount,
-    version: '1.1.0'
+    version: '1.2.4'
   };
 
   global.FacadeWidget = api;

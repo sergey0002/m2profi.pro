@@ -96,7 +96,9 @@
     var dirtyActions = document.getElementById('fp_dirty_actions');
     var uploadInput = document.getElementById('fp_upload_input');
     var uploadBtn = document.getElementById('fp_upload_btn');
+    var clearApartmentBtn = document.getElementById('fp_clear_apartment');
     var clearMarkupBtn = document.getElementById('fp_clear_markup');
+    var clearPlanBtn = document.getElementById('fp_clear_plan');
 
     var drawToolActive = false;
     var deleteModeActive = false;
@@ -353,7 +355,9 @@
         if (floorSelect) floorSelect.disabled = !!busy;
         if (apartmentSelect) apartmentSelect.disabled = !!busy;
         if (uploadBtn) uploadBtn.disabled = !!busy;
+        if (clearApartmentBtn) clearApartmentBtn.disabled = !!busy;
         if (clearMarkupBtn) clearMarkupBtn.disabled = !!busy;
+        if (clearPlanBtn) clearPlanBtn.disabled = !!busy;
     }
 
     function showUnsavedChangesDialog(message) {
@@ -486,6 +490,7 @@
         if (layer.fpData.isNew || !layer.fpData.id) {
             // черновик, не сохранён — просто пропал с карты, ничего удалять в БД не нужно
             if (activeLayer === layer) activeLayer = null;
+            updatePolygonDrawButton();
             return;
         }
         pendingDelete = true;
@@ -501,6 +506,7 @@
         };
         if (activeLayer === layer) activeLayer = null;
         markGeometryDirty();
+        updatePolygonDrawButton();
         showMessage('Полигон удалён локально (не в БД) — нажмите «Сохранить», чтобы применить, или «Отменить»', 'warning');
     }
 
@@ -734,12 +740,47 @@
         restorePageTextSelection();
     }
 
+    /** Можно ли добавить полигон текущей квартире (ещё нет слоя на карте). */
+    function canAddPolygon() {
+        return !!(hasImage && activeApartmentId && !findLayerByApartment(activeApartmentId));
+    }
+
+    /**
+     * Прячет кнопку «многоугольник», если у выбранной квартиры полигон уже есть.
+     * После локального удаления / для неразмеченной — снова показывает.
+     */
+    function updatePolygonDrawButton() {
+        var allow = canAddPolygon();
+        var container = drawControl && drawControl._container;
+        if (container) {
+            var sections = container.querySelectorAll('.leaflet-draw-section');
+            // Первая секция — инструменты рисования (только polygon); правка/удаление — вторая.
+            if (sections[0]) {
+                sections[0].style.display = allow ? '' : 'none';
+            }
+        }
+        if (!allow) {
+            var toolbars = drawControl && drawControl._toolbars;
+            var modes = toolbars && toolbars.draw && toolbars.draw._modes;
+            var handler = modes && modes.polygon && modes.polygon.handler;
+            if (handler && handler.enabled && handler.enabled()) {
+                try { handler.disable(); } catch (e) { /* ignore */ }
+            }
+            stopPolygonDraw();
+        }
+    }
+
     function startPolygonDraw() {
+        if (!canAddPolygon()) {
+            updatePolygonDrawButton();
+            return;
+        }
         stopPolygonDraw();
         polygonDrawer = new L.Draw.Polygon(map, drawControl.options.draw.polygon);
         polygonDrawer.enable();
         drawToolActive = true;
         restorePageTextSelection();
+        updatePolygonDrawButton();
     }
 
     /** Ровно один активный (editable) слой — остальные (если попали) уходят в otherPolygons. */
@@ -1088,7 +1129,9 @@
                 rebuildApartmentSelect(activeApartmentId);
                 clearDirtyFlags();
                 invalidateFloorMapsCache(activeSection);
+                updatePolygonDrawButton();
                 showMessage('Разметка этажа очищена (' + (res.cleared || 0) + ' полигон(ов)). Фон остался.', 'success');
+                applyApartmentSelection(activeApartmentId, true, { silent: true });
                 return { ok: true };
             })
             .catch(function () {
@@ -1097,6 +1140,144 @@
                 showMessage('Ошибка сети при очистке разметки', 'error');
                 return { ok: false };
             });
+    }
+
+    function doClearFloorPlan() {
+        clearingMarkup = true;
+        setControlsBusy(true);
+        showMessage('Очистка плана этажа…', 'info');
+
+        var body = new URLSearchParams({
+            home_id: String(cfg.homeId),
+            section: String(activeSection),
+            floor: String(activeFloor)
+        });
+
+        return fetch(cfg.ajaxBase + '&act=clear_floor_plan', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                clearingMarkup = false;
+                setControlsBusy(false);
+                if (!res || !res.success) {
+                    showMessage((res && res.message) || 'Ошибка при очистке плана', 'error');
+                    return { ok: false };
+                }
+                clearMapLayers();
+                pendingDelete = false;
+                pendingDeleteData = null;
+                currentApartments.forEach(function (apt) { apt.marked = false; });
+                rebuildApartmentSelect(activeApartmentId);
+                clearDirtyFlags();
+                invalidateFloorMapsCache(activeSection);
+                return loadFloor(activeSection, activeFloor, { autoDraw: false, silent: true }).then(function () {
+                    showMessage(
+                        'План этажа очищен: удалено полигонов ' + (res.cleared || 0) +
+                        ', файлов фона ' + (res.removedFiles || 0) + '.',
+                        'success'
+                    );
+                    return { ok: true };
+                });
+            })
+            .catch(function () {
+                clearingMarkup = false;
+                setControlsBusy(false);
+                showMessage('Ошибка сети при очистке плана', 'error');
+                return { ok: false };
+            });
+    }
+
+    function clearApartmentMarkup() {
+        if (isBusy()) return;
+
+        var apt = getApartmentMeta(activeApartmentId);
+        var layer = findLayerByApartment(activeApartmentId);
+        if (!layer && !(pendingDelete && pendingDeleteData && parseInt(pendingDeleteData.apartamentId, 10) === activeApartmentId)) {
+            showMessage('У выбранной квартиры нет разметки для очистки', 'info');
+            return;
+        }
+
+        function go() {
+            var proceed = window.confirm(
+                'Удалить разметку ' + unitLabelCap + ' №' + (apt ? apt.apartmentNum : activeApartmentId) + '?\n' +
+                'Полигон будет удалён из базы. Остальные квартиры этажа не затронутся.'
+            );
+            if (!proceed) return;
+
+            clearingMarkup = true;
+            setControlsBusy(true);
+            showMessage('Удаление разметки квартиры…', 'info');
+
+            var finishOk = function () {
+                clearingMarkup = false;
+                setControlsBusy(false);
+                pendingDelete = false;
+                pendingDeleteData = null;
+                if (apt) apt.marked = false;
+                clearDirtyFlags();
+                rebuildApartmentSelect(activeApartmentId);
+                invalidateFloorMapsCache(activeSection);
+                applyApartmentSelection(activeApartmentId, true, { silent: true });
+                updatePolygonDrawButton();
+                showMessage('Разметка ' + unitLabelCap + ' №' + (apt ? apt.apartmentNum : activeApartmentId) + ' удалена', 'success');
+            };
+
+            if (pendingDelete && pendingDeleteData && parseInt(pendingDeleteData.apartamentId, 10) === activeApartmentId) {
+                pendingDelete = false;
+                pendingDeleteData = null;
+                finishOk();
+                return;
+            }
+
+            if (layer && (layer.fpData.isNew || !layer.fpData.id)) {
+                removeLayerFromMap(layer);
+                finishOk();
+                return;
+            }
+
+            var id = layer && layer.fpData ? layer.fpData.id : null;
+            if (!id) {
+                clearingMarkup = false;
+                setControlsBusy(false);
+                showMessage('Не найден id полигона для удаления', 'error');
+                return;
+            }
+
+            deletePolygonApi(id).then(function (res) {
+                if (!res.ok) {
+                    clearingMarkup = false;
+                    setControlsBusy(false);
+                    showMessage(res.message || 'Ошибка удаления', 'error');
+                    return;
+                }
+                removeLayerFromMap(layer);
+                finishOk();
+            });
+        }
+
+        if (!isDirty()) {
+            go();
+            return;
+        }
+
+        showUnsavedChangesDialog(
+            'Есть несохранённые изменения. Перед очисткой квартиры их нужно либо сохранить, либо отменить.\n\n' +
+            '«Сохранить и перейти» — записать правки, затем подтверждение очистки.\n' +
+            '«Не сохранять» — отменить правки, затем подтверждение очистки.\n' +
+            '«Остаться» — не очищать.'
+        ).then(function (action) {
+            if (action === 'save') {
+                saveCurrentApartmentChanges().then(function (res) {
+                    if (res && res.ok) go();
+                });
+            } else if (action === 'discard') {
+                revertCurrentApartmentChanges().then(function () { go(); });
+            }
+        });
     }
 
     function clearFloorMarkup() {
@@ -1111,8 +1292,8 @@
 
         function go() {
             var proceed = window.confirm(
-                'Уверены, что хотите очистить разметку этажа ' + activeFloor + ' (секция ' + activeSection + ')?\n' +
-                'Все полигоны квартир этого этажа будут удалены. Фон останется.'
+                'Очистить разметку этажа ' + activeFloor + ' (секция ' + activeSection + ')?\n' +
+                'Все полигоны квартир этого этажа будут удалены. Файл плана останется.'
             );
             if (proceed) doClearFloorMarkup();
         }
@@ -1127,6 +1308,46 @@
             '«Сохранить и перейти» — записать правки в БД, затем откроется подтверждение очистки.\n' +
             '«Не сохранять» — отменить правки, затем откроется подтверждение очистки.\n' +
             '«Остаться» — не очищать разметку.'
+        ).then(function (action) {
+            if (action === 'save') {
+                saveCurrentApartmentChanges().then(function (res) {
+                    if (res && res.ok) go();
+                });
+            } else if (action === 'discard') {
+                revertCurrentApartmentChanges().then(function () { go(); });
+            }
+        });
+    }
+
+    function clearWholeFloorPlan() {
+        if (isBusy()) return;
+
+        var hasAnyPolygon = false;
+        eachPolygon(function () { hasAnyPolygon = true; });
+        if (!hasAnyPolygon && !hasImage) {
+            showMessage('На этом этаже нечего очищать — нет ни файла плана, ни разметки', 'info');
+            return;
+        }
+
+        function go() {
+            var proceed = window.confirm(
+                'Очистить ВЕСЬ план этажа ' + activeFloor + ' (секция ' + activeSection + ')?\n' +
+                'Будут удалены все полигоны И файл плана этажа.\n\n' +
+                'Это действие нельзя отменить.'
+            );
+            if (proceed) doClearFloorPlan();
+        }
+
+        if (!isDirty()) {
+            go();
+            return;
+        }
+
+        showUnsavedChangesDialog(
+            'Есть несохранённые изменения. Перед полной очисткой плана их нужно либо сохранить, либо отменить.\n\n' +
+            '«Сохранить и перейти» — записать правки, затем подтверждение очистки.\n' +
+            '«Не сохранять» — отменить правки, затем подтверждение очистки.\n' +
+            '«Остаться» — не очищать.'
         ).then(function (action) {
             if (action === 'save') {
                 saveCurrentApartmentChanges().then(function (res) {
@@ -1264,7 +1485,7 @@
             if (labelInput) labelInput.value = '';
             clearDirtyFlags();
             if (!hasImage) {
-                if (!silent) showMessage('Нет плана этажа — разметка недоступна', 'error');
+                if (!silent) showMessage('Вначале загрузите файл плана этажа', 'info');
             } else if (autoDraw !== false) {
                 startPolygonDraw();
                 if (!silent) showMessage(unitLabelCap + ' №' + (apt ? apt.apartmentNum : apartamentId) + ' не размечена — включено рисование полигона на плане.', 'info');
@@ -1272,6 +1493,7 @@
                 if (!silent) showMessage(unitLabelCap + ' №' + (apt ? apt.apartmentNum : apartamentId) + ' не размечена — рисуйте полигон на плане.', 'info');
             }
         }
+        updatePolygonDrawButton();
         syncUrlSelection();
     }
 
@@ -1355,7 +1577,7 @@
 
             if (!meta || !meta.success) {
                 hasImage = false;
-                showMessage((meta && meta.message) || 'План этажа не найден', 'error');
+                showMessage('Вначале загрузите файл плана этажа', 'info');
                 loadingFloor = false;
                 setControlsBusy(false);
                 updateDirtyUi();
@@ -1496,6 +1718,7 @@
             }
             clearDirtyFlags();
             rebuildApartmentSelect(apartamentId);
+            updatePolygonDrawButton();
             showMessage(res.deleted
                 ? ('Полигон удалён (квартира №' + (apt ? apt.apartmentNum : apartamentId) + ')')
                 : ('Сохранено (квартира №' + (apt ? apt.apartmentNum : apartamentId) + ')'), 'success');
@@ -1541,6 +1764,18 @@
     /* ------------------------------------------------- Events --------------------------------------------------- */
 
     map.on('draw:drawstart', function () {
+        if (!canAddPolygon()) {
+            var toolbars = drawControl && drawControl._toolbars;
+            var modes = toolbars && toolbars.draw && toolbars.draw._modes;
+            var handler = modes && modes.polygon && modes.polygon.handler;
+            if (handler && handler.enabled && handler.enabled()) {
+                try { handler.disable(); } catch (e) { /* ignore */ }
+            }
+            stopPolygonDraw();
+            updatePolygonDrawButton();
+            showMessage(unitLabelCap + ' уже размечена — правьте полигон карандашом или удалите и нарисуйте заново', 'error');
+            return;
+        }
         drawToolActive = true;
         restorePageTextSelection();
     });
@@ -1548,6 +1783,7 @@
         drawToolActive = false;
         polygonDrawer = null;
         restorePageTextSelection();
+        updatePolygonDrawButton();
     });
     map.on('mouseup', restorePageTextSelection);
     map.on('dragend', restorePageTextSelection);
@@ -1581,6 +1817,17 @@
 
     map.on(L.Draw.Event.CREATED, function (e) {
         var apt = getApartmentMeta(activeApartmentId);
+        var existing = findLayerByApartment(activeApartmentId);
+        if (existing) {
+            showMessage(
+                unitLabelCap + ' №' + (apt ? apt.apartmentNum : activeApartmentId) +
+                ' уже размечена — правьте существующий полигон или удалите его и нарисуйте заново',
+                'error'
+            );
+            updatePolygonDrawButton();
+            return;
+        }
+
         var label = labelInput ? labelInput.value.trim() : '';
         var layer = e.layer;
 
@@ -1599,6 +1846,7 @@
         setEditableLayer(layer);
         stopPolygonDraw();
         markGeometryDirty();
+        updatePolygonDrawButton();
         showMessage('Новый полигон (не сохранён): квартира №' + (apt ? apt.apartmentNum : activeApartmentId) + ' — «Сохранить» запишет в БД, «Отменить» — уберёт черновик', 'warning');
     });
 
@@ -1713,10 +1961,24 @@
         });
     }
 
+    if (clearApartmentBtn) {
+        clearApartmentBtn.addEventListener('click', function () {
+            if (isBusy()) return;
+            clearApartmentMarkup();
+        });
+    }
+
     if (clearMarkupBtn) {
         clearMarkupBtn.addEventListener('click', function () {
             if (isBusy()) return;
             clearFloorMarkup();
+        });
+    }
+
+    if (clearPlanBtn) {
+        clearPlanBtn.addEventListener('click', function () {
+            if (isBusy()) return;
+            clearWholeFloorPlan();
         });
     }
 

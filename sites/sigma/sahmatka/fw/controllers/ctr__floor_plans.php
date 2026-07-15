@@ -985,6 +985,59 @@ class ctr__floor_plans extends ctr__
         echo json_encode(['success' => true, 'cleared' => $cleared]);
     }
 
+    /**
+     * Очистить весь план этажа: soft-delete полигонов + удаление файла фона.
+     */
+    function act__clear_floor_plan()
+    {
+        $this->require_admin();
+        global $mysql;
+        header('Content-Type: application/json; charset=utf-8');
+
+        $home_id = (int) ($_POST['home_id'] ?? 0);
+        $section = (int) ($_POST['section'] ?? 1);
+        $floor   = (int) ($_POST['floor'] ?? 0);
+        if ($section < 1) {
+            $section = 1;
+        }
+
+        if (!$home_id || !$floor) {
+            echo json_encode(['success' => false, 'message' => 'Не указаны home_id/floor']);
+            return;
+        }
+
+        $home = $mysql->get_for_key('homes', 'home_id', $home_id);
+        if (!$home) {
+            echo json_encode(['success' => false, 'message' => 'Дом не найден']);
+            return;
+        }
+
+        $mysql->sql(
+            'UPDATE floor_plan_polygons SET del="1"
+             WHERE home_id="' . $home_id . '" AND section="' . $section . '" AND floor="' . $floor . '" AND del="0"'
+        );
+        $cleared = (int) $mysql->count;
+
+        $removedFiles = 0;
+        foreach (self::FLOOR_IMAGE_EXT_PRIORITY as $ext) {
+            $path = $this->floor_image_target_path($home_id, $section, $floor, $ext);
+            try {
+                $this->assert_within_pbplans($path, $home_id);
+            } catch (Throwable $e) {
+                continue;
+            }
+            if (is_file($path) && @unlink($path)) {
+                $removedFiles++;
+            }
+        }
+
+        echo json_encode([
+            'success'      => true,
+            'cleared'      => $cleared,
+            'removedFiles' => $removedFiles,
+        ]);
+    }
+
     function normalize_points($points)
     {
         $out = [];
