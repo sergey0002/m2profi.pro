@@ -26,7 +26,7 @@ if ($api_base === '' || $script_src === '') {
     border-bottom: 1px solid #d1d5d8;
     box-shadow: 0 1px 0 rgba(0,0,0,0.04);
   }
-  #facade_demo_mount { width: 100%; max-width: 1200px; margin: 0 auto; }
+  #facade_demo_mount { width: 100%; margin: 0; }
   .fw-embed {
     max-width: 960px;
     margin: 0 auto;
@@ -75,6 +75,7 @@ if ($api_base === '' || $script_src === '') {
     el: '#facade_demo_mount',
     homeId: HOME_ID,
     width: '100%',
+    maxHeight: Math.round(window.innerWidth * 2),
     apiBase: API_BASE
   });
 
