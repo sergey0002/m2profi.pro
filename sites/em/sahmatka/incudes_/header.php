@@ -115,7 +115,8 @@ $_SESSION['agency_adm_id'] = $result['agency_adm_id']; // Заносим в се
 
 $GLOBALS['inlogin'] = 'true';
  
-$_SESSION['show_survey_modal'] = true; // Триггер для показа опроса (1 раз за сессию)
+// [task 4] временно скрыт опрос пользователей — раскомментировать для включения
+// $_SESSION['show_survey_modal'] = true;
 
 ?>
 

@@ -809,7 +809,7 @@ if($GLOBALS['inlogin'])
 ########################################## ФОРМА ОПРОСА
 ?>
 
-<?php if (isset($_SESSION['show_survey_modal']) && $_SESSION['show_survey_modal'] === true): ?>
+<?php if (false && isset($_SESSION['show_survey_modal']) && $_SESSION['show_survey_modal'] === true): // [task 4] временно скрыт опрос ?>
 <?php unset($_SESSION['show_survey_modal']); ?>
 <style>
 .survey_panel_bg {
