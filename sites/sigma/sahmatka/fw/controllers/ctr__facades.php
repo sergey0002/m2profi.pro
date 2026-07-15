@@ -329,6 +329,15 @@ class ctr__facades extends ctr__
         $area = (string) ($data['area'] ?? '');
         $unit_labels = $this->widget_unit_labels();
 
+        $sectionCaption = trim((string) ($data['section_caption'] ?? ''));
+        if ($sectionCaption === '') {
+            $sectionCaption = 'Секция ' . $section;
+        }
+        $homeTitle = trim((string) ($data['title'] ?? ''));
+        if (mb_strlen($homeTitle) < 3) {
+            $homeTitle = 'Дом ' . $home_id;
+        }
+
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
             'success'          => true,
@@ -340,9 +349,9 @@ class ctr__facades extends ctr__
             'floor'            => (int) ($data['floor'] ?? 0),
             'floorsTotal'      => $floors_total,
             'section'          => $section,
-            'sectionCaption'   => (string) ($data['section_caption'] ?? ('Секция ' . $section)),
+            'sectionCaption'   => $sectionCaption,
             'kvartalTitle'     => (string) ($data['kvartal_title'] ?? ''),
-            'homeTitle'        => (string) ($data['title'] ?? ''),
+            'homeTitle'        => $homeTitle,
             'addressLabel'     => (string) ($data['adress'] ?? ''),
             'price'            => $price,
             'priceFormatted'   => $price > 0 ? number_format($price, 0, '.', ' ') : '',
@@ -362,8 +371,8 @@ class ctr__facades extends ctr__
                     '_csrf'    => $_SESSION['_csrf'][$form_id],
                     '_fp_hp'   => '',
                     '_fp_js'   => '1',
-                    'home'     => (string) ($data['title'] ?? ''),
-                    'section_caption' => (string) ($data['section_caption'] ?? ''),
+                    'home'     => $homeTitle,
+                    'section_caption' => $sectionCaption,
                     'apartment_num'   => (string) $apartment_num,
                 ],
             ],

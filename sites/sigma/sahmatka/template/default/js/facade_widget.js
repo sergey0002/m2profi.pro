@@ -158,10 +158,18 @@
     return parts.join(' ');
   }
 
+  /* Цвета — цветопроба макета Stage 3 (colorprobe-mockup.png): accent #76939D */
+  var ACCENT = '#76939D';
+  var ACCENT_HOVER = '#65838D';
+  var ACCENT_SOFT = '#E4ECEF';
+  var TEXT_MAIN = '#1A1A1A';
+  var TEXT_MUTED = '#666666';
+  var BORDER_SOFT = '#D1D5D8';
+
   var WIDGET_CSS = [
     ':host { display: block; box-sizing: border-box; }',
     '*, *::before, *::after { box-sizing: border-box; }',
-    '.fw-root { position: relative; width: 100%; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #1a1a1a; }',
+    '.fw-root { position: relative; width: 100%; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: ' + TEXT_MAIN + '; }',
     '.fw-viewport { position: relative; overflow: hidden; background: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; }',
     '.fw-stage { position: relative; transform-origin: 0 0; will-change: transform; margin: 0; width: 100%; }',
     '.fw-stage img { display: block; width: 100%; height: auto; border: 0; max-width: none; pointer-events: none; -webkit-user-drag: none; vertical-align: top; }',
@@ -198,16 +206,16 @@
     '.fw-root.is-view-card.is-desktop .fw-view--card { display: block; }',
     '.fw-root.is-mobile-ui.is-view-floor .fw-explore-stage-wrap { display: none !important; }',
     '.fw-root.is-mobile-ui.is-view-floor .fw-explore-plan-host { display: flex !important; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }',
-    '.fw-root.is-mobile-ui.is-view-floor .fw-explore-inner { background: #f5f5f5; }',
+    '.fw-root.is-mobile-ui.is-view-floor .fw-explore-inner { background: #f7f7f7; }',
     '.fw-explore-plan-host { display: none; }',
     '.fw-explore-stage-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }',
     '.fw-explore-inner { display: flex; flex-direction: column; }',
-    /* поэтажный план — Stage 3: inline desktop, в explore на mobile */
-    '.fw-plan-layer { display: none; flex-direction: column; background: #f5f5f5; color: #17233c; min-height: 320px; width: 100%; }',
+    /* поэтажный план — Stage 3 */
+    '.fw-plan-layer { display: none; flex-direction: column; background: #f7f7f7; color: ' + TEXT_MAIN + '; min-height: 320px; width: 100%; }',
     '.fw-root.is-view-floor .fw-plan-layer, .fw-root.is-view-card .fw-plan-layer { display: flex; }',
     '.fw-plan-head { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px 16px 8px; }',
-    '.fw-plan-back { appearance: none; border: 0; background: rgba(91,124,138,0.12); color: #5B7C8A; border-radius: 12px; padding: 8px 16px; font: inherit; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
-    '.fw-plan-back:hover, .fw-plan-back:focus-visible { background: rgba(91,124,138,0.22); }',
+    '.fw-plan-back { appearance: none; border: 0; background: #A8BEC6; color: #fff; border-radius: 999px; padding: 10px 18px; font: inherit; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
+    '.fw-plan-back:hover, .fw-plan-back:focus-visible { background: ' + ACCENT + '; }',
     '.fw-plan-title { font-size: 22px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #3d3d3d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }',
     '.fw-plan-viewport { position: relative; flex: 1 1 auto; overflow: hidden; touch-action: none; display: flex; align-items: center; justify-content: center; min-height: 280px; background: #fff; }',
     '.fw-plan-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }',
@@ -215,54 +223,58 @@
     '.fw-plan-stage.is-readonly { cursor: default; }',
     '.fw-plan-stage img { display: block; max-width: none; border: 0; pointer-events: none; -webkit-user-drag: none; }',
     '.fw-plan-stage svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }',
-    '.fw-apt-poly.is-dim { fill-opacity: 0.08 !important; stroke-opacity: 0.25 !important; pointer-events: none; }',
-    '.fw-apt-poly.is-highlight { fill-opacity: 0.42 !important; stroke-opacity: 1 !important; stroke-width: 2.5 !important; }',
+    '.fw-apt-poly.is-dim { fill-opacity: 0.06 !important; stroke-opacity: 0.2 !important; pointer-events: none; }',
+    '.fw-apt-poly.is-highlight { fill: ' + ACCENT + ' !important; stroke: ' + ACCENT + ' !important; fill-opacity: 0.28 !important; stroke-opacity: 0.95 !important; stroke-width: 2.5 !important; }',
     '.fw-plan-banner { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: min(92%, 520px); padding: 10px 16px; border-radius: 8px; background: rgba(20,20,20,0.85); color: #fff; font-size: 13px; text-align: center; line-height: 1.4; }',
     '.fw-plan-viewport .fw-msg { max-width: min(92%, 420px); text-align: center; }',
     '.fw-apt-tooltip { position: absolute; z-index: 8; pointer-events: none; padding: 10px 16px; border-radius: 10px; background: rgba(45,45,48,0.92); color: #fff; text-align: center; line-height: 1.35; opacity: 0; transform: translate(-50%, calc(-100% - 10px)); transition: opacity 0.12s ease; white-space: nowrap; }',
     '.fw-apt-tooltip.is-visible { opacity: 1; }',
     '.fw-apt-tooltip__code { display: block; font-weight: 600; font-size: 14px; margin-bottom: 2px; }',
     '.fw-apt-tooltip__spec { display: block; font-size: 13px; opacity: 0.95; }',
-    /* карточка квартиры — Stage 3 */
-    '.fw-card { display: grid; grid-template-columns: minmax(280px, 370px) 1fr; gap: 0; background: #fff; min-height: 480px; border-radius: 8px; overflow: hidden; }',
+    /* карточка — цветопроба макета */
+    '.fw-card { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 0; background: #fff; min-height: 480px; overflow: hidden; }',
     '@media (max-width: 899.98px) { .fw-card { grid-template-columns: 1fr; min-height: auto; } }',
-    '.fw-card-side { padding: 24px 28px 32px; border-right: 1px solid #e8e8e8; display: flex; flex-direction: column; gap: 16px; }',
-    '@media (max-width: 899.98px) { .fw-card-side { border-right: 0; border-bottom: 1px solid #e8e8e8; padding: 16px; } }',
+    '.fw-card-side { padding: 28px 32px 36px; border-right: 1px solid #ececec; display: flex; flex-direction: column; gap: 14px; background: #fff; }',
+    '@media (max-width: 899.98px) { .fw-card-side { border-right: 0; border-bottom: 1px solid #ececec; padding: 16px; } }',
     '.fw-card-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }',
-    '.fw-card-back { appearance: none; border: 0; background: rgba(91,124,138,0.12); color: #5B7C8A; border-radius: 12px; padding: 8px 14px; font: inherit; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
-    '.fw-card-back:hover { background: rgba(91,124,138,0.22); }',
+    '.fw-card-back { appearance: none; border: 0; background: #A8BEC6; color: #fff; border-radius: 999px; padding: 10px 16px; font: inherit; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
+    '.fw-card-back:hover { background: ' + ACCENT + '; }',
     '.fw-card-tools { display: flex; gap: 8px; }',
-    '.fw-card-tool { width: 36px; height: 36px; border-radius: 50%; border: 1px solid #ddd; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }',
+    '.fw-card-tool { width: 36px; height: 36px; border-radius: 50%; border: 1px solid ' + BORDER_SOFT + '; background: #fff; color: ' + TEXT_MAIN + '; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }',
     '.fw-card-tool svg { width: 18px; height: 18px; }',
-    '.fw-card-title { font-size: 15px; color: #555; margin: 0; }',
-    '.fw-card-spec { font-size: 32px; font-weight: 700; color: #17233c; line-height: 1.15; margin: 0; }',
-    '.fw-card-meta { font-size: 14px; line-height: 1.55; color: #444; margin: 0; }',
-    '.fw-card-meta dt { font-weight: 600; display: inline; }',
-    '.fw-card-meta dd { display: inline; margin: 0 0 0 4px; }',
-    '.fw-card-meta div { margin-bottom: 4px; }',
-    '.fw-card-price { font-size: 28px; font-weight: 700; color: #17233c; margin: 4px 0 8px; }',
+    '.fw-card-title { font-size: 18px; font-weight: 500; color: ' + TEXT_MAIN + '; margin: 4px 0 0; line-height: 1.3; }',
+    '.fw-card-spec { font-size: 34px; font-weight: 700; color: ' + TEXT_MAIN + '; line-height: 1.15; margin: 0; }',
+    '.fw-card-meta { font-size: 14px; line-height: 1.6; color: ' + TEXT_MUTED + '; margin: 0; }',
+    '.fw-card-meta div { margin-bottom: 2px; }',
+    '.fw-card-meta strong { font-weight: 600; color: ' + TEXT_MUTED + '; }',
+    '.fw-card-price { font-size: 30px; font-weight: 700; color: ' + TEXT_MAIN + '; margin: 8px 0 4px; }',
     '.fw-card-status { padding: 8px 12px; border-radius: 8px; font-size: 14px; font-weight: 600; }',
     '.fw-card-form { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }',
-    '.fw-card-form input, .fw-card-form textarea { width: 100%; border: 1px solid #ddd; border-radius: 12px; padding: 12px 14px; font: inherit; font-size: 14px; background: #fff; }',
-    '.fw-card-form textarea { min-height: 88px; resize: vertical; }',
-    '.fw-card-form input:focus, .fw-card-form textarea:focus { outline: 2px solid rgba(91,124,138,0.35); border-color: #5B7C8A; }',
-    '.fw-card-submit { appearance: none; border: 0; border-radius: 999px; background: #5B7C8A; color: #fff; font: inherit; font-size: 16px; font-weight: 600; padding: 14px 24px; cursor: pointer; margin-top: 4px; }',
-    '.fw-card-submit:hover { background: #4d6b78; }',
+    '.fw-card-field { display: flex; flex-direction: column; gap: 4px; }',
+    '.fw-card-form input, .fw-card-form textarea { width: 100%; border: 1px solid ' + BORDER_SOFT + '; border-radius: 12px; padding: 14px 16px; font: inherit; font-size: 14px; background: #fff; color: ' + TEXT_MAIN + '; }',
+    '.fw-card-form textarea { min-height: 96px; resize: vertical; }',
+    '.fw-card-form input:focus, .fw-card-form textarea:focus { outline: 2px solid rgba(118,147,157,0.35); border-color: ' + ACCENT + '; }',
+    '.fw-card-form input.is-error, .fw-card-form textarea.is-error { border-color: #c62828; background: #fff8f8; outline: 2px solid rgba(198,40,40,0.18); }',
+    '.fw-card-field-error { display: none; font-size: 12px; line-height: 1.35; color: #c62828; padding: 0 2px; }',
+    '.fw-card-field-error.is-visible { display: block; }',
+    '.fw-card-submit { appearance: none; border: 0; border-radius: 999px; background: ' + ACCENT + '; color: #fff; font: inherit; font-size: 16px; font-weight: 600; padding: 16px 24px; cursor: pointer; margin-top: 4px; }',
+    '.fw-card-submit:hover { background: ' + ACCENT_HOVER + '; }',
     '.fw-card-submit:disabled { opacity: 0.6; cursor: wait; }',
-    '.fw-card-consent { font-size: 11px; line-height: 1.4; color: #888; margin: 0; }',
+    '.fw-card-consent { font-size: 11px; line-height: 1.45; color: #999; margin: 0; }',
     '.fw-card-msg { font-size: 14px; padding: 10px 12px; border-radius: 8px; }',
     '.fw-card-msg.is-ok { background: #e8f5e9; color: #2e7d32; }',
     '.fw-card-msg.is-err { background: #fdecea; color: #8a1f11; }',
-    '.fw-card-visual { display: flex; flex-direction: column; padding: 20px 24px 24px; min-height: 360px; }',
+    '.fw-card-msg ul { margin: 6px 0 0; padding-left: 18px; }',
+    '.fw-card-visual { display: flex; flex-direction: column; padding: 24px 28px 28px; min-height: 360px; background: #fafafa; }',
     '@media (max-width: 899.98px) { .fw-card-visual { padding: 16px; min-height: 280px; } }',
-    '.fw-card-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }',
-    '.fw-card-tab { appearance: none; border: 1px solid #5B7C8A; background: #fff; color: #5B7C8A; border-radius: 999px; padding: 8px 20px; font: inherit; font-size: 14px; cursor: pointer; }',
-    '.fw-card-tab.is-active { background: #5B7C8A; color: #fff; border-color: #5B7C8A; }',
+    '.fw-card-tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }',
+    '.fw-card-tab { appearance: none; border: 1px solid ' + ACCENT + '; background: #fff; color: ' + ACCENT + '; border-radius: 999px; padding: 10px 22px; font: inherit; font-size: 14px; cursor: pointer; }',
+    '.fw-card-tab.is-active { background: ' + ACCENT + '; color: #fff; border-color: ' + ACCENT + '; }',
     '.fw-card-panel { display: none; flex: 1; flex-direction: column; min-height: 0; }',
     '.fw-card-panel.is-active { display: flex; }',
-    '.fw-card-pln-label { text-align: center; font-size: 13px; color: #666; margin: 8px 0; }',
+    '.fw-card-pln-label { text-align: center; font-size: 13px; color: ' + TEXT_MUTED + '; margin: 8px 0; }',
     '.fw-card-pln-img { display: block; max-width: 100%; max-height: min(70vh, 520px); margin: 0 auto; object-fit: contain; }',
-    '.fw-card-floor-vp { position: relative; flex: 1; min-height: 280px; overflow: hidden; background: #fafafa; border-radius: 8px; }',
+    '.fw-card-floor-vp { position: relative; flex: 1; min-height: 280px; overflow: hidden; background: #fff; border-radius: 8px; }',
     '.fw-card-layer-mobile { display: none; position: fixed; inset: 0; z-index: 2147483002; background: #fff; overflow: auto; -webkit-overflow-scrolling: touch; }',
     '.fw-root.is-view-card.is-mobile-ui .fw-card-layer-mobile { display: block; }',
     '@media print { .fw-card-back, .fw-card-tools, .fw-card-tabs, .fw-card-form, .fw-card-consent, .fw-btn-close { display: none !important; } }'
@@ -308,6 +320,9 @@
     this._revealTimer = null;
     this._revealLoopIdx = 0;
     this._io = null;
+    this._hostHovered = false;
+    this._onHostPointerEnter = this._onHostPointerEnter.bind(this);
+    this._onHostPointerLeave = this._onHostPointerLeave.bind(this);
 
     this._onResize = this._onResize.bind(this);
     this._onKeyDown = this._onKeyDown.bind(this);
@@ -396,6 +411,7 @@
       this._ro = null;
     }
     this._teardownScrollReveal();
+    this._unbindHostHoverPause();
     window.removeEventListener('resize', this._onResize);
     document.removeEventListener('keydown', this._onKeyDown);
     if (this.shadow) {
@@ -568,6 +584,7 @@
     this._bindStageInteractions(stage, viewport, false);
     this._syncUiClasses();
     this._setupScrollReveal();
+    this._bindHostHoverPause();
 
     if (typeof ResizeObserver !== 'undefined') {
       this._ro = new ResizeObserver(function () { self._onResize(); });
@@ -1428,11 +1445,11 @@
 
     var meta = document.createElement('div');
     meta.className = 'fw-card-meta';
-    meta.innerHTML =
-      '<div><strong>' + (L.jk || 'ЖК') + ':</strong> ' + (data.kvartalTitle || '') + '</div>' +
-      '<div><strong>' + (L.tower || 'Башня') + ':</strong> ' + (data.sectionCaption || '') + '</div>' +
-      '<div><strong>' + (L.floorLabel || 'Этаж') + ':</strong> ' + data.floor + '/' + data.floorsTotal + '</div>' +
-      '<div><strong>' + (data.unitLabelNomCap || L.residence || 'Квартира') + ':</strong> \u2116' + data.apartmentNum + '</div>';
+      meta.innerHTML =
+      '<div>' + (L.jk || 'Жилой комплекс') + ': ' + (data.kvartalTitle ? '«' + data.kvartalTitle + '»' : '—') + '</div>' +
+      '<div>' + (L.tower || 'Башня') + ' ' + (data.sectionCaption || '') + '</div>' +
+      '<div>' + (L.floorLabel || 'Этаж') + ': ' + data.floor + '/' + data.floorsTotal + '</div>' +
+      '<div>' + (data.unitLabelNomCap || L.residence || 'Квартира') + ': \u2116' + data.apartmentNum + '</div>';
     side.appendChild(meta);
 
     if (data.priceFormatted) {
@@ -1447,24 +1464,29 @@
       form.className = 'fw-card-form';
       form.noValidate = true;
 
-      var fio = document.createElement('input');
-      fio.type = 'text';
-      fio.name = 'fio';
-      fio.placeholder = L.fio || 'ФИО';
-      fio.required = true;
-      form.appendChild(fio);
+      function makeField(tag, attrs) {
+        var wrap = document.createElement('div');
+        wrap.className = 'fw-card-field';
+        var el = document.createElement(tag);
+        Object.keys(attrs).forEach(function (k) {
+          if (k === 'textContent') el.textContent = attrs[k];
+          else el[k] = attrs[k];
+        });
+        var err = document.createElement('div');
+        err.className = 'fw-card-field-error';
+        err.setAttribute('data-for', attrs.name || '');
+        wrap.appendChild(el);
+        wrap.appendChild(err);
+        form.appendChild(wrap);
+        el.addEventListener('input', function () {
+          self._clearFieldError(el);
+        });
+        return el;
+      }
 
-      var phone = document.createElement('input');
-      phone.type = 'tel';
-      phone.name = 'phone';
-      phone.placeholder = L.phone || 'Телефон';
-      phone.required = true;
-      form.appendChild(phone);
-
-      var msg = document.createElement('textarea');
-      msg.name = 'message';
-      msg.placeholder = L.message || 'Сообщение';
-      form.appendChild(msg);
+      makeField('input', { type: 'text', name: 'fio', placeholder: L.fio || 'ФИО', required: true, autocomplete: 'name' });
+      makeField('input', { type: 'tel', name: 'phone', placeholder: L.phone || 'Телефон', required: true, autocomplete: 'tel' });
+      makeField('textarea', { name: 'message', placeholder: L.message || 'Сообщение' });
 
       var booking = data.booking || {};
       var hidden = booking.hiddenFields || {};
@@ -1482,6 +1504,7 @@
       hp.value = '';
       hp.tabIndex = -1;
       hp.autocomplete = 'off';
+      hp.setAttribute('aria-hidden', 'true');
       hp.style.cssText = 'position:absolute;left:-9999px;height:0;width:0;opacity:0;';
       form.appendChild(hp);
 
@@ -1593,13 +1616,141 @@
     tabFloor.addEventListener('click', function () { activateTab('floor'); });
   };
 
+  FacadeWidgetInstance.prototype._clearFieldError = function (input) {
+    if (!input) return;
+    input.classList.remove('is-error');
+    var wrap = input.closest && input.closest('.fw-card-field');
+    if (wrap) {
+      var err = wrap.querySelector('.fw-card-field-error');
+      if (err) {
+        err.textContent = '';
+        err.classList.remove('is-visible');
+      }
+    }
+  };
+
+  FacadeWidgetInstance.prototype._clearFormErrors = function (form) {
+    if (!form) return;
+    var nodes = form.querySelectorAll('.is-error');
+    for (var i = 0; i < nodes.length; i++) nodes[i].classList.remove('is-error');
+    var msgs = form.querySelectorAll('.fw-card-field-error');
+    for (var j = 0; j < msgs.length; j++) {
+      msgs[j].textContent = '';
+      msgs[j].classList.remove('is-visible');
+    }
+  };
+
+  FacadeWidgetInstance.prototype._setFieldError = function (form, name, message) {
+    var input = form.querySelector('[name="' + name + '"]');
+    if (!input || input.type === 'hidden') return false;
+    input.classList.add('is-error');
+    var wrap = input.closest && input.closest('.fw-card-field');
+    if (wrap) {
+      var err = wrap.querySelector('.fw-card-field-error');
+      if (err) {
+        err.textContent = message || 'Ошибка';
+        err.classList.add('is-visible');
+      }
+    }
+    return true;
+  };
+
+  FacadeWidgetInstance.prototype._validateBookingClient = function (form) {
+    var errors = {};
+    var fio = (form.querySelector('[name="fio"]') || {}).value || '';
+    var phone = (form.querySelector('[name="phone"]') || {}).value || '';
+    var message = (form.querySelector('[name="message"]') || {}).value || '';
+    fio = String(fio).trim();
+    phone = String(phone).trim();
+    message = String(message).trim();
+
+    if (fio.length < 3) errors.fio = 'Минимальная длина — 3 символа';
+    if (!phone) {
+      errors.phone = 'Обязательное поле';
+    } else {
+      var digits = phone.replace(/\D/g, '');
+      var phoneOk = /^(?:\+7|8)\d{10}$/.test(phone.replace(/[\s\-()]/g, ''))
+        || (digits.length === 11 && (digits[0] === '7' || digits[0] === '8'));
+      if (!phoneOk) errors.phone = 'Номер телефона не соответствует формату';
+    }
+    if (message.length > 300) errors.message = 'Максимальная длина — 300 символов';
+    if (/https?:\/\//i.test(message) || /www\./i.test(message)) {
+      errors.message = 'Сообщение не должно содержать ссылки';
+    }
+
+    return errors;
+  };
+
+  FacadeWidgetInstance.prototype._applyBookingErrors = function (form, msgEl, json) {
+    var errors = (json && json.errors) || {};
+    var shownVisible = false;
+    var hiddenLines = [];
+    var labels = {
+      fio: 'ФИО',
+      phone: 'Телефон',
+      message: 'Сообщение',
+      home: 'Дом',
+      section_caption: 'Секция',
+      apartment_num: 'Номер'
+    };
+
+    Object.keys(errors).forEach(function (name) {
+      var msg = errors[name];
+      if (typeof msg !== 'string') msg = String(msg || 'Ошибка');
+      if (this._setFieldError(form, name, msg)) {
+        shownVisible = true;
+      } else {
+        hiddenLines.push((labels[name] || name) + ': ' + msg);
+      }
+    }, this);
+
+    msgEl.style.display = 'block';
+    msgEl.className = 'fw-card-msg is-err';
+    msgEl.innerHTML = '';
+    var title = document.createElement('div');
+    title.textContent = (json && json.message) || this.locale.bookingError;
+    msgEl.appendChild(title);
+    if (hiddenLines.length) {
+      var ul = document.createElement('ul');
+      hiddenLines.forEach(function (line) {
+        var li = document.createElement('li');
+        li.textContent = line;
+        ul.appendChild(li);
+      });
+      msgEl.appendChild(ul);
+    } else if (shownVisible) {
+      var hint = document.createElement('div');
+      hint.style.marginTop = '4px';
+      hint.style.fontSize = '12px';
+      hint.textContent = 'Проверьте подсвеченные поля';
+      msgEl.appendChild(hint);
+    }
+
+    var firstErr = form.querySelector('.is-error');
+    if (firstErr && firstErr.focus) {
+      try { firstErr.focus(); } catch (e) { /* ignore */ }
+    }
+  };
+
   FacadeWidgetInstance.prototype._submitBookingForm = function (form, booking, msgEl, submitBtn) {
     var self = this;
     var L = this.locale;
+    this._clearFormErrors(form);
+    msgEl.style.display = 'none';
+    msgEl.innerHTML = '';
+
+    var clientErrors = this._validateBookingClient(form);
+    if (Object.keys(clientErrors).length) {
+      this._applyBookingErrors(form, msgEl, {
+        message: 'Исправьте ошибки в форме',
+        errors: clientErrors
+      });
+      return;
+    }
+
     var fd = new FormData(form);
     if (!fd.get('_fp_js')) fd.set('_fp_js', '1');
     submitBtn.disabled = true;
-    msgEl.style.display = 'none';
 
     fetch(booking.actionUrl, {
       method: 'POST',
@@ -1607,8 +1758,9 @@
       credentials: 'omit'
     }).then(function (res) { return res.json(); }).then(function (json) {
       submitBtn.disabled = false;
-      msgEl.style.display = 'block';
       if (json && json.success) {
+        self._clearFormErrors(form);
+        msgEl.style.display = 'block';
         msgEl.className = 'fw-card-msg is-ok';
         msgEl.textContent = json.message || L.bookingSuccess;
         form.reset();
@@ -1616,8 +1768,7 @@
           self.options.onBookingSuccess(json.message);
         }
       } else {
-        msgEl.className = 'fw-card-msg is-err';
-        msgEl.textContent = (json && json.message) || L.bookingError;
+        self._applyBookingErrors(form, msgEl, json || {});
       }
     }).catch(function () {
       submitBtn.disabled = false;
@@ -1787,6 +1938,37 @@
    * что блок сейчас на экране. Как только блок уходит из вида — анимация
    * останавливается и подсветка снимается; при возвращении — стартует заново.
    */
+  FacadeWidgetInstance.prototype._bindHostHoverPause = function () {
+    if (!this.host) return;
+    this.host.addEventListener('pointerenter', this._onHostPointerEnter);
+    this.host.addEventListener('pointerleave', this._onHostPointerLeave);
+  };
+
+  FacadeWidgetInstance.prototype._unbindHostHoverPause = function () {
+    if (!this.host) return;
+    this.host.removeEventListener('pointerenter', this._onHostPointerEnter);
+    this.host.removeEventListener('pointerleave', this._onHostPointerLeave);
+    this._hostHovered = false;
+  };
+
+  /** Наведение на тело виджета — стоп анимации подсветки этажей. */
+  FacadeWidgetInstance.prototype._onHostPointerEnter = function () {
+    this._hostHovered = true;
+    this._applyScrollRevealIndex(-1);
+  };
+
+  FacadeWidgetInstance.prototype._onHostPointerLeave = function () {
+    this._hostHovered = false;
+    this._resumeRevealHighlight();
+  };
+
+  FacadeWidgetInstance.prototype._revealAllowed = function () {
+    return !this.exploring
+      && this.currentView === 'facade'
+      && !this._hoverKey
+      && !this._hostHovered;
+  };
+
   FacadeWidgetInstance.prototype._setupScrollReveal = function () {
     this._teardownScrollReveal();
     if (!this._scrollReveal || this._prefersReducedMotion()) return;
@@ -1820,10 +2002,10 @@
     var speed = this._scrollRevealSpeed > 0 ? this._scrollRevealSpeed : 1;
     var stepMs = Math.max(150, Math.round(900 / speed));
     this._revealLoopIdx = 0;
-    if (!this.exploring && this.currentView === 'facade' && !this._hoverKey) this._applyScrollRevealIndex(0);
+    if (this._revealAllowed()) this._applyScrollRevealIndex(0);
     this._revealTimer = setInterval(function () {
       self._revealLoopIdx = (self._revealLoopIdx + 1) % self._scrollRevealSteps;
-      if (!self.exploring && self.currentView === 'facade' && !self._hoverKey) {
+      if (self._revealAllowed()) {
         self._applyScrollRevealIndex(self._revealLoopIdx);
       }
     }, stepMs);
@@ -1837,9 +2019,9 @@
     this._applyScrollRevealIndex(-1);
   };
 
-  /** Немедленно показывает текущий шаг цикла (после ухода с полигона/из режима explore/плана). */
+  /** Немедленно показывает текущий шаг цикла (после ухода с полигона/из режима explore/плана/с виджета). */
   FacadeWidgetInstance.prototype._resumeRevealHighlight = function () {
-    if (this.exploring || this.currentView !== 'facade' || this._hoverKey || !this._revealTimer) return;
+    if (!this._revealAllowed() || !this._revealTimer) return;
     this._applyScrollRevealIndex(this._revealLoopIdx);
   };
 
