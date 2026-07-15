@@ -1,6 +1,5 @@
 <?php
 $home_id    = (int) $data['home_id'];
-$home_title = $data['home_title'];
 $image_url  = $data['image_url'];
 $image_w    = (int) $data['image_w'];
 $image_h    = (int) $data['image_h'];
@@ -22,7 +21,8 @@ $sections   = isset($data['sections']) && is_array($data['sections']) ? $data['s
 
     <div class="facade-editor__panel-card">
         <div id="facade_floor_panel" class="facade-editor__floor-panel">
-            <label>Секция:
+            <label class="facade-editor__field">
+                <span class="facade-editor__field-label">Секция</span>
                 <select id="facade_section_select">
                     <?php foreach ($sections as $sec): ?>
                         <option value="<?= (int) $sec['id'] ?>"
@@ -32,11 +32,13 @@ $sections   = isset($data['sections']) && is_array($data['sections']) ? $data['s
                     <?php endforeach; ?>
                 </select>
             </label>
-            <label>Этаж:
+            <label class="facade-editor__field">
+                <span class="facade-editor__field-label">Этаж</span>
                 <select id="facade_floor_select"></select>
             </label>
-            <label>Подпись (необяз.):
-                <input type="text" id="facade_label_input" maxlength="64" placeholder="опционально" />
+            <label class="facade-editor__field facade-editor__field--label">
+                <span class="facade-editor__field-label">Подпись</span>
+                <input type="text" id="facade_label_input" maxlength="64" placeholder="необяз." />
             </label>
             <span id="facade_dirty_actions" class="facade-editor__dirty-actions" style="display:none;">
                 <button type="button" id="facade_floor_save" class="facade-editor__btn facade-editor__btn--primary">Сохранить</button>

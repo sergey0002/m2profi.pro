@@ -416,8 +416,16 @@ class ctr__facades extends ctr__
             $sectionCaption = 'Секция ' . $section;
         }
         $homeTitle = trim((string) ($data['title'] ?? ''));
+        if ($homeTitle === '') {
+            $homeTitle = trim((string) ($home['title'] ?? ''));
+        }
         if (mb_strlen($homeTitle) < 3) {
             $homeTitle = 'Дом ' . $home_id;
+        }
+        // ЖК: prefer homes_kvartal.title, иначе название дома (часто ЖК = title дома).
+        $kvartalTitle = trim((string) ($data['kvartal_title'] ?? ''));
+        if ($kvartalTitle === '') {
+            $kvartalTitle = $homeTitle;
         }
 
         header('Content-Type: application/json; charset=utf-8');
@@ -432,7 +440,7 @@ class ctr__facades extends ctr__
             'floorsTotal'      => $floors_total,
             'section'          => $section,
             'sectionCaption'   => $sectionCaption,
-            'kvartalTitle'     => (string) ($data['kvartal_title'] ?? ''),
+            'kvartalTitle'     => $kvartalTitle,
             'homeTitle'        => $homeTitle,
             'addressLabel'     => (string) ($data['adress'] ?? ''),
             'price'            => $price,

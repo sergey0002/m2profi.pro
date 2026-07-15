@@ -313,22 +313,36 @@
     '.fw-crumb.is-link:hover, .fw-crumb.is-link:focus-visible { color: ' + ACCENT_HOVER + '; outline: none; }',
     '.fw-crumb.is-current { color: ' + TEXT_MAIN + '; font-weight: 600; cursor: default; }',
     '.fw-crumb-sep { opacity: 0.4; user-select: none; }',
+    /* на плане этажа крошки стоят под «Назад» в стиле бывшего заголовка */
+    '.fw-plan-head .fw-crumbs { padding: 0; background: transparent; border: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #3d3d3d; line-height: 1.25; gap: 6px 10px; max-width: 100%; }',
+    '.fw-plan-head .fw-crumbs .fw-crumb { color: #3d3d3d; font-weight: 700; }',
+    '.fw-plan-head .fw-crumbs .fw-crumb.is-link { color: #3d3d3d; text-decoration: none; cursor: pointer; }',
+    '.fw-plan-head .fw-crumbs .fw-crumb.is-link:hover, .fw-plan-head .fw-crumbs .fw-crumb.is-link:focus-visible { color: ' + ACCENT + '; }',
+    '.fw-plan-head .fw-crumbs .fw-crumb.is-current { color: #3d3d3d; font-weight: 700; }',
+    '.fw-plan-head .fw-crumbs .fw-crumb-sep { opacity: 0.45; font-weight: 700; }',
+    /* на карточке — под «Назад» в том же стиле заголовка */
+    '.fw-card-crumbs-host { margin: 4px 0 0; max-width: 100%; }',
+    '.fw-card-crumbs-host .fw-crumbs { padding: 0; background: transparent; border: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #3d3d3d; line-height: 1.25; gap: 6px 10px; max-width: 100%; }',
+    '.fw-card-crumbs-host .fw-crumbs .fw-crumb { color: #3d3d3d; font-weight: 700; }',
+    '.fw-card-crumbs-host .fw-crumbs .fw-crumb.is-link { color: #3d3d3d; text-decoration: none; cursor: pointer; }',
+    '.fw-card-crumbs-host .fw-crumbs .fw-crumb.is-link:hover, .fw-card-crumbs-host .fw-crumbs .fw-crumb.is-link:focus-visible { color: ' + ACCENT + '; }',
+    '.fw-card-crumbs-host .fw-crumbs .fw-crumb.is-current { color: #3d3d3d; font-weight: 700; }',
+    '.fw-card-crumbs-host .fw-crumbs .fw-crumb-sep { opacity: 0.45; font-weight: 700; }',
     '.fw-root.is-mobile-ui.is-view-floor .fw-explore-stage-wrap { display: none !important; }',
     '.fw-root.is-mobile-ui.is-view-floor .fw-explore-plan-host { display: flex !important; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; height: 100%; }',
-    '.fw-root.is-mobile-ui.is-view-floor .fw-explore-inner { background: #f7f7f7; }',
+    '.fw-root.is-mobile-ui.is-view-floor .fw-explore-inner { background: #fff; }',
     '.fw-root.is-mobile-ui.is-view-floor .fw-explore-plan-host .fw-plan-layer { display: flex !important; flex: 1; flex-direction: column; min-height: 0; height: 100%; }',
     '.fw-root.is-mobile-ui.is-view-floor .fw-plan-viewport { flex: 1 1 auto; min-height: 200px; height: auto; }',
     '.fw-explore-plan-host { display: none; }',
     '.fw-explore-stage-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }',
     '.fw-explore-inner { display: flex; flex-direction: column; }',
     /* поэтажный план — Stage 3 */
-    '.fw-plan-layer { display: none; flex-direction: column; background: #f0f2f4; color: ' + TEXT_MAIN + '; min-height: 0; width: 100%; }',
+    '.fw-plan-layer { display: none; flex-direction: column; background: #fff; color: ' + TEXT_MAIN + '; min-height: 0; width: 100%; }',
     '.fw-root.is-view-floor .fw-plan-layer, .fw-root.is-view-card .fw-plan-layer { display: flex; }',
-    '.fw-plan-head { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 16px 6px; background: #f0f2f4; }',
+    '.fw-plan-head { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 16px 6px; background: #fff; }',
     '.fw-plan-back { appearance: none; border: 0; background: #A8BEC6; color: #fff; border-radius: 999px; padding: 8px 16px; font: inherit; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
     '.fw-plan-back:hover, .fw-plan-back:focus-visible { background: ' + ACCENT + '; }',
-    '.fw-plan-title { font-size: 18px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #3d3d3d; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }',
-    '.fw-plan-viewport { position: relative; flex: 0 0 auto; overflow: hidden; touch-action: none; min-height: 0; height: auto; background: #f7f8f9; padding: 0; }',
+    '.fw-plan-viewport { position: relative; flex: 0 0 auto; overflow: hidden; touch-action: none; min-height: 0; height: auto; background: #fff; padding: 0; }',
     '.fw-plan-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }',
     '.fw-plan-stage.is-dragging { cursor: grabbing; }',
     '.fw-plan-stage.is-readonly { cursor: default; }',
@@ -349,7 +363,7 @@
     '  .fw-card { display: flex; flex-direction: column; grid-template-columns: none; }',
     '  .fw-card-side { display: contents; border: 0; padding: 0; }',
     '  .fw-card-head-row { order: 1; padding: 16px 16px 0; }',
-    '  .fw-card-title { order: 2; padding: 8px 16px 4px; margin: 0; }',
+    '  .fw-card-crumbs-host { order: 2; padding: 8px 16px 4px; margin: 0; }',
     '  .fw-card-visual { order: 3; }',
     '  .fw-card-spec { order: 4; padding: 12px 16px 0; }',
     '  .fw-card-meta { order: 5; padding: 0 16px; }',
@@ -388,19 +402,61 @@
     '.fw-card-msg.is-ok { background: #e8f5e9; color: #2e7d32; }',
     '.fw-card-msg.is-err { background: #fdecea; color: #8a1f11; }',
     '.fw-card-msg ul { margin: 6px 0 0; padding-left: 18px; }',
-    '.fw-card-visual { display: flex; flex-direction: column; padding: 20px 24px 24px; background: #fafafa; }',
+    '.fw-card-visual { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; padding: 20px 24px 24px; background: #fff; }',
     '@media (max-width: 899.98px) { .fw-card-visual { padding: 12px 16px 16px; border-bottom: 1px solid #ececec; } }',
     '.fw-card-tabs { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }',
     '.fw-card-tab { appearance: none; border: 1px solid ' + ACCENT + '; background: #fff; color: ' + ACCENT + '; border-radius: 999px; padding: 10px 22px; font: inherit; font-size: 14px; cursor: pointer; }',
     '.fw-card-tab.is-active { background: ' + ACCENT + '; color: #fff; border-color: ' + ACCENT + '; }',
-    '.fw-card-panel { display: none; flex-direction: column; }',
+    '.fw-card-panel { display: none; flex-direction: column; flex: 1 1 auto; width: 100%; min-width: 0; }',
     '.fw-card-panel.is-active { display: flex; }',
+    '.fw-card-panel[data-panel="layout"].is-active { align-items: stretch; justify-content: flex-start; min-height: min(58vh, 560px); }',
     '.fw-card-pln-label { text-align: center; font-size: 13px; color: ' + TEXT_MUTED + '; margin: 4px 0; }',
-    '.fw-card-pln-img { display: block; max-width: 100%; max-height: min(52vh, 420px); margin: 0 auto; object-fit: contain; }',
-    '.fw-card-floor-vp { position: relative; min-height: 240px; height: min(52vh, 420px); overflow: hidden; background: #fff; border-radius: 8px; }',
+    '.fw-card-pln-img { display: block; width: 100%; max-width: 100%; height: auto; max-height: min(68vh, 680px); margin: 8px auto; object-fit: contain; }',
+    '.fw-card-floor-vp { position: relative; flex: 1 1 auto; width: 100%; min-height: min(52vh, 480px); height: min(60vh, 560px); overflow: hidden; background: #fff; border-radius: 8px; }',
     '.fw-card-layer-mobile { display: none; position: fixed; inset: 0; z-index: 2147483002; background: #fff; overflow: auto; -webkit-overflow-scrolling: touch; }',
     '.fw-root.is-view-card.is-mobile-ui .fw-card-layer-mobile { display: block; }',
-    '@media print { .fw-card-back, .fw-card-tools, .fw-card-tabs, .fw-card-form, .fw-card-consent, .fw-btn-close { display: none !important; } }'
+    /* печать: только карточка, крупная планировка */
+    '@media print {',
+    '  .fw-view--facade, .fw-view--floor, .fw-explore-layer, .fw-crumbs { display: none !important; }',
+    '  .fw-root { background: #fff !important; }',
+    '  .fw-root.is-view-card .fw-view--card { display: block !important; }',
+    '  .fw-root.is-view-card.is-mobile-ui .fw-view--card { display: none !important; }',
+    '  .fw-root.is-view-card.is-mobile-ui .fw-card-layer-mobile { display: block !important; position: static !important; inset: auto !important; overflow: visible !important; height: auto !important; z-index: auto !important; }',
+    '  .fw-card { display: flex !important; flex-direction: column !important; grid-template-columns: none !important; overflow: visible !important; background: #fff !important; }',
+    '  .fw-card-side { display: flex !important; flex-direction: column !important; border: 0 !important; padding: 0 0 12px !important; width: 100% !important; gap: 8px !important; }',
+    '  .fw-card-back, .fw-card-tools, .fw-card-tabs, .fw-card-form, .fw-card-consent, .fw-card-submit, .fw-card-msg, .fw-btn-close { display: none !important; }',
+    '  .fw-card-visual { padding: 0 !important; }',
+    '  .fw-card-panel { display: none !important; }',
+    '  .fw-card-panel[data-panel="layout"] { display: flex !important; flex-direction: column !important; }',
+    '  .fw-card-pln-img { display: block !important; width: 100% !important; max-width: 100% !important; max-height: none !important; height: auto !important; object-fit: contain !important; margin: 8px 0 !important; }',
+    '  .fw-card-pln-label { font-size: 12px !important; color: #555 !important; }',
+    '  .fw-card-floor-vp { display: none !important; }',
+    '  .fw-card-crumbs-host .fw-crumbs { display: flex !important; padding: 0 !important; background: transparent !important; border: 0 !important; }',
+    '}'
+  ].join('\n');
+
+  var PRINT_DOC_CSS = [
+    '@page { margin: 10mm; size: auto; }',
+    'html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; color: #1a1a1a; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; height: auto !important; min-height: 0 !important; overflow: visible !important; }',
+    '*, *::before, *::after { box-sizing: border-box; }',
+    /* мобильная колонка: текст сверху, план на всю ширину снизу */
+    '.fw-print-sheet { width: 100%; max-width: 100%; margin: 0; padding: 0; background: #fff; }',
+    '.fw-card { display: flex !important; flex-direction: column !important; width: 100% !important; max-width: 100% !important; background: #fff !important; overflow: visible !important; gap: 0 !important; }',
+    '.fw-card-side { display: flex !important; flex-direction: column !important; width: 100% !important; gap: 8px; padding: 0 0 12px !important; border: 0 !important; order: 1 !important; }',
+    '.fw-card-visual { display: flex !important; flex-direction: column !important; width: 100% !important; padding: 0 !important; order: 2 !important; background: #fff !important; }',
+    '.fw-card-head-row, .fw-card-back, .fw-card-tools, .fw-card-tabs, .fw-card-form, .fw-card-consent, .fw-card-submit, .fw-card-msg, .fw-card-floor-vp, .fw-card-panel[data-panel="floor"] { display: none !important; }',
+    '.fw-card-crumbs-host { margin: 0 0 8px; width: 100%; }',
+    '.fw-card-crumbs-host .fw-crumbs { display: flex !important; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 0 !important; background: transparent !important; border: 0 !important; font-size: 16px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #3d3d3d; line-height: 1.3; }',
+    '.fw-card-crumbs-host .fw-crumb { color: #3d3d3d; font-weight: 700; }',
+    '.fw-card-crumbs-host .fw-crumb-sep { opacity: 0.45; font-weight: 700; }',
+    '.fw-card-spec { font-size: 26px; font-weight: 700; margin: 0; line-height: 1.15; width: 100%; }',
+    '.fw-card-meta { font-size: 13px; line-height: 1.5; color: #555; margin: 0; width: 100%; }',
+    '.fw-card-price { font-size: 24px; font-weight: 700; margin: 6px 0 0; width: 100%; }',
+    '.fw-card-status { padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-top: 6px; width: 100%; }',
+    '.fw-card-panel { display: none !important; }',
+    '.fw-card-panel[data-panel="layout"] { display: flex !important; flex-direction: column !important; width: 100% !important; min-height: 0 !important; }',
+    '.fw-card-pln-label { text-align: center; font-size: 12px; color: #666; margin: 4px 0; width: 100%; }',
+    '.fw-card-pln-img { display: block !important; width: 100% !important; max-width: 100% !important; height: auto !important; max-height: none !important; margin: 8px 0 0 !important; object-fit: contain !important; }'
   ].join('\n');
 
   function FacadeWidgetInstance(host, options) {
@@ -1234,8 +1290,9 @@
       });
     }
     if (cfg.apartment.show && view === 'card') {
-      var aptLabel = state.displayCode
-        || (state.apartmentNum ? ('№' + state.apartmentNum) : (this.locale.residence || 'Квартира'));
+      var aptLabel = state.apartmentNum
+        ? ('№' + state.apartmentNum)
+        : (this.locale.residence || 'Квартира');
       items.push({
         key: 'apartment',
         label: aptLabel,
@@ -1250,6 +1307,26 @@
       return;
     }
     nav.classList.add('is-visible');
+
+    // На плане и карточке крошки — под «Назад» вместо заголовка.
+    var planHead = this._planEls && this._planEls.head;
+    var cardHost = null;
+    if (view === 'card') {
+      cardHost = isDesktopUi()
+        ? (this._cardEls && this._cardEls.crumbsHost)
+        : ((this._cardEls && this._cardEls.crumbsHostMobile) || (this._cardEls && this._cardEls.crumbsHost));
+    }
+    var root = this._els.root;
+    var body = this._els.body;
+    if (view === 'floor' && planHead) {
+      if (nav.parentNode !== planHead) planHead.appendChild(nav);
+    } else if (view === 'card' && cardHost) {
+      if (nav.parentNode !== cardHost) cardHost.appendChild(nav);
+    } else if (root && body) {
+      if (nav.parentNode !== root || nav.nextSibling !== body) {
+        root.insertBefore(nav, body);
+      }
+    }
 
     items.forEach(function (item, idx) {
       if (idx > 0) {
@@ -1455,10 +1532,6 @@
     });
     head.appendChild(backBtn);
 
-    var title = document.createElement('div');
-    title.className = 'fw-plan-title';
-    head.appendChild(title);
-
     layer.appendChild(head);
 
     var viewport = document.createElement('div');
@@ -1476,7 +1549,7 @@
     }, { passive: false });
 
     this._planEls.layer = layer;
-    this._planEls.title = title;
+    this._planEls.head = head;
     this._planEls.viewport = viewport;
     this._planEls.backBtn = backBtn;
   };
@@ -1496,6 +1569,120 @@
   FacadeWidgetInstance.prototype._activeCardShell = function () {
     if (isDesktopUi()) return this._cardEls.shell;
     return this._cardEls.shellMobile || this._cardEls.shell;
+  };
+
+  /**
+   * Печать только карточки: скрытый iframe (без пустого popup),
+   * вёрстка колонкой как на мобилке, план на всю ширину, без пустых страниц.
+   */
+  FacadeWidgetInstance.prototype._printApartmentCard = function () {
+    var shell = this._activeCardShell();
+    if (!shell) return;
+
+    var clone = shell.cloneNode(true);
+    clone.removeAttribute('id');
+
+    var crumbs = this._els.crumbs;
+    var crumbsHost = clone.querySelector('.fw-card-crumbs-host');
+    if (crumbsHost && crumbs) {
+      crumbsHost.innerHTML = '';
+      crumbsHost.appendChild(crumbs.cloneNode(true));
+      var clonedCrumbs = crumbsHost.querySelector('.fw-crumbs');
+      if (clonedCrumbs) clonedCrumbs.classList.add('is-visible');
+    }
+
+    // Удаляем всё лишнее, чтобы не раздувать высоту печати.
+    Array.prototype.forEach.call(clone.querySelectorAll(
+      '.fw-card-head-row, .fw-card-back, .fw-card-tools, .fw-card-tabs, .fw-card-form, .fw-card-consent, .fw-card-submit, .fw-card-msg, .fw-card-floor-vp, .fw-card-panel[data-panel="floor"]'
+    ), function (el) {
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    });
+
+    Array.prototype.forEach.call(clone.querySelectorAll('.fw-card-panel'), function (panel) {
+      if (panel.getAttribute('data-panel') === 'layout') {
+        panel.classList.add('is-active');
+        panel.style.display = 'flex';
+      } else if (panel.parentNode) {
+        panel.parentNode.removeChild(panel);
+      }
+    });
+
+    var title = (this.locale && this.locale.residence) || 'Квартира';
+    var apt = this._cardData && this._cardData.apartmentNum;
+    if (apt) title += ' №' + apt;
+
+    var prev = document.getElementById('fw-print-frame');
+    if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
+
+    var iframe = document.createElement('iframe');
+    iframe.id = 'fw-print-frame';
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.setAttribute('title', 'print');
+    iframe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;border:0;opacity:0;pointer-events:none;';
+    document.body.appendChild(iframe);
+
+    var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+    if (!doc) {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      return;
+    }
+
+    doc.open();
+    doc.write(
+      '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<title>' + String(title).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;') + '</title>' +
+      '<style>' + PRINT_DOC_CSS + '</style></head><body>' +
+      '<div class="fw-print-sheet">' + clone.outerHTML + '</div>' +
+      '</body></html>'
+    );
+    doc.close();
+
+    var win = iframe.contentWindow;
+    var done = false;
+
+    function cleanup() {
+      setTimeout(function () {
+        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      }, 400);
+    }
+
+    function doPrint() {
+      if (done) return;
+      done = true;
+      try {
+        if (win) {
+          win.focus();
+          win.print();
+        }
+      } catch (err) { /* ignore */ }
+      cleanup();
+    }
+
+    function waitImagesThenPrint() {
+      var imgs = doc.images ? Array.prototype.slice.call(doc.images) : [];
+      if (!imgs.length) {
+        setTimeout(doPrint, 60);
+        return;
+      }
+      var left = imgs.length;
+      function tick() {
+        left--;
+        if (left <= 0) setTimeout(doPrint, 60);
+      }
+      imgs.forEach(function (img) {
+        if (img.complete) {
+          tick();
+          return;
+        }
+        img.addEventListener('load', tick);
+        img.addEventListener('error', tick);
+      });
+      setTimeout(doPrint, 2000);
+    }
+
+    // Даём браузеру применить стили/layout iframe.
+    setTimeout(waitImagesThenPrint, 50);
   };
 
   FacadeWidgetInstance.prototype._floorPlanApiUrl = function (section, floor) {
@@ -1564,7 +1751,6 @@
       self._cardData = null;
       if (self._planEls.layer) self._planEls.layer.setAttribute('aria-hidden', 'true');
       if (self._planEls.viewport) self._planEls.viewport.innerHTML = '';
-      if (self._planEls.title) self._planEls.title.textContent = '';
       self._planData = null;
       self._planPointers.clear();
       document.removeEventListener('keydown', self._onNavKeyDown);
@@ -1603,10 +1789,6 @@
     options = options || {};
     var els = targetEls || this._planEls;
     this._setPlanMessage(this.locale.loading, 'loading', els.viewport);
-    if (els.title) {
-      var cap = this.sectionCaptions[String(payload.section)] || '';
-      els.title.textContent = cap || (this.data && this.data.title) || ('' + payload.section);
-    }
 
     var url = this._floorPlanApiUrl(payload.section, payload.floor);
     if (!url) {
@@ -1649,9 +1831,6 @@
     vp.innerHTML = '';
 
     var titleText = data.sectionCaption || (this.locale.section + ' ' + data.section);
-    if (els.title && !options.forCard) {
-      els.title.textContent = titleText;
-    }
 
     this._planImgW = data.imageWidth;
     this._planImgH = data.imageHeight;
@@ -1775,10 +1954,10 @@
 
   FacadeWidgetInstance.prototype._fillAptTooltip = function (el, tooltipEl) {
     if (!el || !tooltipEl) return;
-    var code = el.dataset.displayCode || el.dataset.apartmentNum;
+    var code = el.dataset.apartmentNum || '';
     var codeLine = document.createElement('span');
     codeLine.className = 'fw-apt-tooltip__code';
-    codeLine.textContent = '\u2116' + code;
+    codeLine.textContent = code ? ('\u2116' + code) : (this.locale.residence || 'Квартира');
     var specLine = document.createElement('span');
     specLine.className = 'fw-apt-tooltip__spec';
     var spec = formatRoomsK(el.dataset.rooms);
@@ -1886,11 +2065,19 @@
 
   FacadeWidgetInstance.prototype._renderApartmentCard = function (data, navPayload) {
     var self = this;
+    var crumbs = this._els.crumbs;
+    var root = this._els.root;
+    var body = this._els.body;
+    // Не даём shell.innerHTML уничтожить общий nav крошек.
+    if (crumbs && root && body && crumbs.parentNode && crumbs.parentNode !== root) {
+      root.insertBefore(crumbs, body);
+    }
     var shells = [this._cardEls.shell, this._cardEls.shellMobile].filter(Boolean);
     shells.forEach(function (shell) {
       shell.innerHTML = '';
       self._buildCardContent(shell, data, navPayload);
     });
+    this._updateBreadcrumbs();
     if (!isDesktopUi() && this._cardEls.shellMobile) {
       this._cardEls.shellMobile.scrollTop = 0;
     }
@@ -1923,15 +2110,23 @@
     printBtn.className = 'fw-card-tool';
     printBtn.setAttribute('aria-label', 'Печать');
     printBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>';
-    printBtn.addEventListener('click', function () { window.print(); });
+    printBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      self._printApartmentCard();
+    });
     tools.appendChild(printBtn);
     headRow.appendChild(tools);
     side.appendChild(headRow);
 
-    var title = document.createElement('h2');
-    title.className = 'fw-card-title';
-    title.textContent = L.bookingTitle || 'Заявка на бронирование резиденции';
-    side.appendChild(title);
+    var crumbsHost = document.createElement('div');
+    crumbsHost.className = 'fw-card-crumbs-host';
+    side.appendChild(crumbsHost);
+    if (shell === this._cardEls.shell) {
+      this._cardEls.crumbsHost = crumbsHost;
+    } else if (shell === this._cardEls.shellMobile) {
+      this._cardEls.crumbsHostMobile = crumbsHost;
+    }
 
     var spec = document.createElement('p');
     spec.className = 'fw-card-spec';

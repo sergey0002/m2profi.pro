@@ -1178,14 +1178,12 @@ class ctr__floor_plans extends ctr__
         );
 
         $apartments = [];
-        $index = 0;
         if ($rows) {
             foreach ($rows as $v) {
                 $points = json_decode($v['points'], true);
                 if (!is_array($points) || count($points) < 3) {
                     continue;
                 }
-                $index++;
                 $aptNum = (int) ($v['apt_apartment_num'] ?? 0);
                 if ($aptNum < 1) {
                     $aptNum = (int) ($v['apartment_num'] ?? 0);
@@ -1194,7 +1192,7 @@ class ctr__floor_plans extends ctr__
                     'polygonId'    => (int) $v['floor_plan_polygon_id'],
                     'apartamentId' => (int) $v['apartament_id'],
                     'apartmentNum' => $aptNum,
-                    'displayCode'  => $section . '.' . $floor . '.' . $index,
+                    'displayCode'  => $aptNum > 0 ? (string) $aptNum : '',
                     'rooms'        => (string) ($v['rooms'] ?? ''),
                     'area'         => (string) ($v['area'] ?? ''),
                     'status'       => $v['status2'] ?? $v['status'] ?? null,
