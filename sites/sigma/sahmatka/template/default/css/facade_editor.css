@@ -381,14 +381,21 @@
     font-weight: 700;
     line-height: 1;
 }
+.facade-editor__map .facade-tool-pick::before {
+    content: '☝';
+}
 .facade-editor__map .facade-tool-copy::before {
     content: '⧉';
 }
 .facade-editor__map .facade-tool-move::before {
     content: '✥';
 }
+.facade-editor__map .facade-tool-pick.leaflet-draw-toolbar-button-enabled,
 .facade-editor__map .facade-tool-move.leaflet-draw-toolbar-button-enabled {
     background-color: #fff;
+}
+.facade-editor__map.is-pick-mode path.leaflet-interactive {
+    cursor: pointer;
 }
 .facade-editor__map .leaflet-path-draggable {
     cursor: move;

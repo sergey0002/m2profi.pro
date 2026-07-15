@@ -496,14 +496,21 @@
     font-weight: 700;
     line-height: 1;
 }
+.fp-editor__map .fp-tool-pick::before {
+    content: '☝';
+}
 .fp-editor__map .fp-tool-copy::before {
     content: '⧉';
 }
 .fp-editor__map .fp-tool-move::before {
     content: '✥';
 }
+.fp-editor__map .fp-tool-pick.leaflet-draw-toolbar-button-enabled,
 .fp-editor__map .fp-tool-move.leaflet-draw-toolbar-button-enabled {
     background-color: #fff;
+}
+.fp-editor__map.is-pick-mode path.leaflet-interactive {
+    cursor: pointer;
 }
 .fp-editor__map .leaflet-path-draggable {
     cursor: move;

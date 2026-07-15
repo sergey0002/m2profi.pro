@@ -104,8 +104,10 @@
     var drawToolActive = false;
     var deleteModeActive = false;
     var moveModeActive = false;
+    var pickModeActive = false;
     var fpToolMoveBtn = null;
     var fpToolCopyBtn = null;
+    var fpToolPickBtn = null;
     var savingGeometry = false;
     var reverting = false;
     var loadingFloor = false;
@@ -786,6 +788,42 @@
         });
     }
 
+    function setPickMode(on, opts) {
+        opts = opts || {};
+        on = !!on;
+        if (on === pickModeActive) {
+            updatePickModeUi();
+            return;
+        }
+        if (on) {
+            if (moveModeActive) setMoveMode(false);
+            stopPolygonDraw();
+            forceExitVertexEdit();
+            pickModeActive = true;
+            if (!opts.silent) {
+                showMessage('Режим выбора: клик по полигону — переход к квартире (селект переключится)', 'info');
+            }
+        } else {
+            pickModeActive = false;
+        }
+        updatePickModeUi();
+    }
+
+    function updatePickModeUi() {
+        if (fpToolPickBtn) {
+            if (pickModeActive) {
+                L.DomUtil.addClass(fpToolPickBtn, 'leaflet-draw-toolbar-button-enabled');
+            } else {
+                L.DomUtil.removeClass(fpToolPickBtn, 'leaflet-draw-toolbar-button-enabled');
+            }
+        }
+        var el = map.getContainer();
+        if (el) {
+            if (pickModeActive) L.DomUtil.addClass(el, 'is-pick-mode');
+            else L.DomUtil.removeClass(el, 'is-pick-mode');
+        }
+    }
+
     function setMoveMode(on) {
         on = !!on;
         if (on === moveModeActive) {
@@ -797,6 +835,7 @@
                 showMessage('Плагин перетаскивания полигонов не загружен', 'error');
                 return;
             }
+            setPickMode(false);
             stopPolygonDraw();
             forceExitVertexEdit();
             var any = false;
@@ -821,6 +860,7 @@
             if (map.dragging && !map.dragging.enabled()) {
                 map.dragging.enable();
             }
+            setPickMode(true, { silent: true });
         }
         syncMoveModeOnLayers();
     }
@@ -841,6 +881,12 @@
 
         var toolbar = L.DomUtil.create('div', 'leaflet-draw-toolbar leaflet-bar', section);
 
+        fpToolPickBtn = L.DomUtil.create('a', 'leaflet-draw-draw-pick fp-tool-btn fp-tool-pick', toolbar);
+        fpToolPickBtn.href = '#';
+        fpToolPickBtn.title = 'Выбрать квартиру кликом по полигону';
+        fpToolPickBtn.setAttribute('role', 'button');
+        fpToolPickBtn.setAttribute('aria-label', 'Выбрать квартиру');
+
         fpToolCopyBtn = L.DomUtil.create('a', 'leaflet-draw-draw-copy fp-tool-btn fp-tool-copy', toolbar);
         fpToolCopyBtn.href = '#';
         fpToolCopyBtn.title = 'Копировать разметку этажа';
@@ -853,12 +899,21 @@
         fpToolMoveBtn.setAttribute('role', 'button');
         fpToolMoveBtn.setAttribute('aria-label', 'Двигать полигон');
 
+        L.DomEvent.on(fpToolPickBtn, 'click', L.DomEvent.stop)
+            .on(fpToolPickBtn, 'mousedown', L.DomEvent.stop)
+            .on(fpToolPickBtn, 'dblclick', L.DomEvent.stop)
+            .on(fpToolPickBtn, 'click', function () {
+                if (isBusy()) return;
+                setPickMode(!pickModeActive);
+            });
+
         L.DomEvent.on(fpToolCopyBtn, 'click', L.DomEvent.stop)
             .on(fpToolCopyBtn, 'mousedown', L.DomEvent.stop)
             .on(fpToolCopyBtn, 'dblclick', L.DomEvent.stop)
             .on(fpToolCopyBtn, 'click', function () {
                 if (isBusy()) return;
                 setMoveMode(false);
+                setPickMode(false);
                 requestCopyFloorMarkup();
             });
 
@@ -869,6 +924,8 @@
                 if (isBusy()) return;
                 setMoveMode(!moveModeActive);
             });
+
+        setPickMode(true, { silent: true });
     }
 
     injectFpToolbarTools();
@@ -1594,7 +1651,7 @@
 
     function bindPolygonClick(layer) {
         layer.on('click', function (e) {
-            if (drawToolActive || deleteModeActive || moveModeActive) return;
+            if (drawToolActive || deleteModeActive || moveModeActive || !pickModeActive) return;
             if (e.originalEvent) {
                 L.DomEvent.stopPropagation(e.originalEvent);
                 if (e.originalEvent.target && e.originalEvent.target.blur) {
@@ -2585,6 +2642,7 @@
 
     map.on('draw:drawstart', function () {
         setMoveMode(false);
+        setPickMode(false);
         if (!canAddPolygon()) {
             var toolbars = drawControl && drawControl._toolbars;
             var modes = toolbars && toolbars.draw && toolbars.draw._modes;
@@ -2614,11 +2672,13 @@
         polygonDrawer = null;
         restorePageTextSelection();
         updatePolygonDrawButton();
+        setPickMode(true, { silent: true });
     });
     map.on('mouseup', restorePageTextSelection);
     map.on('dragend', restorePageTextSelection);
     map.on('draw:editstart', function () {
         setMoveMode(false);
+        setPickMode(false);
         drawToolActive = true;
         if (!activeLayer) {
             showMessage('Сначала выберите размеченную квартиру в списке', 'error');
@@ -2631,6 +2691,7 @@
     });
     map.on('draw:deletestart', function () {
         setMoveMode(false);
+        setPickMode(false);
         drawToolActive = true;
         deleteModeActive = true;
         showMessage('Удаление: клик по полигону → галочка ✓. В БД — только после «Сохранить» в форме.', 'info');
@@ -2645,6 +2706,7 @@
         drawToolActive = false;
         deleteModeActive = false;
         restorePageTextSelection();
+        setPickMode(true, { silent: true });
     });
 
     map.on(L.Draw.Event.CREATED, function (e) {
@@ -2703,6 +2765,7 @@
     map.on('draw:editstop', function () {
         drawToolActive = false;
         restorePageTextSelection();
+        setPickMode(true, { silent: true });
         var stillDirty = false;
         if (activeLayer) {
             if (activeLayer.fpData && activeLayer.fpData.isNew) {
