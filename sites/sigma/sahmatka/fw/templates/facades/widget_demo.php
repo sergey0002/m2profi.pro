@@ -69,13 +69,13 @@ if ($api_base === '' || $script_src === '') {
   <pre id="fw_demo_snippet_full"></pre>
 </section>
 
-<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=1.2.21"></script>
+<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=1.2.23"></script>
 <script>
 (function () {
   var SCRIPT_SRC = <?= json_encode($script_src, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var API_BASE = <?= json_encode($api_base, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var HOME_ID = <?= (int) $home_id ?>;
-  var VER = '1.2.21';
+  var VER = '1.2.23';
   var MAX_HEIGHT_DEFAULT = 'Math.round(window.innerWidth * 2)';
 
   FacadeWidget.mount({
@@ -120,10 +120,10 @@ if ($api_base === '' || $script_src === '') {
     '  <span class="tok-key">floorPlanZoom</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">desktop</span><span class="tok-punct">:</span> <span class="tok-key">false</span><span class="tok-punct">,</span> <span class="tok-key">mobile</span><span class="tok-punct">:</span> <span class="tok-key">true</span> <span class="tok-punct">},</span>',
     '',
     '  <span class="tok-key">facadeHighlight</span><span class="tok-punct">:</span> <span class="tok-punct">{</span>',
-    '    <span class="tok-key">color</span><span class="tok-punct">:</span> <span class="tok-str">\'#76939D\'</span><span class="tok-punct">,</span>               <span class="tok-comment">// палитра Sigma</span>',
-    '    <span class="tok-key">opacity</span><span class="tok-punct">:</span> <span class="tok-num">0.45</span><span class="tok-punct">,</span>                   <span class="tok-comment">// hover / active</span>',
+    '    <span class="tok-key">color</span><span class="tok-punct">:</span> <span class="tok-str">\'#5B8FB8\'</span><span class="tok-punct">,</span>               <span class="tok-comment">// чуть синее accent</span>',
+    '    <span class="tok-key">opacity</span><span class="tok-punct">:</span> <span class="tok-num">0.58</span><span class="tok-punct">,</span>                   <span class="tok-comment">// hover / active</span>',
     '    <span class="tok-key">idleOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0.12</span><span class="tok-punct">,</span>               <span class="tok-comment">// в покое</span>',
-    '    <span class="tok-key">revealOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0.52</span>              <span class="tok-comment">// scrollReveal</span>',
+    '    <span class="tok-key">revealOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0.65</span>              <span class="tok-comment">// scrollReveal</span>',
     '  <span class="tok-punct">},</span>',
     '  <span class="tok-key">apartmentHighlight</span><span class="tok-punct">:</span> <span class="tok-punct">{</span>',
     '    <span class="tok-key">color</span><span class="tok-punct">:</span> <span class="tok-str">\'#76939D\'</span><span class="tok-punct">,</span>',

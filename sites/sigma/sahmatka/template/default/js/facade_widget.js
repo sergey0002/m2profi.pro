@@ -338,6 +338,8 @@
   var ACCENT = '#76939D';
   var ACCENT_HOVER = '#65838D';
   var ACCENT_SOFT = '#E4ECEF';
+  /* подсветка этажа на фасаде — чуть синее и плотнее accent */
+  var FACADE_HL = '#5B8FB8';
   var TEXT_MAIN = '#1A1A1A';
   var TEXT_MUTED = '#666666';
   var BORDER_SOFT = '#D1D5D8';
@@ -351,13 +353,15 @@
     '.fw-stage img { display: block; width: 100%; height: auto; border: 0; max-width: none; pointer-events: none; -webkit-user-drag: none; vertical-align: top; }',
     '.fw-stage svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }',
     '.fw-poly { fill-opacity: var(--fw-facade-idle-opacity, 0.12); stroke-width: 1.5; stroke-opacity: 0.55; cursor: pointer; transition: fill-opacity 0.18s ease, stroke-width 0.18s ease, stroke-opacity 0.18s ease, fill 0.18s ease, stroke 0.18s ease; outline: none; }',
-    '.fw-poly.is-hover, .fw-poly.is-active, .fw-poly:focus-visible { fill: var(--fw-facade-hl-color, ' + ACCENT + ') !important; stroke: var(--fw-facade-hl-color, ' + ACCENT + ') !important; fill-opacity: var(--fw-facade-hl-opacity, 0.45); stroke-opacity: 1; stroke-width: 2.5; }',
-    '.fw-poly.is-scroll-reveal { fill: var(--fw-facade-hl-color, ' + ACCENT + ') !important; stroke: var(--fw-facade-hl-color, ' + ACCENT + ') !important; fill-opacity: var(--fw-facade-reveal-opacity, 0.52); stroke-opacity: 1; stroke-width: 2.75; }',
+    '.fw-poly.is-hover, .fw-poly.is-active, .fw-poly:focus-visible { fill: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; stroke: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; fill-opacity: var(--fw-facade-hl-opacity, 0.58); stroke-opacity: 1; stroke-width: 2.5; }',
+    '.fw-poly.is-scroll-reveal { fill: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; stroke: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; fill-opacity: var(--fw-facade-reveal-opacity, 0.65); stroke-opacity: 1; stroke-width: 2.75; }',
     '@media (prefers-reduced-motion: reduce) { .fw-poly { transition: none; } }',
-    /* тултип фасада — тот же glass-стиль, что у плана (макет) */
-    '.fw-tooltip { position: absolute; z-index: 5; pointer-events: none; max-width: min(260px, 85%); padding: 10px 16px; border-radius: 10px; background: rgba(32,32,36,0.72); color: #fff; font-size: 13px; font-weight: 600; line-height: 1.35; text-align: center; opacity: 0; transform: translate(-50%, -120%); transition: opacity 0.12s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 4px 18px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06); }',
-    '.fw-tooltip.is-visible { opacity: 1; }',
-    '@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .fw-tooltip { background: rgba(32,32,36,0.92); } }',
+    /* тултип фасада = тот же glass-стиль, что у плана (fw-apt-tooltip) */
+    '.fw-tooltip, .fw-apt-tooltip { position: absolute; z-index: 8; pointer-events: none; padding: 12px 16px; border-radius: 0; background: rgba(36,36,40,0.58); color: #fff; text-align: left; line-height: 1.3; opacity: 0; transform: translate(-50%, calc(-100% - 12px)); transition: none; white-space: nowrap; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 2px 12px rgba(0,0,0,0.22); }',
+    '.fw-tooltip.is-visible, .fw-apt-tooltip.is-visible { opacity: 1; transition: opacity 300ms ease; }',
+    '@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .fw-tooltip, .fw-apt-tooltip { background: rgba(36,36,40,0.72); } }',
+    '.fw-tooltip__code, .fw-apt-tooltip__code { display: block; font-weight: 700; font-size: 20px; letter-spacing: 0.01em; margin-bottom: 4px; color: #fff; }',
+    '.fw-tooltip__spec, .fw-apt-tooltip__spec { display: block; font-weight: 400; font-size: 17px; color: rgba(255,255,255,0.95); }',
     '.fw-btn { appearance: none; border: 0; border-radius: 8px; background: rgba(255,255,255,0.95); color: #111; box-shadow: 0 1px 6px rgba(0,0,0,0.22); cursor: pointer; font: inherit; line-height: 1; margin: 0; padding: 0; }',
     '.fw-btn-close { position: absolute; top: 12px; right: 12px; z-index: 20; width: 40px; height: 40px; padding: 0; display: none; align-items: center; justify-content: center; }',
     '.fw-btn-close svg { display: block; width: 18px; height: 18px; }',
@@ -458,12 +462,6 @@
     '.fw-apt-poly.is-highlight { fill: var(--fw-apt-hl-color, ' + ACCENT + ') !important; stroke: var(--fw-apt-hl-color, ' + ACCENT + ') !important; fill-opacity: var(--fw-apt-hl-opacity, 0.28) !important; stroke-opacity: 0.95 !important; stroke-width: 2.5 !important; }',
     '.fw-plan-banner { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: min(92%, 520px); padding: 10px 16px; border-radius: 8px; background: rgba(20,20,20,0.85); color: #fff; font-size: 13px; text-align: center; line-height: 1.4; }',
     '.fw-plan-viewport .fw-msg { max-width: min(92%, 420px); text-align: center; }',
-    /* тултип квартиры — над указателем, без скруглений, текст слева */
-    '.fw-apt-tooltip { position: absolute; z-index: 8; pointer-events: none; padding: 12px 16px; border-radius: 0; background: rgba(36,36,40,0.58); color: #fff; text-align: left; line-height: 1.3; opacity: 0; transform: translate(-50%, calc(-100% - 12px)); transition: none; white-space: nowrap; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 2px 12px rgba(0,0,0,0.22); }',
-    '.fw-apt-tooltip.is-visible { opacity: 1; transition: opacity 300ms ease; }',
-    '@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .fw-apt-tooltip { background: rgba(36,36,40,0.72); } }',
-    '.fw-apt-tooltip__code { display: block; font-weight: 700; font-size: 20px; letter-spacing: 0.01em; margin-bottom: 4px; color: #fff; }',
-    '.fw-apt-tooltip__spec { display: block; font-weight: 400; font-size: 17px; color: rgba(255,255,255,0.95); }',
     /* карточка — desktop макет / цветопроба */
     '.fw-card { display: grid; grid-template-columns: minmax(360px, 460px) minmax(0, 1fr); gap: 0; background: #fff; align-items: stretch; overflow: hidden; min-height: 0; }',
     '@media (max-width: 899.98px) {',
@@ -647,11 +645,11 @@
     this._breadcrumbs = normalizeBreadcrumbs(options.breadcrumbs);
     this._urlState = options.urlState !== false;
     this._facadeHighlight = normalizeHighlightOpts(options.facadeHighlight, {
-      color: ACCENT,
-      opacity: 0.45,
+      color: FACADE_HL,
+      opacity: 0.58,
       idleOpacity: 0.12,
-      hoverOpacity: 0.45,
-      revealOpacity: 0.52
+      hoverOpacity: 0.58,
+      revealOpacity: 0.65
     });
     this._apartmentHighlight = normalizeHighlightOpts(options.apartmentHighlight, {
       color: ACCENT,
@@ -1038,6 +1036,26 @@
     return list;
   };
 
+  FacadeWidgetInstance.prototype._fillFacadeTooltip = function (sample, tooltipEl) {
+    if (!sample || !tooltipEl) return;
+    var floor = sample.dataset.floor || '';
+    var caption = this.sectionCaptions[sample.dataset.section]
+      || ((this.locale.section || 'секция') + ' ' + sample.dataset.section);
+    var codeLine = document.createElement('span');
+    codeLine.className = 'fw-tooltip__code';
+    codeLine.textContent = (this.locale.floorLabel || 'Этаж') + ' ' + floor;
+    var specLine = document.createElement('span');
+    specLine.className = 'fw-tooltip__spec';
+    var spec = caption;
+    if (sample.dataset.label) {
+      spec += (spec ? ' · ' : '') + sample.dataset.label;
+    }
+    specLine.textContent = spec;
+    tooltipEl.innerHTML = '';
+    tooltipEl.appendChild(codeLine);
+    if (spec) tooltipEl.appendChild(specLine);
+  };
+
   FacadeWidgetInstance.prototype._setHover = function (stage, key, tooltipEl, clientX, clientY, viewport) {
     var prev = this._hoverKey;
     if (prev && prev !== key) {
@@ -1049,10 +1067,7 @@
       this._polysByKey(stage, key).forEach(function (el) { el.classList.add('is-hover'); });
       var sample = this._polysByKey(stage, key)[0];
       if (sample && tooltipEl && viewport) {
-        var caption = this.sectionCaptions[sample.dataset.section] || (this.locale.section + ' ' + sample.dataset.section);
-        var text = caption + ' · ' + this.locale.floor + ' ' + sample.dataset.floor;
-        if (sample.dataset.label) text += ' — ' + sample.dataset.label;
-        tooltipEl.textContent = text;
+        this._fillFacadeTooltip(sample, tooltipEl);
         tooltipEl.classList.add('is-visible');
         var rect = viewport.getBoundingClientRect();
         var x = clientX - rect.left;
@@ -1060,7 +1075,7 @@
         var tw = tooltipEl.offsetWidth || 120;
         var th = tooltipEl.offsetHeight || 28;
         x = Math.max(tw / 2 + 4, Math.min(rect.width - tw / 2 - 4, x));
-        y = Math.max(th + 8, Math.min(rect.height - 8, y));
+        y = Math.max(th + 14, Math.min(rect.height - 8, y));
         tooltipEl.style.left = x + 'px';
         tooltipEl.style.top = y + 'px';
       }
@@ -3389,7 +3404,7 @@
 
   var api = {
     mount: mount,
-    version: '1.2.21'
+    version: '1.2.23'
   };
 
   global.FacadeWidget = api;
