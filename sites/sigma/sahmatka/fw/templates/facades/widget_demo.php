@@ -75,7 +75,7 @@ if ($api_base === '' || $script_src === '') {
   var SCRIPT_SRC = <?= json_encode($script_src, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var API_BASE = <?= json_encode($api_base, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var HOME_ID = <?= (int) $home_id ?>;
-  var VER = '1.2.24';
+  var VER = (window.FacadeWidget && FacadeWidget.version) || '1.2.24';
   var MAX_HEIGHT_DEFAULT = 'Math.round(window.innerWidth * 2)';
 
   FacadeWidget.mount({
@@ -120,13 +120,13 @@ if ($api_base === '' || $script_src === '') {
     '  <span class="tok-key">floorPlanZoom</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">desktop</span><span class="tok-punct">:</span> <span class="tok-key">false</span><span class="tok-punct">,</span> <span class="tok-key">mobile</span><span class="tok-punct">:</span> <span class="tok-key">true</span> <span class="tok-punct">},</span>',
     '',
     '  <span class="tok-key">facadeHighlight</span><span class="tok-punct">:</span> <span class="tok-punct">{</span>',
-    '    <span class="tok-key">color</span><span class="tok-punct">:</span> <span class="tok-str">\'#5B8FB8\'</span><span class="tok-punct">,</span>               <span class="tok-comment">// чуть синее accent</span>',
+    '    <span class="tok-key">color</span><span class="tok-punct">:</span> <span class="tok-str">\'#5B8FB8\'</span><span class="tok-punct">,</span>               <span class="tok-comment">// заливка этажа (чуть синее accent)</span>',
     '    <span class="tok-key">opacity</span><span class="tok-punct">:</span> <span class="tok-num">0.58</span><span class="tok-punct">,</span>                   <span class="tok-comment">// hover / active</span>',
     '    <span class="tok-key">idleOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0.12</span><span class="tok-punct">,</span>               <span class="tok-comment">// в покое</span>',
     '    <span class="tok-key">revealOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0.65</span>              <span class="tok-comment">// scrollReveal</span>',
-    '  <span class="tok-punct">},</span>',
+    '  <span class="tok-punct">},</span>  <span class="tok-comment">// обводка: тот же color, opacity×0.7, 2px — автоматически</span>',
     '  <span class="tok-key">apartmentHighlight</span><span class="tok-punct">:</span> <span class="tok-punct">{</span>',
-    '    <span class="tok-key">color</span><span class="tok-punct">:</span> <span class="tok-str">\'#76939D\'</span><span class="tok-punct">,</span>',
+    '    <span class="tok-key">color</span><span class="tok-punct">:</span> <span class="tok-str">\'#76939D\'</span><span class="tok-punct">,</span>               <span class="tok-comment">// accent палитры</span>',
     '    <span class="tok-key">opacity</span><span class="tok-punct">:</span> <span class="tok-num">0.28</span><span class="tok-punct">,</span>                   <span class="tok-comment">// вкладка «На этаже»</span>',
     '    <span class="tok-key">hoverOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0.45</span>               <span class="tok-comment">// hover + тултип</span>',
     '  <span class="tok-punct">},</span>',

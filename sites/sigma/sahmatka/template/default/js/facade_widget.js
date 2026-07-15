@@ -221,8 +221,8 @@
   }
 
   /**
-   * facadeHighlight / apartmentHighlight: { color, opacity }
-   * opacity — заливка при выделении (0…1).
+   * facadeHighlight / apartmentHighlight: { color, opacity, idleOpacity?, hoverOpacity?, revealOpacity? }
+   * На фасаде обводка = тот же color, opacity×0.7, stroke-width 2px (не задаётся отдельно).
    */
   function normalizeHighlightOpts(opt, defaults) {
     opt = opt || {};
