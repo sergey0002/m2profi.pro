@@ -337,6 +337,44 @@ class ctr__homeseditor extends ctr__
 				     <?=$filed->text('avito_id','avito_id',$data['avito_id']);?><br/>
  				 https://xdemo.m2profi.pro/sahmatka/avito_feedx.php 
 				 https://autoload.avito.ru/format/xmlcheck/ 
+
+				<hr/>
+				<h2>Разметка фасада</h2>
+				<?php
+				// ВАЖНО: $id — это homes_id (внутренний PK таблицы homes, из URL ?id=),
+				// а фасад/планы этажей/квартиры завязаны на другое, отдельно редактируемое
+				// поле — home_id (бизнес-идентификатор дома). Для одной и той же записи
+				// они могут отличаться (напр. id=53, но home_id=60), поэтому здесь и везде
+				// ниже используем именно $data['home_id'], а не $id.
+				$home_id_val = (int) ($data['home_id'] ?? 0);
+				?>
+				<?php if ($home_id_val): ?>
+					<a href="/sahmatka/iframe_router.php?ctr=facades&amp;act=editor&amp;home_id=<?= $home_id_val ?>" class="iframe_r btn_2">Открыть редактор разметки фасада</a>
+					&nbsp;
+					<a href="/sahmatka/ctrind.php?ctr=facades&amp;act=editor&amp;home_id=<?= $home_id_val ?>">полный экран</a>
+					<?php
+					$facade_path = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'fasades' . DIRECTORY_SEPARATOR . $home_id_val . '.jpg';
+					if (!is_file($facade_path)):
+					?>
+						<br/><span style="color:#c45c00;">Файл fasades/<?= $home_id_val ?>.jpg не найден — положите JPG на сервер</span>
+					<?php else: ?>
+						<br/><span style="color:#1a7f37;">Файл fasades/<?= $home_id_val ?>.jpg найден</span>
+					<?php endif; ?>
+				<?php else: ?>
+					<span style="color:#999;">Разметка фасада доступна после сохранения дома и заполнения поля «home_id»</span>
+				<?php endif; ?>
+
+				<hr/>
+				<h2>Разметка планов этажей</h2>
+				<?php if ($home_id_val): ?>
+					<a href="/sahmatka/iframe_router.php?ctr=floor_plans&amp;act=editor&amp;home_id=<?= $home_id_val ?>" class="iframe_r btn_2">Открыть редактор планов этажей</a>
+					&nbsp;
+					<a href="/sahmatka/ctrind.php?ctr=floor_plans&amp;act=editor&amp;home_id=<?= $home_id_val ?>">полный экран</a>
+					<br/><span style="color:#666;">JPG планов кладутся вручную: <code>sahmatka/pbplans/<?= $home_id_val ?>/floor/{секция}/{этаж}.jpg</code></span>
+				<?php else: ?>
+					<span style="color:#999;">Разметка планов этажей доступна после сохранения дома и заполнения поля «home_id»</span>
+				<?php endif; ?>
+
 			</form>
 			
 		<?

@@ -1,0 +1,377 @@
+/* Synced with facade_editor.css patterns (BEM prefix fp-editor__ instead of facade-editor__). */
+
+.fp-editor {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+.fp-editor__head,
+.fp-editor__floor-panel,
+.fp-editor__messages,
+.fp-editor__title {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+/* Только карта без выделения — не трогаем текст форм */
+.fp-editor__map,
+.fp-editor__map * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.fp-editor__head {
+    margin-bottom: 12px;
+}
+
+.fp-editor__title {
+    margin: 0 0 6px;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.fp-editor__hint {
+    margin: 0;
+    font-size: 13px;
+    color: #666;
+}
+
+.fp-editor__map {
+    width: 100%;
+    height: 75vh;
+    min-height: 400px;
+    background: #1a1a1a;
+    border: 1px solid #ddd;
+}
+
+.fp-editor__map.is-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Карточка формы: панель выбора + блок сообщений в одной рамке */
+.fp-editor__panel-card {
+    margin-bottom: 10px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.fp-editor__floor-panel {
+    padding: 10px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+    align-items: flex-end;
+}
+
+.fp-editor__field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    margin: 0;
+    font-size: 14px;
+}
+
+.fp-editor__field-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    line-height: 1.2;
+}
+
+.fp-editor__field--label {
+    flex: 0 0 auto;
+    width: 148px;
+}
+
+.fp-editor__floor-panel select option.is-marked {
+    font-weight: bold;
+}
+
+.fp-editor__floor-panel select option.is-missing {
+    color: #c45c00;
+}
+
+.fp-editor__dirty-actions {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    padding-bottom: 1px;
+}
+
+.fp-editor__btn {
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.fp-editor__btn--primary {
+    font-weight: 600;
+}
+
+.fp-editor__btn:disabled,
+.fp-editor__floor-panel select:disabled,
+.fp-editor__floor-panel input:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.fp-editor__floor-panel select,
+.fp-editor__floor-panel input[type="text"] {
+    margin: 0;
+    padding: 7px 12px;
+    font-size: 14px;
+    line-height: 1.2;
+    min-width: 120px;
+    width: 100%;
+    height: 36px;
+    box-sizing: border-box;
+    color: #01112B;
+    background: #fff;
+    border: 2px solid #00CDAD;
+    border-radius: 15px;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.fp-editor__field--label input[type="text"] {
+    width: 148px;
+    min-width: 0;
+}
+
+.fp-editor__floor-panel select:focus,
+.fp-editor__floor-panel input[type="text"]:focus {
+    outline: none;
+    border-color: #00CDAD;
+    box-shadow: 0 0 0 2px rgba(0, 205, 173, 0.25);
+}
+
+.fp-editor__floor-panel select:disabled,
+.fp-editor__floor-panel input[type="text"]:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    background: #f5f5f5;
+}
+
+.fp-editor__floor-panel button {
+    padding: 6px 14px;
+    cursor: pointer;
+}
+
+/* Stage 2: панель аплоада фона + очистки разметки — отдельная строка под селектами/подписью. */
+.fp-editor__upload-panel {
+    padding: 0 12px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.fp-editor__btn--danger {
+    color: #c0392b;
+    border-color: #e7b4ac;
+    background: #fff;
+}
+
+.fp-editor__btn--danger:hover:not(:disabled) {
+    background: #fdecea;
+}
+
+/*
+ * Универсальный блок сообщений формы. Всегда в одной рамке с панелью выбора,
+ * компактной полосой чуть ниже формы. Типы: info / success / warning / error.
+ */
+.fp-editor__messages {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    background: #eef1f4;
+    color: #444;
+    border-top: 1px solid #e2e2e2;
+}
+
+.fp-editor__messages:empty {
+    display: none;
+}
+
+.fp-editor__messages-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    background: #d7dde3;
+    color: #444;
+}
+
+.fp-editor__messages-text {
+    flex: 1 1 auto;
+    word-break: break-word;
+}
+
+.fp-editor__messages.is-info {
+    background: #eef4fb;
+    color: #1f4e79;
+    border-top-color: #cfe2f3;
+}
+
+.fp-editor__messages.is-info .fp-editor__messages-icon {
+    background: #cfe2f3;
+    color: #1f4e79;
+}
+
+.fp-editor__messages.is-success {
+    background: #eaf7ee;
+    color: #1a7f37;
+    border-top-color: #c9ecd3;
+}
+
+.fp-editor__messages.is-success .fp-editor__messages-icon {
+    background: #c9ecd3;
+    color: #1a7f37;
+}
+
+.fp-editor__messages.is-warning {
+    background: #fff6e9;
+    color: #b45309;
+    border-top-color: #ffe3b8;
+}
+
+.fp-editor__messages.is-warning .fp-editor__messages-icon {
+    background: #ffe3b8;
+    color: #b45309;
+}
+
+.fp-editor__messages.is-error {
+    background: #fdecea;
+    color: #c0392b;
+    border-top-color: #f8cfc9;
+}
+
+.fp-editor__messages.is-error .fp-editor__messages-icon {
+    background: #f8cfc9;
+    color: #c0392b;
+}
+
+/*
+ * Stage 2 (аудит H1): прогресс upload в процентах — модификатор ЭТОГО ЖЕ блока сообщений,
+ * не отдельный виджет. Трек занимает всю ширину на новой строке (flex-wrap на .fp-editor__messages).
+ */
+.fp-editor__messages.is-progress {
+    background: #eef4fb;
+    color: #1f4e79;
+    border-top-color: #cfe2f3;
+}
+
+.fp-editor__messages.is-progress .fp-editor__messages-icon {
+    background: #cfe2f3;
+    color: #1f4e79;
+}
+
+.fp-editor__messages-progress-track {
+    flex: 1 1 100%;
+    height: 5px;
+    border-radius: 3px;
+    background: #d5e3f2;
+    overflow: hidden;
+}
+
+.fp-editor__messages-progress-bar {
+    height: 100%;
+    background: #1f6fd6;
+    border-radius: 3px;
+    transition: width 0.15s linear;
+}
+
+/* Без прямоугольной рамки фокуса/выделения браузера на полигонах */
+#fp_map path.leaflet-interactive,
+#fp_map .leaflet-interactive {
+    outline: none !important;
+}
+
+#fp_map path:focus,
+#fp_map .leaflet-interactive:focus {
+    outline: none !important;
+}
+
+/* Круглые и более мелкие точки вершин Leaflet.Draw */
+#fp_map .leaflet-editing-icon,
+#fp_map .fp-edit-vertex {
+    width: 8px !important;
+    height: 8px !important;
+    margin-left: -4px !important;
+    margin-top: -4px !important;
+    border-radius: 50% !important;
+    border: 2px solid #4da3ff !important;
+    background: #fff !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
+#fp_map .leaflet-editing-icon.leaflet-touch-icon,
+#fp_map .fp-edit-vertex.leaflet-touch-icon {
+    width: 12px !important;
+    height: 12px !important;
+    margin-left: -6px !important;
+    margin-top: -6px !important;
+}
+
+/* Модалка подтверждения несохранённых изменений (Сохранить / Не сохранять / Остаться) */
+.fp-editor__modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.fp-editor__modal-box {
+    background: #fff;
+    border-radius: 6px;
+    padding: 18px 20px;
+    max-width: 420px;
+    width: calc(100% - 32px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.fp-editor__modal-text {
+    margin: 0 0 16px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #222;
+    white-space: pre-line;
+}
+
+.fp-editor__modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}

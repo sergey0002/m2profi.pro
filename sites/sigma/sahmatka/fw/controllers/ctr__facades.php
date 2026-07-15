@@ -1,0 +1,827 @@
+<?
+class ctr__facades extends ctr__
+{
+    var $table = 'facade_polygons';
+    var $key_filed = 'facade_polygon_id';
+    var $ctr = 'facades';
+    var $title = 'Разметка фасадов';
+
+    function require_admin()
+    {
+        if (!check_access('admin')) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Ошибка доступа']);
+            exit;
+        }
+    }
+
+    /** @return string абсолютный путь к JPG фасада */
+    function facade_image_fs_path($home_id)
+    {
+        $home_id = (int) $home_id;
+        return dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'fasades' . DIRECTORY_SEPARATOR . $home_id . '.jpg';
+    }
+
+    function facade_image_url($home_id)
+    {
+        return '/fasades/' . (int) $home_id . '.jpg';
+    }
+
+    /**
+     * Абсолютный URL картинки фасада для публичного виджета (embed на чужих доменах).
+     * Root-relative facade_image_url() на стороннем сайте резолвится неверно.
+     */
+    function facade_image_absolute_url($home_id)
+    {
+        $home_id = (int) $home_id;
+        $path = $this->facade_image_fs_path($home_id);
+        $rel = $this->facade_image_url($home_id);
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $url = $scheme . '://' . $host . $rel;
+        if (is_file($path)) {
+            $url .= '?v=' . (int) @filemtime($path);
+        }
+        return $url;
+    }
+
+    function widget_json_error($message)
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['success' => false, 'message' => $message], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Публичные данные для встраиваемого виджета (без admin).
+     * GET home_id → JSON { success, homeId, title, imageUrl, imageWidth, imageHeight, sections, polygons }
+     */
+    function act__widget_data()
+    {
+        global $mysql;
+
+        $home_id = (int) ($_REQUEST['home_id'] ?? 0);
+        if (!$home_id) {
+            $this->widget_json_error('Не указан home_id');
+            return;
+        }
+
+        $home = $mysql->get_for_key('homes', 'home_id', $home_id);
+        if (!$home) {
+            $this->widget_json_error('Дом не найден');
+            return;
+        }
+
+        $path = $this->facade_image_fs_path($home_id);
+        if (!is_file($path)) {
+            $this->widget_json_error('Файл фасада не найден');
+            return;
+        }
+
+        $size = @getimagesize($path);
+        if (!$size) {
+            $this->widget_json_error('Не удалось прочитать изображение');
+            return;
+        }
+
+        $sections_raw = $this->get_home_sections($home);
+        $sections = [];
+        foreach ($sections_raw as $sec) {
+            $sections[] = [
+                'id'      => (int) $sec['id'],
+                'caption' => (string) $sec['caption'],
+            ];
+        }
+
+        $rows = $mysql->get_arr(
+            'SELECT * FROM facade_polygons WHERE home_id="' . $home_id . '" AND del="0" ORDER BY section, floor, sort_order, facade_polygon_id'
+        );
+        $polygons = [];
+        if ($rows) {
+            foreach ($rows as $v) {
+                $points = json_decode($v['points'], true);
+                if (!is_array($points) || count($points) < 3) {
+                    continue;
+                }
+                $polygons[] = [
+                    'id'      => (int) $v['facade_polygon_id'],
+                    'section' => (int) ($v['section'] ?? 1),
+                    'floor'   => (int) $v['floor'],
+                    'label'   => (string) ($v['label'] ?? ''),
+                    'points'  => $points,
+                    'color'   => ($v['color'] ?: '#3388ff'),
+                ];
+            }
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success'     => true,
+            'homeId'      => $home_id,
+            'title'       => (string) ($home['title'] ?? ''),
+            'imageUrl'    => $this->facade_image_absolute_url($home_id),
+            'imageWidth'  => (int) $size[0],
+            'imageHeight' => (int) $size[1],
+            'sections'    => $sections,
+            'polygons'    => $polygons,
+            'unitLabels'  => $this->widget_unit_labels(),
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    /** Подписи типа объекта из config object_unit (квартира / резиденция / …). */
+    function widget_unit_labels()
+    {
+        if (!function_exists('unit_label')) {
+            return ['nom' => 'квартира', 'nomCap' => 'Квартира', 'abbrev' => 'кв.'];
+        }
+        return [
+            'nom'    => unit_label('nom'),
+            'nomCap' => unit_label_cap('nom'),
+            'abbrev' => function_exists('unit_abbrev') ? unit_abbrev() : 'кв.',
+        ];
+    }
+
+    /**
+     * Публичные данные плана этажа для встраиваемого виджета (без admin).
+     * Виджет всегда ходит на ctr=facades (detectApiBase), поэтому act здесь,
+     * а не в ctr__floor_plans — но SQL/логика не дублируются: делегируем в
+     * ctr__floor_plans::floor_plan_public_payload() (аудит C2).
+     * GET home_id, section, floor → JSON.
+     */
+    function act__floor_plan_data()
+    {
+        $home_id = (int) ($_REQUEST['home_id'] ?? 0);
+        $section = (int) ($_REQUEST['section'] ?? 1);
+        $floor   = (int) ($_REQUEST['floor'] ?? 0);
+
+        if (!class_exists('ctr__floor_plans')) {
+            $file = __DIR__ . '/ctr__floor_plans.php';
+            if (is_file($file)) {
+                include_once $file;
+            }
+        }
+        if (!class_exists('ctr__floor_plans')) {
+            $this->widget_json_error('Модуль планов этажей не найден');
+            return;
+        }
+
+        $floor_plans = new ctr__floor_plans();
+        $payload = $floor_plans->floor_plan_public_payload($home_id, $section, $floor);
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+    }
+
+    /** Абсолютный URL для embed (root-relative пути картинок квартир). */
+    function widget_absolute_url($path)
+    {
+        $path = trim((string) $path);
+        if ($path === '') {
+            return '';
+        }
+        if (preg_match('#^https?://#i', $path)) {
+            return $path;
+        }
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        if ($path[0] !== '/') {
+            $path = '/' . $path;
+        }
+        return $scheme . '://' . $host . $path;
+    }
+
+    /** Логический номер секции (facade_polygons.section) по PK apartaments.section_id. */
+    function resolve_apartment_section_id($home, $section_pk)
+    {
+        global $mysql;
+
+        $section_pk = (int) $section_pk;
+        if (!$section_pk) {
+            return 1;
+        }
+
+        $homes_id = (int) ($home['homes_id'] ?? 0);
+        if ($homes_id) {
+            $row = $mysql->get_arr(
+                'SELECT section_id FROM homes_sections WHERE homes_id="' . $homes_id . '" AND homes_sections_id="' . $section_pk . '" LIMIT 1',
+                1
+            );
+            if ($row && (int) ($row['section_id'] ?? 0) > 0) {
+                return (int) $row['section_id'];
+            }
+        }
+
+        return $section_pk;
+    }
+
+    /**
+     * Публичные данные карточки квартиры для виджета (Stage 3).
+     * GET home_id, apartment_num
+     */
+    function act__apartment_card_data()
+    {
+        global $mysql;
+
+        $home_id = (int) ($_REQUEST['home_id'] ?? 0);
+        $apartment_num = (int) ($_REQUEST['apartment_num'] ?? 0);
+        $apartament_id = (int) ($_REQUEST['apartament_id'] ?? 0);
+
+        if (!$home_id) {
+            $this->widget_json_error('Не указан home_id');
+            return;
+        }
+
+        if (!class_exists('ctr__apartments')) {
+            $file = __DIR__ . '/ctr__apartments.php';
+            if (is_file($file)) {
+                include_once $file;
+            }
+        }
+        if (!class_exists('ctr__apartments')) {
+            $this->widget_json_error('Модуль квартир не найден');
+            return;
+        }
+
+        $home = $mysql->get_for_key('homes', 'home_id', $home_id);
+        if (!$home) {
+            $this->widget_json_error('Дом не найден');
+            return;
+        }
+
+        // Номер для карточки — apartaments.apartment_num (не displayCode на плане).
+        if ($apartament_id && $apartment_num < 1) {
+            $apt_row = $mysql->get_arr(
+                'SELECT apartment_num FROM apartaments WHERE apartament_id="' . $apartament_id . '" AND home_id="' . $home_id . '" LIMIT 1',
+                1
+            );
+            if ($apt_row) {
+                $apartment_num = (int) ($apt_row['apartment_num'] ?? 0);
+            }
+        }
+
+        if ($apartment_num < 1) {
+            $labels = $this->widget_unit_labels();
+            $this->widget_json_error('Не указан apartment_num для ' . ($labels['nom'] ?? 'объекта'));
+            return;
+        }
+
+        $apartments = new ctr__apartments();
+        $data = $apartments->get_apartment($home_id, $apartment_num);
+        if (!$data && $apartament_id) {
+            $by_id = $apartments->get_apartment_by_id($apartament_id);
+            if ($by_id && (int) ($by_id['home_id'] ?? $by_id['apartment_home_id'] ?? 0) === $home_id) {
+                $apartment_num = (int) ($by_id['apartment_num'] ?? 0);
+                if ($apartment_num > 0) {
+                    $data = $apartments->get_apartment($home_id, $apartment_num);
+                }
+            }
+        }
+        if (!$data) {
+            $labels = $this->widget_unit_labels();
+            $this->widget_json_error(($labels['nomCap'] ?? 'Квартира') . ' не найдена');
+            return;
+        }
+
+        $apartment_num = (int) ($data['apartment_num'] ?? $apartment_num);
+        $apartament_id = (int) ($data['apartament_id'] ?? $apartament_id);
+
+        $status = $data['status2'] ?? $data['apartment_status'] ?? $data['status'] ?? '';
+        if ($status === '5' || $status === '6') {
+            $status = '4';
+        }
+        if ($status === '' || $status === null) {
+            $status = '2';
+        }
+        $status = (string) $status;
+
+        global $status_arr, $status_color_arr;
+
+        $section = $this->resolve_apartment_section_id($home, (int) ($data['section_id'] ?? 0));
+        $sections = $this->get_home_sections($home);
+        $floors_total = (int) ($home['floor'] ?? 0);
+        foreach ($sections as $sec) {
+            if ((int) $sec['id'] === $section) {
+                if ((int) $sec['maxFloor'] > 0) {
+                    $floors_total = (int) $sec['maxFloor'];
+                }
+                break;
+            }
+        }
+        if ($floors_total < 1) {
+            $floors_total = 1;
+        }
+
+        $price = (float) ($data['price'] ?? 0);
+        $show_form = (!$status || $status === '2');
+
+        $form_id = 'facade_widget_card';
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+        if (empty($_SESSION['_csrf'][$form_id])) {
+            $_SESSION['_csrf'][$form_id] = bin2hex(random_bytes(16));
+        }
+
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $booking_url = $scheme . '://' . $host . '/sahmatka/ajax_router.php?ctr=facades&act=widget_booking_submit';
+
+        $rooms = (string) ($data['rooms'] ?? '');
+        $area = (string) ($data['area'] ?? '');
+        $unit_labels = $this->widget_unit_labels();
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success'          => true,
+            'homeId'           => $home_id,
+            'apartmentNum'     => $apartment_num,
+            'apartamentId'     => $apartament_id,
+            'rooms'            => $rooms,
+            'area'             => $area,
+            'floor'            => (int) ($data['floor'] ?? 0),
+            'floorsTotal'      => $floors_total,
+            'section'          => $section,
+            'sectionCaption'   => (string) ($data['section_caption'] ?? ('Секция ' . $section)),
+            'kvartalTitle'     => (string) ($data['kvartal_title'] ?? ''),
+            'homeTitle'        => (string) ($data['title'] ?? ''),
+            'addressLabel'     => (string) ($data['adress'] ?? ''),
+            'price'            => $price,
+            'priceFormatted'   => $price > 0 ? number_format($price, 0, '.', ' ') : '',
+            'status'           => $status,
+            'statusLabel'      => (string) ($status_arr[$status] ?? $status),
+            'statusColor'      => (string) ($status_color_arr[$status] ?? '#ccc'),
+            'imageLayoutUrl'   => $this->widget_absolute_url($data['image_pb'] ?? ''),
+            'imageFloorPlanUrl'=> $this->widget_absolute_url($data['image_pb_plan'] ?? ''),
+            'showBookingForm'  => $show_form,
+            'unitLabelNomCap'  => $unit_labels['nomCap'],
+            'unitLabelNom'     => $unit_labels['nom'],
+            'booking'          => [
+                'actionUrl'    => $booking_url,
+                'fpId'         => $form_id,
+                'hiddenFields' => [
+                    '_fp_form' => $form_id,
+                    '_csrf'    => $_SESSION['_csrf'][$form_id],
+                    '_fp_hp'   => '',
+                    '_fp_js'   => '1',
+                    'home'     => (string) ($data['title'] ?? ''),
+                    'section_caption' => (string) ($data['section_caption'] ?? ''),
+                    'apartment_num'   => (string) $apartment_num,
+                ],
+            ],
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Отправка заявки из виджета (Stage 3) — тот же flow, что act__card_ajaxform.
+     */
+    function act__widget_booking_submit()
+    {
+        global $fw_mailer;
+
+        $formProtectPath = dirname(__DIR__, 3) . '/captcha/FormProtect.php';
+        if (!is_file($formProtectPath)) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'FormProtect не найден'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        require_once $formProtectPath;
+
+        header('Content-Type: application/json; charset=utf-8');
+        try {
+            $formProtect = new FormProtect();
+            $rules = [
+                'home'             => 'required|string|min:3|max:64',
+                'section_caption'  => 'required|string|min:3|max:64',
+                'apartment_num'    => 'required|string|min:1|max:4',
+                'fio'              => 'required|string|min:3|max:64',
+                'phone'            => 'required|validPhone',
+                'message'          => 'string|max:300|noHtml|noLinks',
+            ];
+            // Капча в legacy фактически отключена (CaptchaValidator); для embed — без капчи.
+            $data = $formProtect->validateForm($rules, false);
+
+            $titles = [
+                'home'            => 'Дом',
+                'section_caption' => 'Секция',
+                'apartment_num'   => unit_label_cap('nom'),
+                'fio'             => 'ФИО',
+                'phone'           => 'Телефон',
+                'message'         => 'Сообщение',
+            ];
+
+            $message = fw_messages::build_message($data, $titles);
+            $recipients = '89236470002@mail.ru,op@em-nsk.group';
+
+            if (!$fw_mailer->send($recipients, 'Заявка EM-NSK.RU - виджет фасада ' . unit_label('gen') . ' ', $message)) {
+                $formProtect->fail('Не удалось отправить заявку. Попробуйте позднее.');
+                exit;
+            }
+
+            $formProtect->ok('Ваша заявка успешно отправлена');
+        } catch (Throwable $e) {
+            error_log('[Widget booking error] ' . $e->getMessage());
+            if (isset($formProtect)) {
+                $formProtect->fail('Ошибка сервера. Попробуйте позднее.');
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Ошибка сервера. Попробуйте позднее.'], JSON_UNESCAPED_UNICODE);
+            }
+        }
+    }
+
+    /**
+     * Секции дома из homes_sections (номер section_id + подпись + этажность секции).
+     * @return array<int, array{id:int,caption:string,maxFloor:int}>
+     */
+    function get_home_sections($home)
+    {
+        global $mysql;
+
+        $homes_id = (int) ($home['homes_id'] ?? 0);
+        $fallback_max = (int) ($home['floor'] ?? 0);
+        if ($fallback_max < 1) {
+            $fallback_max = 30;
+        }
+
+        $sections = [];
+        if ($homes_id) {
+            $rows = $mysql->get_arr(
+                'SELECT * FROM homes_sections WHERE homes_id="' . $homes_id . '" ORDER BY section_id, homes_sections_id'
+            );
+            if ($rows) {
+                foreach ($rows as $row) {
+                    $sid = (int) ($row['section_id'] ?? 0);
+                    if ($sid < 1) {
+                        $sid = (int) ($row['homes_sections_id'] ?? 0);
+                    }
+                    if ($sid < 1) {
+                        continue;
+                    }
+                    $max = (int) ($row['floor'] ?? 0);
+                    if ($max < 1) {
+                        $max = $fallback_max;
+                    }
+                    $caption = trim((string) ($row['caption'] ?? ''));
+                    if ($caption === '') {
+                        $caption = 'Секция ' . $sid;
+                    }
+                    $sections[] = [
+                        'id'       => $sid,
+                        'caption'  => $caption,
+                        'maxFloor' => $max,
+                    ];
+                }
+            }
+        }
+
+        if (!$sections) {
+            $sections[] = [
+                'id'       => 1,
+                'caption'  => 'Секция 1',
+                'maxFloor' => $fallback_max,
+            ];
+        }
+
+        return $sections;
+    }
+
+    function act__index()
+    {
+        if (!check_access('admin')) {
+            die('Ошибка доступа');
+        }
+        global $mysql, $t, $r;
+        $t['h1'] = 'Разметка фасадов';
+
+        $homes = $mysql->get_arr('SELECT home_id, title, `floor` FROM homes WHERE 1=1 ORDER BY `order`, title');
+        ?>
+        <p>Загрузите фото в <code>sites/sigma/fasades/{home_id}.jpg</code>, затем откройте редактор.</p>
+        <table border="0" class="dtable">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Дом</th>
+                <th>Файл фасада</th>
+                <th>Разметка</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($homes as $h):
+                $hid = (int) $h['home_id'];
+                $has_file = file_exists($this->facade_image_fs_path($hid));
+                $cnt = $mysql->get_arr('SELECT COUNT(*) AS c FROM facade_polygons WHERE home_id="' . $hid . '" AND del="0"', 1);
+                $poly_count = (int) ($cnt['c'] ?? 0);
+                ?>
+                <tr>
+                    <td><?= $hid ?></td>
+                    <td><?= htmlspecialchars($h['title']) ?></td>
+                    <td><?= $has_file ? '<span style="color:green">есть</span>' : '<span style="color:#c45c00">нет</span>' ?></td>
+                    <td><?= $poly_count ? $poly_count . ' полиг.' : '—' ?></td>
+                    <td>
+                        <?php if ($has_file): ?>
+                            <a href="<?= htmlspecialchars($r->acturl('facades', 'editor', 'ctrind.php') . '&home_id=' . $hid) ?>">Редактор</a>
+                            &nbsp;|&nbsp;
+                            <a href="<?= htmlspecialchars($r->acturl('facades', 'editor', 'iframe_router.php') . '&home_id=' . $hid) ?>" class="iframe_r">iframe</a>
+                            &nbsp;|&nbsp;
+                            <a href="<?= htmlspecialchars($r->acturl('facades', 'widget_demo', 'ctrind.php') . '&home_id=' . $hid) ?>">Виджет</a>
+                            &nbsp;|&nbsp;
+                            <a href="<?= htmlspecialchars($r->acturl('floor_plans', 'editor', 'ctrind.php') . '&home_id=' . $hid) ?>">Планы этажей</a>
+                        <?php else: ?>
+                            —
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php
+    }
+
+    function act__editor()
+    {
+        if (!check_access('admin')) {
+            die('Ошибка доступа');
+        }
+        global $mysql, $t;
+
+        $home_id = (int) $_REQUEST['home_id'];
+        if (!$home_id) {
+            print 'Не указан home_id';
+            return;
+        }
+
+        $home = $mysql->get_for_key('homes', 'home_id', $home_id);
+        if (!$home) {
+            print 'Дом не найден';
+            return;
+        }
+
+        $path = $this->facade_image_fs_path($home_id);
+        if (!is_file($path)) {
+            print 'Файл фасада не найден: <code>' . htmlspecialchars($path) . '</code><br/>';
+            print 'Положите <b>' . $home_id . '.jpg</b> в <code>sites/sigma/fasades/</code>';
+            return;
+        }
+
+        $size = @getimagesize($path);
+        if (!$size) {
+            print 'Не удалось прочитать изображение';
+            return;
+        }
+
+        $sections = $this->get_home_sections($home);
+        $max_floor = 1;
+        foreach ($sections as $sec) {
+            if ($sec['maxFloor'] > $max_floor) {
+                $max_floor = $sec['maxFloor'];
+            }
+        }
+
+        $t['h1'] = 'Разметка фасада — ' . $home['title'];
+
+        $tpl = [
+            'home_id'    => $home_id,
+            'home_title' => $home['title'],
+            'image_url'  => $this->facade_image_url($home_id),
+            'image_w'    => (int) $size[0],
+            'image_h'    => (int) $size[1],
+            'max_floor'  => $max_floor,
+            'sections'   => $sections,
+            'ajax_base'  => '/sahmatka/ajax_router.php?ctr=facades',
+        ];
+        $this->tpl($tpl, 'facades', 'editor');
+    }
+
+    function act__widget_demo()
+    {
+        if (!check_access('admin')) {
+            die('Ошибка доступа');
+        }
+        global $t;
+
+        $home_id = (int) ($_REQUEST['home_id'] ?? 60);
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $origin = $scheme . '://' . $host;
+
+        $t['h1'] = 'Демо виджета фасада';
+
+        $tpl = [
+            'home_id'    => $home_id ?: 60,
+            'api_base'   => $origin . '/sahmatka/ajax_router.php?ctr=facades',
+            'script_src' => $origin . '/sahmatka/template/default/js/facade_widget.js',
+        ];
+        $this->tpl($tpl, 'facades', 'widget_demo');
+    }
+
+    function act__get_polygons()
+    {
+        $this->require_admin();
+        global $mysql;
+
+        $home_id = (int) $_REQUEST['home_id'];
+        $rows = $mysql->get_arr(
+            'SELECT * FROM facade_polygons WHERE home_id="' . $home_id . '" AND del="0" ORDER BY section, floor, sort_order, facade_polygon_id'
+        );
+
+        $result = [];
+        if ($rows) {
+            foreach ($rows as $v) {
+                $points = json_decode($v['points'], true);
+                if (!is_array($points)) {
+                    continue;
+                }
+                $result[] = [
+                    'id'      => (int) $v['facade_polygon_id'],
+                    'section' => (int) ($v['section'] ?? 1),
+                    'floor'   => (int) $v['floor'],
+                    'label'   => $v['label'],
+                    'points'  => $points,
+                    'color'   => $v['color'] ?: '#3388ff',
+                ];
+            }
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($result, JSON_UNESCAPED_UNICODE);
+    }
+
+    function act__save_polygon()
+    {
+        $this->require_admin();
+        global $mysql;
+
+        $home_id = (int) $_POST['home_id'];
+        $section = (int) ($_POST['section'] ?? 1);
+        $floor   = (int) $_POST['floor'];
+        $id      = (int) $_POST['facade_polygon_id'];
+        $points  = json_decode($_POST['points'] ?? '', true);
+
+        if ($section < 1) {
+            $section = 1;
+        }
+
+        if (!$home_id || !$floor || !is_array($points) || count($points) < 3) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Некорректные данные полигона']);
+            return;
+        }
+
+        $points = $this->normalize_points($points);
+        if (count($points) < 3) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Полигон должен иметь минимум 3 точки']);
+            return;
+        }
+
+        $overlap = $this->find_overlapping_polygon($home_id, $points, $id);
+        if ($overlap) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success'    => false,
+                'message'    => 'Полигон перекрывает существующий (секция ' . (int) ($overlap['section'] ?? 1) . ', этаж ' . (int) $overlap['floor'] . '). Отредактируйте существующий.',
+                'overlap_id' => (int) $overlap['facade_polygon_id'],
+            ], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $data = [
+            'home_id' => $home_id,
+            'section' => $section,
+            'floor'   => $floor,
+            'label'   => trim((string) ($_POST['label'] ?? '')),
+            'points'  => json_encode($points),
+            'color'   => trim((string) ($_POST['color'] ?? '#3388ff')),
+        ];
+
+        if ($id) {
+            // Проверяем принадлежность существующего полигона этому дому —
+            // иначе id чужого полигона можно было бы "перевесить" на другой home_id.
+            $existing = $mysql->get_for_key('facade_polygons', 'facade_polygon_id', $id);
+            if (!$existing || (int) $existing['home_id'] !== $home_id) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['success' => false, 'message' => 'Полигон не найден для этого дома']);
+                return;
+            }
+            $mysql->update_for_key('facade_polygons', 'facade_polygon_id', $id, $data);
+        } else {
+            $id = $mysql->insert('facade_polygons', $data);
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['success' => true, 'id' => (int) $id]);
+    }
+
+    function act__delete_polygon()
+    {
+        $this->require_admin();
+        global $mysql;
+
+        $id      = (int) ($_POST['facade_polygon_id'] ?? 0);
+        $home_id = (int) ($_POST['home_id'] ?? 0);
+        if (!$id) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Не указан id']);
+            return;
+        }
+
+        $existing = $mysql->get_for_key('facade_polygons', 'facade_polygon_id', $id);
+        if (!$existing || ($home_id && (int) $existing['home_id'] !== $home_id)) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Полигон не найден для этого дома']);
+            return;
+        }
+
+        $mysql->sql('UPDATE facade_polygons SET del="1" WHERE facade_polygon_id="' . $id . '"');
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['success' => true, 'id' => $id]);
+    }
+
+    function normalize_points($points)
+    {
+        $out = [];
+        foreach ($points as $p) {
+            if (!is_array($p) || count($p) < 2) {
+                continue;
+            }
+            $out[] = [(float) $p[0], (float) $p[1]];
+        }
+        return $out;
+    }
+
+    function bbox($points)
+    {
+        $minX = $minY = PHP_FLOAT_MAX;
+        $maxX = $maxY = -PHP_FLOAT_MAX;
+        foreach ($points as $p) {
+            $x = (float) $p[0];
+            $y = (float) $p[1];
+            if ($x < $minX) { $minX = $x; }
+            if ($y < $minY) { $minY = $y; }
+            if ($x > $maxX) { $maxX = $x; }
+            if ($y > $maxY) { $maxY = $y; }
+        }
+        return [$minX, $minY, $maxX, $maxY];
+    }
+
+    function bbox_intersects($a, $b)
+    {
+        return !($a[2] < $b[0] || $b[2] < $a[0] || $a[3] < $b[1] || $b[3] < $a[1]);
+    }
+
+    function bbox_overlap_ratio($a, $b)
+    {
+        if (!$this->bbox_intersects($a, $b)) {
+            return 0;
+        }
+        $ix = max(0, min($a[2], $b[2]) - max($a[0], $b[0]));
+        $iy = max(0, min($a[3], $b[3]) - max($a[1], $b[1]));
+        $inter = $ix * $iy;
+        $areaA = max(1, ($a[2] - $a[0]) * ($a[3] - $a[1]));
+        $areaB = max(1, ($b[2] - $b[0]) * ($b[3] - $b[1]));
+        return $inter / min($areaA, $areaB);
+    }
+
+    /**
+     * Порог «почти-дубликат» по bbox. Соседние этажи — горизонтальные полоски
+     * одинаковой ширины: даже касание / тонкая полоска пересечения bbox даёт
+     * ratio 0.3–0.6 от высоты тонкого этажа. Старый порог 0.5 блокировал валидную
+     * разметку смежных этажей. 0.85 ловит только почти совпадающие полигоны.
+     */
+    function overlap_conflict_threshold()
+    {
+        return 0.85;
+    }
+
+    function find_overlapping_polygon($home_id, $points, $exclude_id = 0)
+    {
+        global $mysql;
+        $home_id = (int) $home_id;
+        $exclude_id = (int) $exclude_id;
+        $q = 'SELECT * FROM facade_polygons WHERE home_id="' . $home_id . '" AND del="0"';
+        if ($exclude_id) {
+            $q .= ' AND facade_polygon_id != "' . $exclude_id . '"';
+        }
+        $existing = $mysql->get_arr($q);
+        if (!$existing) {
+            return null;
+        }
+
+        $newBbox = $this->bbox($points);
+        $threshold = $this->overlap_conflict_threshold();
+        foreach ($existing as $row) {
+            $existingPoints = json_decode($row['points'], true);
+            if (!is_array($existingPoints)) {
+                continue;
+            }
+            $existingBbox = $this->bbox($existingPoints);
+            if (!$this->bbox_intersects($newBbox, $existingBbox)) {
+                continue;
+            }
+            if ($this->bbox_overlap_ratio($newBbox, $existingBbox) > $threshold) {
+                return $row;
+            }
+        }
+        return null;
+    }
+}

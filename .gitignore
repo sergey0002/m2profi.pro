@@ -135,6 +135,8 @@ sites/*/svg2png/cache/*
 !sites/*/svg2png/cache/.gitkeep
 sites/*/thumbs/cache/*
 !sites/*/thumbs/cache/.gitkeep
+sites/*/fasades/*
+!sites/*/fasades/.gitkeep
 
 # Tenant import & runtime data (contents only)
 sites/*/sahmatka/import/*

@@ -1,0 +1,261 @@
+.facade-editor {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+.facade-editor__head,
+.facade-editor__floor-panel,
+.facade-editor__messages,
+.facade-editor__title {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+/* Только карта без выделения — не трогаем текст форм */
+.facade-editor__map,
+.facade-editor__map * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.facade-editor__head {
+    margin-bottom: 12px;
+}
+
+.facade-editor__title {
+    margin: 0 0 6px;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.facade-editor__map {
+    width: 100%;
+    height: 75vh;
+    min-height: 400px;
+    background: #1a1a1a;
+    border: 1px solid #ddd;
+}
+
+/* Карточка формы: панель этажа + блок сообщений в одной рамке (единый визуальный блок) */
+.facade-editor__panel-card {
+    margin-bottom: 10px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.facade-editor__floor-panel {
+    padding: 10px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.facade-editor__floor-panel select option.is-marked {
+    font-weight: bold;
+}
+
+.facade-editor__dirty-actions {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.facade-editor__btn {
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.facade-editor__btn--primary {
+    font-weight: 600;
+}
+
+.facade-editor__btn:disabled,
+.facade-editor__floor-panel select:disabled,
+.facade-editor__floor-panel input:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.facade-editor__floor-panel label {
+    font-size: 14px;
+}
+
+.facade-editor__floor-panel select,
+.facade-editor__floor-panel input[type="text"] {
+    margin-left: 6px;
+    padding: 4px 8px;
+}
+
+.facade-editor__floor-panel button {
+    padding: 6px 14px;
+    cursor: pointer;
+}
+
+/*
+ * Универсальный блок сообщений формы (замена отдельных floor-state/status).
+ * Всегда в одной рамке с панелью этажа, компактной полосой чуть ниже формы.
+ * Типы: info (нейтрально) / success (сохранено) / warning (есть правки) / error (ошибка).
+ */
+.facade-editor__messages {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    background: #eef1f4;
+    color: #444;
+    border-top: 1px solid #e2e2e2;
+}
+
+.facade-editor__messages:empty {
+    display: none;
+}
+
+.facade-editor__messages-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    background: #d7dde3;
+    color: #444;
+}
+
+.facade-editor__messages-text {
+    flex: 1 1 auto;
+    word-break: break-word;
+}
+
+.facade-editor__messages.is-info {
+    background: #eef4fb;
+    color: #1f4e79;
+    border-top-color: #cfe2f3;
+}
+
+.facade-editor__messages.is-info .facade-editor__messages-icon {
+    background: #cfe2f3;
+    color: #1f4e79;
+}
+
+.facade-editor__messages.is-success {
+    background: #eaf7ee;
+    color: #1a7f37;
+    border-top-color: #c9ecd3;
+}
+
+.facade-editor__messages.is-success .facade-editor__messages-icon {
+    background: #c9ecd3;
+    color: #1a7f37;
+}
+
+.facade-editor__messages.is-warning {
+    background: #fff6e9;
+    color: #b45309;
+    border-top-color: #ffe3b8;
+}
+
+.facade-editor__messages.is-warning .facade-editor__messages-icon {
+    background: #ffe3b8;
+    color: #b45309;
+}
+
+.facade-editor__messages.is-error {
+    background: #fdecea;
+    color: #c0392b;
+    border-top-color: #f8cfc9;
+}
+
+.facade-editor__messages.is-error .facade-editor__messages-icon {
+    background: #f8cfc9;
+    color: #c0392b;
+}
+
+/* Без прямоугольной рамки фокуса/выделения браузера на полигонах */
+#facade_map path.leaflet-interactive,
+#facade_map .leaflet-interactive {
+    outline: none !important;
+}
+
+#facade_map path:focus,
+#facade_map .leaflet-interactive:focus {
+    outline: none !important;
+}
+
+/* Круглые и более мелкие точки вершин Leaflet.Draw */
+#facade_map .leaflet-editing-icon,
+#facade_map .facade-edit-vertex {
+    width: 8px !important;
+    height: 8px !important;
+    margin-left: -4px !important;
+    margin-top: -4px !important;
+    border-radius: 50% !important;
+    border: 2px solid #3388ff !important;
+    background: #fff !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
+#facade_map .leaflet-editing-icon.leaflet-touch-icon,
+#facade_map .facade-edit-vertex.leaflet-touch-icon {
+    width: 12px !important;
+    height: 12px !important;
+    margin-left: -6px !important;
+    margin-top: -6px !important;
+}
+
+/* Модалка подтверждения несохранённых изменений (Сохранить / Не сохранять / Остаться) */
+.facade-editor__modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.facade-editor__modal-box {
+    background: #fff;
+    border-radius: 6px;
+    padding: 18px 20px;
+    max-width: 420px;
+    width: calc(100% - 32px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.facade-editor__modal-text {
+    margin: 0 0 16px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #222;
+    white-space: pre-line;
+}
+
+.facade-editor__modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
