@@ -59,76 +59,137 @@ if ($api_base === '' || $script_src === '') {
 
 <section class="fw-embed">
   <h2>Код для вставки</h2>
-  <p>Скопируйте блок на свой сайт. К каждому параметру — русский комментарий.</p>
+  <p>Значения ниже совпадают с этой демо-страницей. На чужом сайте оставьте absolute URL скрипта и apiBase.</p>
   <pre id="fw_demo_snippet"></pre>
 </section>
 
-<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=1.2.12"></script>
+<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=1.2.16"></script>
 <script>
 (function () {
   var SCRIPT_SRC = <?= json_encode($script_src, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var API_BASE = <?= json_encode($api_base, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var HOME_ID = <?= (int) $home_id ?>;
+  var MAX_HEIGHT = Math.round(window.innerWidth * 2);
 
-  FacadeWidget.mount({
+  var mountOpts = {
     el: '#facade_demo_mount',
     homeId: HOME_ID,
-    width: '100%',
-    maxHeight: Math.round(window.innerWidth * 2),
     apiBase: API_BASE,
+    width: '100%',
+    maxHeight: MAX_HEIGHT,
+    fadeMs: 280,
     urlState: true,
-    fadeMs: 280
-  });
+    scrollReveal: true,
+    scrollRevealSpeed: 1,
+    exploreFullscreen: true,
+    floorPlan: { enabled: true },
+    floorPlanZoom: { desktop: false, mobile: true },
+    facadeHighlight: {
+      color: '#76939D',
+      opacity: 0.45,
+      idleOpacity: 0.12,
+      revealOpacity: 0.52
+    },
+    apartmentHighlight: {
+      color: '#76939D',
+      opacity: 0.28,
+      hoverOpacity: 0.45
+    },
+    breadcrumbs: {
+      home: { show: false, clickable: false },
+      section: { show: true, clickable: false },
+      floor: { show: true, clickable: true },
+      apartment: { show: true, clickable: false }
+    }
+  };
+
+  FacadeWidget.mount(mountOpts);
 
   document.getElementById('fw_demo_snippet').innerHTML = [
-    '<span class="tok-comment">&lt;!-- Контейнер, куда встраивается виджет --&gt;</span>',
+    '<span class="tok-comment">&lt;!-- 1) Пустой контейнер. Виджет монтируется внутрь (Shadow DOM) --&gt;</span>',
     '<span class="tok-tag">&lt;div</span> <span class="tok-attr">id</span>=<span class="tok-str">"facade"</span><span class="tok-tag">&gt;&lt;/div&gt;</span>',
     '',
-    '<span class="tok-comment">&lt;!-- Полный URL скрипта (absolute — обязательно на чужом домене) --&gt;</span>',
-    '<span class="tok-tag">&lt;script</span> <span class="tok-attr">src</span>=<span class="tok-str">"' + SCRIPT_SRC + '"</span><span class="tok-tag">&gt;&lt;/script&gt;</span>',
+    '<span class="tok-comment">&lt;!-- 2) Скрипт: на чужом домене — только absolute URL на хост Sigma --&gt;</span>',
+    '<span class="tok-tag">&lt;script</span> <span class="tok-attr">src</span>=<span class="tok-str">"' + SCRIPT_SRC + '?v=1.2.16"</span><span class="tok-tag">&gt;&lt;/script&gt;</span>',
     '',
     '<span class="tok-tag">&lt;script&gt;</span>',
     '<span class="tok-punct">FacadeWidget.mount({</span>',
-    '  <span class="tok-key">el</span><span class="tok-punct">:</span> <span class="tok-str">\'#facade\'</span><span class="tok-punct">,</span>              <span class="tok-comment">// CSS-селектор или DOM-элемент-контейнер</span>',
-    '  <span class="tok-key">homeId</span><span class="tok-punct">:</span> <span class="tok-num">' + HOME_ID + '</span><span class="tok-punct">,</span>                   <span class="tok-comment">// ID дома (homes.home_id)</span>',
-    '  <span class="tok-key">apiBase</span><span class="tok-punct">:</span> <span class="tok-str">\'' + API_BASE + '\'</span><span class="tok-punct">,</span> <span class="tok-comment">// полный URL API (?ctr=facades)</span>',
-    '  <span class="tok-key">width</span><span class="tok-punct">:</span> <span class="tok-str">\'100%\'</span><span class="tok-punct">,</span>                 <span class="tok-comment">// ширина виджета: \'100%\' или число в px</span>',
-    '  <span class="tok-key">maxHeight</span><span class="tok-punct">:</span> <span class="tok-num">900</span><span class="tok-punct">,</span>                  <span class="tok-comment">// макс. высота фасада в px (пропорция сохраняется)</span>',
-    '  <span class="tok-key">fadeMs</span><span class="tok-punct">:</span> <span class="tok-num">280</span><span class="tok-punct">,</span>                    <span class="tok-comment">// длительность fade между экранами, мс (0 — без анимации)</span>',
-    '  <span class="tok-key">urlState</span><span class="tok-punct">:</span> <span class="tok-key">false</span><span class="tok-punct">,</span>                 <span class="tok-comment">// писать ли #fw=секция.этаж.квартира (на чужих сайтах лучше false)</span>',
-    '  <span class="tok-key">scrollReveal</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>              <span class="tok-comment">// анимация «высветления» этажей при скролле</span>',
-    '  <span class="tok-key">scrollRevealSpeed</span><span class="tok-punct">:</span> <span class="tok-num">1</span><span class="tok-punct">,</span>             <span class="tok-comment">// скорость scrollReveal (множитель)</span>',
-    '  <span class="tok-key">exploreFullscreen</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>         <span class="tok-comment">// mobile explore (pan/zoom фасада)</span>',
-    '  <span class="tok-key">floorPlan</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">enabled</span><span class="tok-punct">:</span> <span class="tok-key">true</span> <span class="tok-punct">},</span>  <span class="tok-comment">// false — клик по этажу не открывает план</span>',
-    '  <span class="tok-key">floorPlanZoom</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">desktop</span><span class="tok-punct">:</span> <span class="tok-key">false</span><span class="tok-punct">,</span> <span class="tok-key">mobile</span><span class="tok-punct">:</span> <span class="tok-key">true</span> <span class="tok-punct">},</span> <span class="tok-comment">// зум/pan плана: десктоп выкл., мобилка вкл.</span>',
+    '  <span class="tok-key">el</span><span class="tok-punct">:</span> <span class="tok-str">\'#facade\'</span><span class="tok-punct">,</span>',
+    '  <span class="tok-comment">// CSS-селектор или HTMLElement — куда встроить виджет</span>',
     '',
-    '  <span class="tok-comment">// Подсветка этажей на фасаде (hover / active / scrollReveal)</span>',
+    '  <span class="tok-key">homeId</span><span class="tok-punct">:</span> <span class="tok-num">' + HOME_ID + '</span><span class="tok-punct">,</span>',
+    '  <span class="tok-comment">// homes.home_id — дом, для которого размечены фасад и планы</span>',
+    '',
+    '  <span class="tok-key">apiBase</span><span class="tok-punct">:</span> <span class="tok-str">\'' + API_BASE + '\'</span><span class="tok-punct">,</span>',
+    '  <span class="tok-comment">// База AJAX: …/ajax_router.php?ctr=facades</span>',
+    '  <span class="tok-comment">// Виджет дергает: widget_data → floor_plan_data → apartment_card_data → widget_booking_submit</span>',
+    '',
+    '  <span class="tok-key">width</span><span class="tok-punct">:</span> <span class="tok-str">\'100%\'</span><span class="tok-punct">,</span>',
+    '  <span class="tok-comment">// Ширина блока фасада: \'100%\' (по контейнеру) или число px, напр. 960</span>',
+    '',
+    '  <span class="tok-key">maxHeight</span><span class="tok-punct">:</span> <span class="tok-num">' + MAX_HEIGHT + '</span><span class="tok-punct">,</span>',
+    '  <span class="tok-comment">// Макс. высота фасада в px. Демо: innerWidth*2, чтобы фасад не обрезался по ширине.</span>',
+    '  <span class="tok-comment">// На обычной вставке обычно хватает 700…900</span>',
+    '',
+    '  <span class="tok-key">fadeMs</span><span class="tok-punct">:</span> <span class="tok-num">280</span><span class="tok-punct">,</span>',
+    '  <span class="tok-comment">// Плавность смены экранов фасад↔план↔карточка, мс. 0 — без fade</span>',
+    '',
+    '  <span class="tok-key">urlState</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>',
+    '  <span class="tok-comment">// true (как в демо): писать hash #fw=секция.этаж.квартира для deep-link / «Назад» браузера</span>',
+    '  <span class="tok-comment">// На чужом сайте обычно false — чтобы не конфликтовать с hash хоста</span>',
+    '',
+    '  <span class="tok-key">scrollReveal</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>',
+    '  <span class="tok-comment">// Подсветка этажей фасада при появлении виджета в зоне видимости (скролл)</span>',
+    '',
+    '  <span class="tok-key">scrollRevealSpeed</span><span class="tok-punct">:</span> <span class="tok-num">1</span><span class="tok-punct">,</span>',
+    '  <span class="tok-comment">// Множитель скорости scrollReveal (1 = по умолчанию, 2 = быстрее)</span>',
+    '',
+    '  <span class="tok-key">exploreFullscreen</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>',
+    '  <span class="tok-comment">// Режим explore: pan/zoom фасада (особенно актуально на мобилке)</span>',
+    '',
+    '  <span class="tok-key">floorPlan</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">enabled</span><span class="tok-punct">:</span> <span class="tok-key">true</span> <span class="tok-punct">},</span>',
+    '  <span class="tok-comment">// true — клик по этажу открывает план. false — только callback onFloorClick</span>',
+    '',
+    '  <span class="tok-key">floorPlanZoom</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">desktop</span><span class="tok-punct">:</span> <span class="tok-key">false</span><span class="tok-punct">,</span> <span class="tok-key">mobile</span><span class="tok-punct">:</span> <span class="tok-key">true</span> <span class="tok-punct">},</span>',
+    '  <span class="tok-comment">// Зум/pan плана этажа: в демо на десктопе выкл., на мобилке вкл.</span>',
+    '',
+    '  <span class="tok-comment">// ——— Подсветка этажей на фасаде ———</span>',
     '  <span class="tok-key">facadeHighlight</span><span class="tok-punct">:</span> <span class="tok-punct">{</span>',
-    '    <span class="tok-key">color</span><span class="tok-punct">:</span> <span class="tok-str">\'#76939D\'</span><span class="tok-punct">,</span>           <span class="tok-comment">// цвет заливки/обводки этажа</span>',
-    '    <span class="tok-key">opacity</span><span class="tok-punct">:</span> <span class="tok-num">0.45</span><span class="tok-punct">,</span>               <span class="tok-comment">// прозрачность при наведении (0…1)</span>',
-    '    <span class="tok-key">idleOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0.12</span><span class="tok-punct">,</span>           <span class="tok-comment">// прозрачность в покое</span>',
-    '    <span class="tok-key">revealOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0.52</span>          <span class="tok-comment">// прозрачность в scrollReveal</span>',
+    '    <span class="tok-key">color</span><span class="tok-punct">:</span> <span class="tok-str">\'#76939D\'</span><span class="tok-punct">,</span>         <span class="tok-comment">// цвет hover / active / scrollReveal (палитра Sigma)</span>',
+    '    <span class="tok-key">opacity</span><span class="tok-punct">:</span> <span class="tok-num">0.45</span><span class="tok-punct">,</span>             <span class="tok-comment">// заливка при наведении / клике (0…1)</span>',
+    '    <span class="tok-key">idleOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0.12</span><span class="tok-punct">,</span>         <span class="tok-comment">// заливка полигонов этажей в покое</span>',
+    '    <span class="tok-key">revealOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0.52</span>        <span class="tok-comment">// заливка во время scrollReveal</span>',
     '  <span class="tok-punct">},</span>',
     '',
-    '  <span class="tok-comment">// Подсветка квартир на поэтажном плане</span>',
+    '  <span class="tok-comment">// ——— Подсветка квартир на плане ———</span>',
+    '  <span class="tok-comment">// В покое полигоны невидимы; видны только hover и режим «На этаже» на карточке</span>',
     '  <span class="tok-key">apartmentHighlight</span><span class="tok-punct">:</span> <span class="tok-punct">{</span>',
-    '    <span class="tok-key">color</span><span class="tok-punct">:</span> <span class="tok-str">\'#76939D\'</span><span class="tok-punct">,</span>           <span class="tok-comment">// цвет выделения квартиры</span>',
-    '    <span class="tok-key">opacity</span><span class="tok-punct">:</span> <span class="tok-num">0.28</span><span class="tok-punct">,</span>               <span class="tok-comment">// прозрачность выбранной (карточка / «На этаже»)</span>',
-    '    <span class="tok-key">hoverOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0.45</span>           <span class="tok-comment">// прозрачность при наведении</span>',
+    '    <span class="tok-key">color</span><span class="tok-punct">:</span> <span class="tok-str">\'#76939D\'</span><span class="tok-punct">,</span>         <span class="tok-comment">// цвет выделения квартиры</span>',
+    '    <span class="tok-key">opacity</span><span class="tok-punct">:</span> <span class="tok-num">0.28</span><span class="tok-punct">,</span>             <span class="tok-comment">// выделенная квартира (вкладка «На этаже»)</span>',
+    '    <span class="tok-key">hoverOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0.45</span>         <span class="tok-comment">// при наведении на плане (+ тултип)</span>',
     '  <span class="tok-punct">},</span>',
     '',
-    '  <span class="tok-comment">// Хлебные крошки: show — показывать, clickable — кликабельность</span>',
+    '  <span class="tok-comment">// ——— Хлебные крошки (план / карточка) ———</span>',
+    '  <span class="tok-comment">// На экране плана показывается только секция (как заголовок). Этаж — в крошках карточки</span>',
     '  <span class="tok-key">breadcrumbs</span><span class="tok-punct">:</span> <span class="tok-punct">{</span>',
-    '    <span class="tok-key">home</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">show</span><span class="tok-punct">:</span> <span class="tok-key">false</span><span class="tok-punct">,</span> <span class="tok-key">clickable</span><span class="tok-punct">:</span> <span class="tok-key">false</span> <span class="tok-punct">},</span>       <span class="tok-comment">// дом → к фасаду</span>',
-    '    <span class="tok-key">section</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">show</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span> <span class="tok-key">clickable</span><span class="tok-punct">:</span> <span class="tok-key">false</span> <span class="tok-punct">},</span>        <span class="tok-comment">// секция / корпус</span>',
-    '    <span class="tok-key">floor</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">show</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span> <span class="tok-key">clickable</span><span class="tok-punct">:</span> <span class="tok-key">true</span> <span class="tok-punct">},</span>          <span class="tok-comment">// этаж → план (с карточки)</span>',
-    '    <span class="tok-key">apartment</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">show</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span> <span class="tok-key">clickable</span><span class="tok-punct">:</span> <span class="tok-key">false</span> <span class="tok-punct">}</span>      <span class="tok-comment">// квартира (на карточке)</span>',
+    '    <span class="tok-key">home</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">show</span><span class="tok-punct">:</span> <span class="tok-key">false</span><span class="tok-punct">,</span> <span class="tok-key">clickable</span><span class="tok-punct">:</span> <span class="tok-key">false</span> <span class="tok-punct">},</span>  <span class="tok-comment">// дом → фасад</span>',
+    '    <span class="tok-key">section</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">show</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span> <span class="tok-key">clickable</span><span class="tok-punct">:</span> <span class="tok-key">false</span> <span class="tok-punct">},</span>   <span class="tok-comment">// корпус / секция (подпись из homes_sections)</span>',
+    '    <span class="tok-key">floor</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">show</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span> <span class="tok-key">clickable</span><span class="tok-punct">:</span> <span class="tok-key">true</span> <span class="tok-punct">},</span>     <span class="tok-comment">// этаж; клик с карточки → обратно на план</span>',
+    '    <span class="tok-key">apartment</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">show</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span> <span class="tok-key">clickable</span><span class="tok-punct">:</span> <span class="tok-key">false</span> <span class="tok-punct">}</span> <span class="tok-comment">// № квартиры на карточке</span>',
     '  <span class="tok-punct">},</span>',
     '',
-    '  <span class="tok-key">onFloorClick</span><span class="tok-punct">:</span> <span class="tok-key">function</span> <span class="tok-punct">(p)</span> <span class="tok-punct">{},</span>     <span class="tok-comment">// клик по этажу; return { preventDefault: true } — отменить план</span>',
-    '  <span class="tok-key">onApartmentClick</span><span class="tok-punct">:</span> <span class="tok-key">function</span> <span class="tok-punct">(p)</span> <span class="tok-punct">{},</span> <span class="tok-comment">// клик по квартире; return { preventDefault: true } — отменить карточку</span>',
-    '  <span class="tok-key">onNavigate</span><span class="tok-punct">:</span> <span class="tok-key">function</span> <span class="tok-punct">(state)</span> <span class="tok-punct">{},</span>  <span class="tok-comment">// смена экрана: { view, section, floor, apartmentNum }</span>',
-    '  <span class="tok-key">onBookingSuccess</span><span class="tok-punct">:</span> <span class="tok-key">function</span> <span class="tok-punct">(msg)</span> <span class="tok-punct">{}</span>  <span class="tok-comment">// успешная отправка заявки</span>',
+    '  <span class="tok-comment">// ——— Callbacks (опционально) ———</span>',
+    '  <span class="tok-key">onFloorClick</span><span class="tok-punct">:</span> <span class="tok-key">function</span> <span class="tok-punct">(p)</span> <span class="tok-punct">{},</span>',
+    '  <span class="tok-comment">// p: { homeId, section, floor, label }. return { preventDefault: true } — не открывать план</span>',
+    '',
+    '  <span class="tok-key">onApartmentClick</span><span class="tok-punct">:</span> <span class="tok-key">function</span> <span class="tok-punct">(p)</span> <span class="tok-punct">{},</span>',
+    '  <span class="tok-comment">// p: { homeId, section, floor, apartamentId, apartmentNum, … }. preventDefault — не открывать карточку</span>',
+    '',
+    '  <span class="tok-key">onNavigate</span><span class="tok-punct">:</span> <span class="tok-key">function</span> <span class="tok-punct">(state)</span> <span class="tok-punct">{},</span>',
+    '  <span class="tok-comment">// state: { view: \'facade\'|\'floor\'|\'card\', section, floor, apartmentNum, displayCode }</span>',
+    '',
+    '  <span class="tok-key">onBookingSuccess</span><span class="tok-punct">:</span> <span class="tok-key">function</span> <span class="tok-punct">(msg)</span> <span class="tok-punct">{}</span>',
+    '  <span class="tok-comment">// Успешная отправка заявки из карточки (строка сообщения с бэкенда)</span>',
     '<span class="tok-punct">});</span>',
     '<span class="tok-tag">&lt;/script&gt;</span>'
   ].join('\n');

@@ -355,14 +355,14 @@
     '.fw-plan-viewport { position: relative; flex: 0 0 auto; overflow: hidden; touch-action: none; min-height: 0; height: auto; background: #fff; padding: 0 8px 12px; }',
     '@media (min-width: 900px) {',
     '  .fw-root.is-view-floor .fw-view--floor { width: 100%; box-sizing: border-box; padding: 0 24px; background: #fff; }',
-    '  .fw-root.is-view-floor .fw-plan-layer { width: 100%; max-width: 1140px; margin: 0 auto; padding: 28px 0 40px; box-sizing: border-box; }',
+    '  .fw-root.is-view-floor .fw-plan-layer { width: 100%; max-width: 1140px; margin: 0 auto; padding: 28px 0; box-sizing: border-box; }',
     '  .fw-root.is-view-floor .fw-plan-head { padding: 0 0 24px; gap: 16px; }',
-    '  .fw-root.is-view-floor .fw-plan-viewport { padding: 0 0 8px; }',
+    '  .fw-root.is-view-floor .fw-plan-viewport { padding: 0; }',
     '  .fw-root.is-view-floor .fw-plan-back { padding: 8px 16px 8px 14px; font-size: 14px; background: #B8CDD4; border-color: transparent; }',
     '}',
     '@media (min-width: 1200px) {',
     '  .fw-root.is-view-floor .fw-view--floor { padding: 0 32px; }',
-    '  .fw-root.is-view-floor .fw-plan-layer { max-width: 1320px; padding-top: 32px; padding-bottom: 48px; }',
+    '  .fw-root.is-view-floor .fw-plan-layer { max-width: 1320px; padding: 32px 0; }',
     '}',
     '.fw-plan-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }',
     '.fw-plan-stage.is-dragging { cursor: grabbing; }',
@@ -375,12 +375,12 @@
     '.fw-apt-poly.is-highlight { fill: var(--fw-apt-hl-color, ' + ACCENT + ') !important; stroke: var(--fw-apt-hl-color, ' + ACCENT + ') !important; fill-opacity: var(--fw-apt-hl-opacity, 0.28) !important; stroke-opacity: 0.95 !important; stroke-width: 2.5 !important; }',
     '.fw-plan-banner { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: min(92%, 520px); padding: 10px 16px; border-radius: 8px; background: rgba(20,20,20,0.85); color: #fff; font-size: 13px; text-align: center; line-height: 1.4; }',
     '.fw-plan-viewport .fw-msg { max-width: min(92%, 420px); text-align: center; }',
-    /* тултип квартиры на плане — макет: glass dark, № сверху, «NК | S м²» снизу */
-    '.fw-apt-tooltip { position: absolute; z-index: 8; pointer-events: none; padding: 12px 18px; border-radius: 10px; background: rgba(32,32,36,0.72); color: #fff; text-align: center; line-height: 1.25; opacity: 0; transform: translate(-50%, calc(-100% - 12px)); transition: opacity 0.12s ease; white-space: nowrap; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 4px 18px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06); }',
-    '.fw-apt-tooltip.is-visible { opacity: 1; }',
-    '@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .fw-apt-tooltip { background: rgba(32,32,36,0.92); } }',
-    '.fw-apt-tooltip__code { display: block; font-weight: 700; font-size: 16px; letter-spacing: 0.01em; margin-bottom: 4px; color: #fff; }',
-    '.fw-apt-tooltip__spec { display: block; font-weight: 400; font-size: 13px; color: rgba(255,255,255,0.92); }',
+    /* тултип квартиры — макет: без скруглений, текст слева, слева от курсора */
+    '.fw-apt-tooltip { position: absolute; z-index: 8; pointer-events: none; padding: 12px 16px; border-radius: 0; background: rgba(36,36,40,0.78); color: #fff; text-align: left; line-height: 1.3; opacity: 0; transform: translate(-100%, -50%); transition: none; white-space: nowrap; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 2px 12px rgba(0,0,0,0.22); }',
+    '.fw-apt-tooltip.is-visible { opacity: 1; transition: opacity 300ms ease; }',
+    '@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .fw-apt-tooltip { background: rgba(36,36,40,0.88); } }',
+    '.fw-apt-tooltip__code { display: block; font-weight: 700; font-size: 18px; letter-spacing: 0.01em; margin-bottom: 4px; color: #fff; }',
+    '.fw-apt-tooltip__spec { display: block; font-weight: 400; font-size: 15px; color: rgba(255,255,255,0.95); }',
     /* карточка — desktop макет / цветопроба */
     '.fw-card { display: grid; grid-template-columns: minmax(360px, 460px) minmax(0, 1fr); gap: 0; background: #fff; align-items: stretch; overflow: hidden; min-height: 0; }',
     '@media (max-width: 899.98px) {',
@@ -402,14 +402,15 @@
     '}',
     '@media (max-width: 899.98px) { .fw-card-side { border-right: 0; } }',
     '.fw-card-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }',
-    '.fw-card-back { appearance: none; border: 1px solid transparent; background: #B8CDD4; color: #fff; border-radius: 999px; padding: 8px 16px 8px 14px; font: inherit; font-size: 13px; font-weight: 500; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
+    '.fw-card-back { appearance: none; border: 1px solid transparent; background: #A8BEC6; color: #fff; border-radius: 999px; padding: 0 16px 0 14px; height: 32px; font: inherit; font-size: 14px; font-weight: 600; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
     '.fw-card-back svg { display: block; flex: 0 0 auto; }',
     '.fw-card-back:hover, .fw-card-back:focus-visible { background: ' + ACCENT + '; outline: none; }',
-    '.fw-card-tools { display: flex; gap: 10px; flex-shrink: 0; }',
-    '.fw-card-tool { width: 40px; height: 40px; border-radius: 50%; border: 1px solid ' + ACCENT + '; background: #fff; color: ' + ACCENT + '; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; text-decoration: none; box-sizing: border-box; transition: background 0.15s ease, color 0.15s ease; }',
-    '.fw-card-tool:hover, .fw-card-tool:focus-visible { background: ' + ACCENT_SOFT + '; color: ' + ACCENT_HOVER + '; outline: none; }',
-    'a.fw-card-tool { color: ' + ACCENT + '; }',
-    '.fw-card-tool svg { width: 18px; height: 18px; }',
+    '.fw-card-tools { display: flex; gap: 12px; flex-shrink: 0; align-items: center; }',
+    '.fw-card-tool { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid #A8BEC6; background: #fff; color: #6B8088; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; text-decoration: none; box-sizing: border-box; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }',
+    '.fw-card-tool:hover, .fw-card-tool:focus-visible { background: ' + ACCENT_SOFT + '; color: ' + ACCENT + '; border-color: ' + ACCENT + '; outline: none; }',
+    'a.fw-card-tool { color: #6B8088; }',
+    '.fw-card-tool svg { width: 16px; height: 16px; }',
+    '.fw-card-tool img { width: 16px; height: 16px; display: block; pointer-events: none; }',
     '.fw-card-title { font-size: 17px; font-weight: 500; color: ' + TEXT_MAIN + '; margin: 4px 0 2px; line-height: 1.35; }',
     '@media (min-width: 900px) { .fw-card-title { font-size: 18px; margin: 8px 0 4px; } }',
     '.fw-card-spec { font-size: 32px; font-weight: 700; color: ' + TEXT_MAIN + '; line-height: 1.15; margin: 0; letter-spacing: -0.01em; }',
@@ -446,10 +447,10 @@
     '.fw-card-visual { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; padding: 16px 20px 20px; background: #fff; }',
     '@media (min-width: 900px) { .fw-card-visual { padding: 20px 24px 28px; background: #fff; } }',
     '@media (max-width: 899.98px) { .fw-card-visual { padding: 12px 16px 16px; border-bottom: 1px solid #ececec; background: #fff; } }',
-    '.fw-card-tabs { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }',
+    '.fw-card-tabs { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }',
     '@media (min-width: 900px) { .fw-card-tabs { gap: 12px; margin-bottom: 20px; } }',
-    '.fw-card-tab { appearance: none; border: 1px solid ' + ACCENT + '; background: #fff; color: ' + ACCENT + '; border-radius: 999px; padding: 10px 22px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; line-height: 1.2; transition: background 0.15s ease, color 0.15s ease; }',
-    '.fw-card-tab:hover:not(.is-active) { background: ' + ACCENT_SOFT + '; }',
+    '.fw-card-tab { appearance: none; border: 1.5px solid #A8BEC6; background: #fff; color: #5A6E75; border-radius: 999px; padding: 0 20px; height: 32px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; line-height: 1; display: inline-flex; align-items: center; justify-content: center; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }',
+    '.fw-card-tab:hover:not(.is-active) { background: ' + ACCENT_SOFT + '; color: ' + ACCENT + '; border-color: ' + ACCENT + '; }',
     '.fw-card-tab.is-active { background: ' + ACCENT + '; color: #fff; border-color: ' + ACCENT + '; }',
     '.fw-card-panel { display: none; flex-direction: column; flex: 1 1 auto; width: 100%; min-width: 0; }',
     '.fw-card-panel.is-active { display: flex; }',
@@ -2039,17 +2040,27 @@
         this._fillAptTooltip(el, tooltipEl);
         tooltipEl.classList.add('is-visible');
         var rect = viewport.getBoundingClientRect();
-        var x = clientX - rect.left;
-        var y = clientY - rect.top;
-        var tw = tooltipEl.offsetWidth || 120;
-        var th = tooltipEl.offsetHeight || 40;
-        x = Math.max(tw / 2 + 4, Math.min(rect.width - tw / 2 - 4, x));
-        y = Math.max(th + 12, Math.min(rect.height - 8, y));
+        var cx = clientX - rect.left;
+        var cy = clientY - rect.top;
+        var tw = tooltipEl.offsetWidth || 140;
+        var th = tooltipEl.offsetHeight || 48;
+        var gap = 14;
+        var leftOfCursor = cx - gap >= tw + 4;
+        var x;
+        var y = Math.max(th / 2 + 4, Math.min(rect.height - th / 2 - 4, cy));
+        if (leftOfCursor) {
+          tooltipEl.style.transform = 'translate(-100%, -50%)';
+          x = Math.max(tw + 4, Math.min(rect.width - 4, cx - gap));
+        } else {
+          tooltipEl.style.transform = 'translate(0, -50%)';
+          x = Math.max(4, Math.min(rect.width - tw - 4, cx + gap));
+        }
         tooltipEl.style.left = x + 'px';
         tooltipEl.style.top = y + 'px';
       }
     } else if (tooltipEl) {
       tooltipEl.classList.remove('is-visible');
+      tooltipEl.style.transform = 'translate(-100%, -50%)';
     }
   };
 
@@ -2161,6 +2172,7 @@
     printBtn.type = 'button';
     printBtn.className = 'fw-card-tool';
     printBtn.setAttribute('aria-label', 'Печать');
+    printBtn.setAttribute('title', 'Печать');
     printBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>';
     printBtn.addEventListener('click', function (e) {
       e.preventDefault();
@@ -2168,17 +2180,20 @@
       self._printApartmentCard();
     });
     tools.appendChild(printBtn);
-    if (data.imageLayoutUrl) {
-      var dlBtn = document.createElement('a');
-      dlBtn.className = 'fw-card-tool';
-      dlBtn.href = data.imageLayoutUrl;
-      dlBtn.setAttribute('download', '');
-      dlBtn.setAttribute('target', '_blank');
-      dlBtn.setAttribute('rel', 'noopener');
-      dlBtn.setAttribute('aria-label', 'Скачать планировку');
-      dlBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>';
-      tools.appendChild(dlBtn);
-    }
+
+    // Как в старой public_card: PDF = та же печать карточки (Save as PDF в диалоге).
+    var pdfBtn = document.createElement('button');
+    pdfBtn.type = 'button';
+    pdfBtn.className = 'fw-card-tool';
+    pdfBtn.setAttribute('aria-label', 'Скачать PDF');
+    pdfBtn.setAttribute('title', 'Скачать PDF');
+    pdfBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>';
+    pdfBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      self._printApartmentCard();
+    });
+    tools.appendChild(pdfBtn);
     headRow.appendChild(tools);
     side.appendChild(headRow);
 
@@ -2994,19 +3009,9 @@
     }
 
     if (!this._els.floorView) return;
-    // Desktop: высота viewport ≈ высоте плана по ширине (не options.maxHeight).
-    var hostW = (this.host && (this.host.clientWidth || this.host.offsetWidth)) || 300;
-    var headH2 = (this._planEls.head && this._planEls.head.offsetHeight) || 56;
-    var facadeCap = this._stageH || (this._els.viewport && this._els.viewport.clientHeight) || 520;
-    var maxVp = Math.max(220, facadeCap);
-    var vpH = 280;
-    if (this._planImgW && this._planImgH) {
-      vpH = Math.ceil((hostW / this._planImgW) * this._planImgH) + 16;
-      vpH = Math.max(200, Math.min(vpH, maxVp));
-    } else {
-      vpH = Math.max(220, Math.min(maxVp, facadeCap > headH2 ? facadeCap - headH2 : 280));
-    }
 
+    // Desktop: высота viewport = высота плана по РЕАЛЬНОЙ ширине контейнера
+    // (раньше считали от host.clientWidth / высоте фасада → огромный пустой низ).
     this._els.floorView.style.minHeight = '';
     this._els.floorView.style.height = 'auto';
     if (this._planEls.layer) {
@@ -3014,11 +3019,27 @@
       this._planEls.layer.style.height = '';
       this._planEls.layer.style.flex = '';
     }
-    if (this._planEls.viewport) {
-      this._planEls.viewport.style.minHeight = '';
-      this._planEls.viewport.style.flex = '';
-      this._planEls.viewport.style.height = vpH + 'px';
+
+    var vpDesk = this._planEls.viewport;
+    if (!vpDesk) return;
+    vpDesk.style.flex = '';
+    vpDesk.style.minHeight = '';
+    vpDesk.style.width = '100%';
+    // Сначала сбрасываем высоту, чтобы clientWidth был по контейнеру.
+    vpDesk.style.height = '1px';
+
+    var layerEl = this._planEls.layer;
+    var availW = (vpDesk.clientWidth && vpDesk.clientWidth > 40)
+      ? vpDesk.clientWidth
+      : ((layerEl && layerEl.clientWidth) || (this._els.floorView.clientWidth) || 300);
+    var vpH = 280;
+    if (this._planImgW && this._planImgH) {
+      vpH = Math.ceil((availW / this._planImgW) * this._planImgH);
     }
+    // Мягкий потолок по окну — без привязки к огромному maxHeight фасада из демо.
+    var softMax = Math.max(240, Math.round((window.innerHeight || 800) * 0.78));
+    vpH = Math.max(160, Math.min(vpH, softMax));
+    vpDesk.style.height = vpH + 'px';
   };
 
   FacadeWidgetInstance.prototype._planFitAndCenter = function (viewport, els) {
@@ -3041,8 +3062,9 @@
       this._planMaxScale = fit;
     }
     this._planScale = fit;
+    // Равные поля слева/справа и сверху/снизу внутри viewport.
     this._planTx = (vw - this._planImgW * this._planScale) / 2;
-    this._planTy = 8;
+    this._planTy = (vh - this._planImgH * this._planScale) / 2;
     this._applyPlanTransform(els);
   };
 
