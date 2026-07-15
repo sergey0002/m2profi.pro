@@ -362,9 +362,15 @@
     '.fw-btn-close { position: absolute; top: 12px; right: 12px; z-index: 20; width: 40px; height: 40px; padding: 0; display: none; align-items: center; justify-content: center; }',
     '.fw-btn-close svg { display: block; width: 18px; height: 18px; }',
     '.fw-root.is-explore .fw-btn-close { display: flex; }',
-    '.fw-msg { padding: 16px; font-size: 14px; line-height: 1.45; color: #444; background: #f4f4f4; border: 1px solid #ddd; border-radius: 6px; }',
-    '.fw-msg.is-error { color: #8a1f11; background: #fdecea; border-color: #f5c2c0; }',
-    '.fw-msg.is-loading { color: #555; }',
+    '.fw-msg { padding: 16px; font-size: 14px; line-height: 1.45; color: #444; background: transparent; border: 0; border-radius: 0; }',
+    '.fw-msg.is-error { color: #8a1f11; background: #fdecea; border: 1px solid #f5c2c0; border-radius: 6px; }',
+    '.fw-msg.is-loading { color: #666; background: transparent; border: 0; box-shadow: none; margin: 0; }',
+    /* начальная загрузка виджета — только текст по центру на белом */
+    '.fw-root.is-boot-loading { min-height: 240px; background: #fff; display: flex; align-items: center; justify-content: center; }',
+    '.fw-root.is-boot-loading > .fw-msg.is-loading { padding: 24px; font-size: 15px; font-weight: 500; color: #666; text-align: center; }',
+    /* загрузка карточки — тоже без серого «плинтуса» */
+    '.fw-card > .fw-msg.is-loading { display: flex; align-items: center; justify-content: center; min-height: 240px; width: 100%; background: #fff; }',
+    '.fw-plan-viewport .fw-msg.is-loading { background: #fff; border: 0; box-shadow: none; margin: 24px auto; }',
     /* fullscreen takeover explore */
     '.fw-explore-layer { display: none; position: fixed; inset: 0; z-index: 2147483000; background: rgba(0,0,0,0.72); padding: 0; }',
     '.fw-root.is-explore .fw-explore-layer { display: block; }',
@@ -716,7 +722,7 @@
     this.shadow.appendChild(style);
 
     var root = document.createElement('div');
-    root.className = 'fw-root';
+    root.className = 'fw-root is-boot-loading';
     root.setAttribute('role', 'region');
     root.setAttribute('aria-label', 'Интерактивный фасад');
     this.shadow.appendChild(root);
@@ -731,9 +737,11 @@
 
     this._load().then(function () {
       if (self.destroyed) return;
+      root.classList.remove('is-boot-loading');
       self._render();
     }).catch(function (err) {
       if (self.destroyed) return;
+      root.classList.remove('is-boot-loading');
       self._showError((err && err.message) || self.locale.error);
     });
 
@@ -3381,7 +3389,7 @@
 
   var api = {
     mount: mount,
-    version: '1.2.20'
+    version: '1.2.21'
   };
 
   global.FacadeWidget = api;

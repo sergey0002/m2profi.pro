@@ -69,13 +69,13 @@ if ($api_base === '' || $script_src === '') {
   <pre id="fw_demo_snippet_full"></pre>
 </section>
 
-<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=1.2.20"></script>
+<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=1.2.21"></script>
 <script>
 (function () {
   var SCRIPT_SRC = <?= json_encode($script_src, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var API_BASE = <?= json_encode($api_base, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var HOME_ID = <?= (int) $home_id ?>;
-  var VER = '1.2.20';
+  var VER = '1.2.21';
   var MAX_HEIGHT_DEFAULT = 'Math.round(window.innerWidth * 2)';
 
   FacadeWidget.mount({
