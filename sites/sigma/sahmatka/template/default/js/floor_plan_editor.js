@@ -675,7 +675,18 @@
     var drawControl = new L.Control.Draw({
         edit: { featureGroup: editablePolygons, remove: true },
         draw: {
-            polygon: { allowIntersection: false, showArea: false },
+            polygon: {
+                allowIntersection: false,
+                showArea: false,
+                guidelineDistance: 12,
+                shapeOptions: {
+                    color: '#3388ff',
+                    weight: 3,
+                    opacity: 0.9,
+                    fillColor: '#3388ff',
+                    fillOpacity: 0.15
+                }
+            },
             polyline: false,
             rectangle: false,
             circle: false,
@@ -684,6 +695,83 @@
         }
     });
     map.addControl(drawControl);
+
+    /**
+     * Leaflet.Draw «резинка» — мелкие div в overlayPane, часто под ImageOverlay.
+     * Дублируем пунктиром SVG в отдельном pane поверх картинки.
+     */
+    function ensureDrawGuidePane() {
+        if (map.getPane('drawGuidePane')) return;
+        var pane = map.createPane('drawGuidePane');
+        pane.style.zIndex = 550;
+        pane.style.pointerEvents = 'none';
+    }
+
+    function attachDrawCursorGuide(drawer) {
+        if (!drawer) return drawer;
+        ensureDrawGuidePane();
+
+        function ensurePreview() {
+            if (drawer._fwCursorGuide) return;
+            drawer._fwCursorGuide = L.polyline([], {
+                pane: 'drawGuidePane',
+                color: (drawer.options.shapeOptions && drawer.options.shapeOptions.color) || '#3388ff',
+                weight: 2,
+                dashArray: '8 8',
+                opacity: 0.95,
+                interactive: false,
+                className: 'fp-draw-cursor-guide'
+            }).addTo(map);
+        }
+
+        function clearPreview() {
+            if (drawer._fwCursorGuide) {
+                try { map.removeLayer(drawer._fwCursorGuide); } catch (err) { /* ignore */ }
+                drawer._fwCursorGuide = null;
+            }
+        }
+
+        function updatePreview() {
+            if (!drawer.enabled || !drawer.enabled()) return;
+            ensurePreview();
+            if (drawer._markers && drawer._markers.length && drawer._currentLatLng) {
+                var last = drawer._markers[drawer._markers.length - 1].getLatLng();
+                drawer._fwCursorGuide.setLatLngs([last, drawer._currentLatLng]);
+            } else {
+                drawer._fwCursorGuide.setLatLngs([]);
+            }
+            if (drawer._guidesContainer) {
+                var pane = map.getPane('drawGuidePane');
+                if (pane && drawer._guidesContainer.parentNode !== pane) {
+                    pane.appendChild(drawer._guidesContainer);
+                }
+            }
+        }
+
+        ensurePreview();
+
+        if (!drawer._fwGuideMoveBound) {
+            drawer._fwGuideMoveBound = true;
+            drawer._fwGuideOnMove = function () { updatePreview(); };
+            map.on('mousemove', drawer._fwGuideOnMove);
+        }
+
+        if (!drawer._fwDisableWrapped) {
+            drawer._fwDisableWrapped = true;
+            var origDisable = drawer.disable;
+            drawer.disable = function () {
+                clearPreview();
+                if (this._fwGuideOnMove) {
+                    map.off('mousemove', this._fwGuideOnMove);
+                    this._fwGuideOnMove = null;
+                    this._fwGuideMoveBound = false;
+                }
+                return origDisable.call(this);
+            };
+        }
+
+        return drawer;
+    }
 
     function eachPolygon(fn) {
         otherPolygons.eachLayer(fn);
@@ -778,6 +866,8 @@
         stopPolygonDraw();
         polygonDrawer = new L.Draw.Polygon(map, drawControl.options.draw.polygon);
         polygonDrawer.enable();
+        // После enable: наш mousemove должен идти после обновления _currentLatLng в Draw
+        attachDrawCursorGuide(polygonDrawer);
         drawToolActive = true;
         restorePageTextSelection();
         updatePolygonDrawButton();
@@ -1778,6 +1868,15 @@
         }
         drawToolActive = true;
         restorePageTextSelection();
+        var toolbarsOk = drawControl && drawControl._toolbars;
+        var modesOk = toolbarsOk && toolbarsOk.draw && toolbarsOk.draw._modes;
+        var handlerOk = modesOk && modesOk.polygon && modesOk.polygon.handler;
+        if (handlerOk && handlerOk.enabled && handlerOk.enabled()) {
+            attachDrawCursorGuide(handlerOk);
+            if (!polygonDrawer) polygonDrawer = handlerOk;
+        } else if (polygonDrawer) {
+            attachDrawCursorGuide(polygonDrawer);
+        }
     });
     map.on('draw:drawstop', function () {
         drawToolActive = false;

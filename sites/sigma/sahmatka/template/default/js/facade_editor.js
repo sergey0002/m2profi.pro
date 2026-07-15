@@ -99,6 +99,9 @@
     var pendingDeletes = {};
     var flushingDeletes = false;
     var selectedLayers = [];
+    var moveModeActive = false;
+    var facadeToolCopyBtn = null;
+    var facadeToolMoveBtn = null;
     var polygonDrawer = null;
     var suppressFloorChange = false;
     var suppressSectionChange = false;
@@ -678,7 +681,18 @@
     var drawControl = new L.Control.Draw({
         edit: { featureGroup: editablePolygons, remove: true },
         draw: {
-            polygon: { allowIntersection: false, showArea: false },
+            polygon: {
+                allowIntersection: false,
+                showArea: false,
+                guidelineDistance: 12,
+                shapeOptions: {
+                    color: '#3388ff',
+                    weight: 3,
+                    opacity: 0.9,
+                    fillColor: '#3388ff',
+                    fillOpacity: 0.15
+                }
+            },
             polyline: false,
             rectangle: false,
             circle: false,
@@ -687,6 +701,365 @@
         }
     });
     map.addControl(drawControl);
+
+    /**
+     * Перетаскивание целого полигона: Leaflet.Path.Drag (w8r).
+     * Включается отдельной кнопкой между draw/edit в тулбаре.
+     */
+    function onPolygonDragEnd() {
+        markGeometryDirty();
+        showMessage('Полигон сдвинут — нажмите «Сохранить»', 'warning');
+    }
+
+    function setLayerDraggable(layer, on) {
+        if (!layer || !L.Handler || !L.Handler.PathDrag) return;
+        if (on) {
+            if (!layer.dragging) {
+                L.Handler.PathDrag.makeDraggable(layer);
+            }
+            if (layer.dragging && !layer.dragging.enabled()) {
+                layer.dragging.enable();
+            }
+            if (!layer._fwDragBound) {
+                layer._fwDragBound = true;
+                layer.on('dragend', onPolygonDragEnd);
+            }
+        } else if (layer.dragging && layer.dragging.enabled()) {
+            layer.dragging.disable();
+        }
+    }
+
+    function syncMoveModeOnLayers() {
+        eachPolygon(function (layer) {
+            setLayerDraggable(layer, false);
+        });
+        if (!moveModeActive) return;
+        selectedLayers.forEach(function (layer) {
+            setLayerDraggable(layer, true);
+        });
+    }
+
+    function setMoveMode(on) {
+        on = !!on;
+        if (on === moveModeActive) {
+            syncMoveModeOnLayers();
+            return;
+        }
+
+        if (on) {
+            if (!L.Handler || !L.Handler.PathDrag) {
+                showMessage('Плагин перетаскивания полигонов не загружен', 'error');
+                return;
+            }
+            stopPolygonDraw();
+            forceExitVertexEdit();
+            if (!selectedLayers.length) {
+                showMessage('Нет полигона на текущем этаже — нечего двигать', 'info');
+                return;
+            }
+            moveModeActive = true;
+            if (facadeToolMoveBtn) {
+                L.DomUtil.addClass(facadeToolMoveBtn, 'leaflet-draw-toolbar-button-enabled');
+            }
+            showMessage('Режим перемещения: перетащите полигон мышью, затем «Сохранить»', 'info');
+        } else {
+            moveModeActive = false;
+            if (facadeToolMoveBtn) {
+                L.DomUtil.removeClass(facadeToolMoveBtn, 'leaflet-draw-toolbar-button-enabled');
+            }
+        }
+        syncMoveModeOnLayers();
+    }
+
+    /**
+     * Кнопки «Копировать на этаж» и «Двигать» — секция между draw и edit.
+     */
+    function injectFacadeToolbarTools() {
+        var container = drawControl && drawControl._container;
+        if (!container || container.querySelector('.facade-draw-extra')) return;
+
+        var sections = container.querySelectorAll('.leaflet-draw-section');
+        var editSection = sections.length > 1 ? sections[1] : null;
+
+        var section = L.DomUtil.create('div', 'leaflet-draw-section facade-draw-extra');
+        if (editSection) {
+            container.insertBefore(section, editSection);
+        } else {
+            container.appendChild(section);
+        }
+
+        var toolbar = L.DomUtil.create('div', 'leaflet-draw-toolbar leaflet-bar', section);
+
+        facadeToolCopyBtn = L.DomUtil.create('a', 'leaflet-draw-draw-copy facade-tool-btn facade-tool-copy', toolbar);
+        facadeToolCopyBtn.href = '#';
+        facadeToolCopyBtn.title = 'Копировать разметку на другой этаж';
+        facadeToolCopyBtn.setAttribute('role', 'button');
+        facadeToolCopyBtn.setAttribute('aria-label', 'Копировать разметку на этаж');
+
+        facadeToolMoveBtn = L.DomUtil.create('a', 'leaflet-draw-draw-move facade-tool-btn facade-tool-move', toolbar);
+        facadeToolMoveBtn.href = '#';
+        facadeToolMoveBtn.title = 'Переместить полигон (перетаскивание)';
+        facadeToolMoveBtn.setAttribute('role', 'button');
+        facadeToolMoveBtn.setAttribute('aria-label', 'Переместить полигон');
+
+        L.DomEvent.on(facadeToolCopyBtn, 'click', L.DomEvent.stop)
+            .on(facadeToolCopyBtn, 'mousedown', L.DomEvent.stop)
+            .on(facadeToolCopyBtn, 'dblclick', L.DomEvent.stop)
+            .on(facadeToolCopyBtn, 'click', function () {
+                if (isBusy()) return;
+                setMoveMode(false);
+                openCopyFloorDialog();
+            });
+
+        L.DomEvent.on(facadeToolMoveBtn, 'click', L.DomEvent.stop)
+            .on(facadeToolMoveBtn, 'mousedown', L.DomEvent.stop)
+            .on(facadeToolMoveBtn, 'dblclick', L.DomEvent.stop)
+            .on(facadeToolMoveBtn, 'click', function () {
+                if (isBusy()) return;
+                setMoveMode(!moveModeActive);
+            });
+    }
+
+    function openCopyFloorDialog() {
+        if (!hasImage) {
+            showMessage('Вначале загрузите файл фасада', 'info');
+            return;
+        }
+        var sourceFloor = activeFloor;
+        var sourceLayers = findLayersBySectionFloor(activeSection, sourceFloor);
+        if (!sourceLayers.length) {
+            showMessage('На текущем этаже нет разметки для копирования', 'error');
+            return;
+        }
+
+        var max = getSectionMaxFloor(activeSection);
+        var targets = [];
+        for (var f = 1; f <= max; f++) {
+            if (f !== sourceFloor) targets.push(f);
+        }
+        if (!targets.length) {
+            showMessage('Нет другого этажа в секции для копирования', 'error');
+            return;
+        }
+
+        return new Promise(function (resolve) {
+            var overlay = document.createElement('div');
+            overlay.className = 'facade-editor__modal-overlay';
+
+            var box = document.createElement('div');
+            box.className = 'facade-editor__modal-box';
+
+            var text = document.createElement('p');
+            text.className = 'facade-editor__modal-text';
+            text.textContent = 'Копировать с этажа ' + sourceFloor + ' на этаж:';
+            box.appendChild(text);
+
+            var field = document.createElement('label');
+            field.className = 'facade-editor__modal-field';
+            var select = document.createElement('select');
+            select.className = 'facade-editor__modal-select';
+            targets.forEach(function (f) {
+                var opt = document.createElement('option');
+                opt.value = String(f);
+                var marked = findLayersBySectionFloor(activeSection, f).length > 0;
+                opt.textContent = marked ? ('Этаж ' + f + ' (уже размечен)') : ('Этаж ' + f);
+                select.appendChild(opt);
+            });
+            field.appendChild(select);
+            box.appendChild(field);
+
+            var actions = document.createElement('div');
+            actions.className = 'facade-editor__modal-actions';
+
+            function cleanup(result) {
+                document.removeEventListener('keydown', onKeyDown);
+                if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                resolve(result);
+            }
+
+            function onKeyDown(e) {
+                if (e.key === 'Escape') cleanup(null);
+            }
+
+            var cancelBtnEl = document.createElement('button');
+            cancelBtnEl.type = 'button';
+            cancelBtnEl.className = 'facade-editor__btn';
+            cancelBtnEl.textContent = 'Отмена';
+            cancelBtnEl.addEventListener('click', function () { cleanup(null); });
+
+            var okBtn = document.createElement('button');
+            okBtn.type = 'button';
+            okBtn.className = 'facade-editor__btn facade-editor__btn--primary';
+            okBtn.textContent = 'Копировать';
+            okBtn.addEventListener('click', function () {
+                cleanup(parseInt(select.value, 10) || null);
+            });
+
+            actions.appendChild(cancelBtnEl);
+            actions.appendChild(okBtn);
+            box.appendChild(actions);
+            overlay.appendChild(box);
+            overlay.addEventListener('mousedown', function (e) {
+                if (e.target === overlay) cleanup(null);
+            });
+            document.addEventListener('keydown', onKeyDown);
+            document.body.appendChild(overlay);
+            select.focus();
+        }).then(function (targetFloor) {
+            if (!targetFloor) return;
+            copyMarkupToFloor(sourceFloor, targetFloor);
+        });
+    }
+
+    function removeFloorLayersForCopy(floor) {
+        findLayersBySectionFloor(activeSection, floor).slice().forEach(function (layer) {
+            if (layer.facadeData && layer.facadeData.id && !layer.facadeData.isNew) {
+                stashDeletedLayer(layer, true);
+            }
+            removeLayerFromMap(layer);
+        });
+        selectedLayers = selectedLayers.filter(function (l) {
+            return editablePolygons.hasLayer(l) || otherPolygons.hasLayer(l);
+        });
+    }
+
+    function copyMarkupToFloor(sourceFloor, targetFloor) {
+        sourceFloor = parseInt(sourceFloor, 10);
+        targetFloor = parseInt(targetFloor, 10);
+        if (!sourceFloor || !targetFloor || sourceFloor === targetFloor) return;
+
+        var sourceLayers = findLayersBySectionFloor(activeSection, sourceFloor);
+        if (!sourceLayers.length) {
+            showMessage('На этаже ' + sourceFloor + ' нет разметки', 'error');
+            return;
+        }
+
+        var existing = findLayersBySectionFloor(activeSection, targetFloor);
+        if (existing.length) {
+            var ok = window.confirm(
+                'Этаж ' + targetFloor + ' уже размечен (' + existing.length + ' полигон(ов)).\n' +
+                'Заменить разметку копией с этажа ' + sourceFloor + '?'
+            );
+            if (!ok) return;
+        }
+
+        setMoveMode(false);
+        stopPolygonDraw();
+        forceExitVertexEdit();
+
+        var snapshots = sourceLayers.map(function (layer) {
+            return {
+                points: clonePoints(layerToPoints(layer)),
+                label: (layer.facadeData && layer.facadeData.label) || '',
+                color: baseColorOf(layer),
+                section: activeSection
+            };
+        });
+
+        removeFloorLayersForCopy(targetFloor);
+
+        var created = snapshots.map(function (snap) {
+            return addPolygonLayer({
+                id: null,
+                section: snap.section,
+                floor: targetFloor,
+                label: snap.label,
+                color: snap.color,
+                points: snap.points
+            }, false);
+        });
+
+        rebuildFloorSelect(targetFloor);
+        applyFloorSelection(targetFloor, false);
+        markGeometryDirty();
+        showMessage(
+            'Скопировано с этажа ' + sourceFloor + ' на этаж ' + targetFloor +
+            ' (' + created.length + ') — нажмите «Сохранить»',
+            'warning'
+        );
+    }
+
+    injectFacadeToolbarTools();
+
+    /**
+     * Leaflet.Draw рисует «резинку» крошечными div в overlayPane —
+     * ImageOverlay лежит в том же pane и перекрывает их.
+     * Дублируем пунктир SVG в отдельном pane поверх картинки.
+     */
+    function ensureDrawGuidePane() {
+        if (map.getPane('drawGuidePane')) return;
+        var pane = map.createPane('drawGuidePane');
+        pane.style.zIndex = 550;
+        pane.style.pointerEvents = 'none';
+    }
+
+    function attachDrawCursorGuide(drawer) {
+        if (!drawer) return drawer;
+        ensureDrawGuidePane();
+
+        function ensurePreview() {
+            if (drawer._fwCursorGuide) return;
+            drawer._fwCursorGuide = L.polyline([], {
+                pane: 'drawGuidePane',
+                color: (drawer.options.shapeOptions && drawer.options.shapeOptions.color) || '#3388ff',
+                weight: 2,
+                dashArray: '8 8',
+                opacity: 0.95,
+                interactive: false,
+                className: 'facade-draw-cursor-guide'
+            }).addTo(map);
+        }
+
+        function clearPreview() {
+            if (drawer._fwCursorGuide) {
+                try { map.removeLayer(drawer._fwCursorGuide); } catch (err) { /* ignore */ }
+                drawer._fwCursorGuide = null;
+            }
+        }
+
+        function updatePreview() {
+            if (!drawer.enabled || !drawer.enabled()) return;
+            ensurePreview();
+            if (drawer._markers && drawer._markers.length && drawer._currentLatLng) {
+                var last = drawer._markers[drawer._markers.length - 1].getLatLng();
+                drawer._fwCursorGuide.setLatLngs([last, drawer._currentLatLng]);
+            } else {
+                drawer._fwCursorGuide.setLatLngs([]);
+            }
+            // Нативные dash-гиды — в тот же pane поверх картинки
+            if (drawer._guidesContainer) {
+                var pane = map.getPane('drawGuidePane');
+                if (pane && drawer._guidesContainer.parentNode !== pane) {
+                    pane.appendChild(drawer._guidesContainer);
+                }
+            }
+        }
+
+        ensurePreview();
+
+        if (!drawer._fwGuideMoveBound) {
+            drawer._fwGuideMoveBound = true;
+            drawer._fwGuideOnMove = function () { updatePreview(); };
+            // Регистрируем после enable (draw:drawstart) — тогда _currentLatLng уже обновлён Draw
+            map.on('mousemove', drawer._fwGuideOnMove);
+        }
+
+        if (!drawer._fwDisableWrapped) {
+            drawer._fwDisableWrapped = true;
+            var origDisable = drawer.disable;
+            drawer.disable = function () {
+                clearPreview();
+                if (this._fwGuideOnMove) {
+                    map.off('mousemove', this._fwGuideOnMove);
+                    this._fwGuideOnMove = null;
+                    this._fwGuideMoveBound = false;
+                }
+                return origDisable.call(this);
+            };
+        }
+
+        return drawer;
+    }
 
     function eachPolygon(fn) {
         otherPolygons.eachLayer(fn);
@@ -772,6 +1145,8 @@
         stopPolygonDraw();
         polygonDrawer = new L.Draw.Polygon(map, drawControl.options.draw.polygon);
         polygonDrawer.enable();
+        // После enable: иначе наш mousemove окажется раньше Draw и «резинка» отстаёт/пропадает
+        attachDrawCursorGuide(polygonDrawer);
         drawToolActive = true;
         // Draw.Feature.addHooks() глушит выделение на всём document — снимаем сразу
         restorePageTextSelection();
@@ -804,6 +1179,7 @@
         });
 
         selectedLayers = layers || [];
+        syncMoveModeOnLayers();
     }
 
     function clearSelectionVisual() {
@@ -817,6 +1193,7 @@
             otherPolygons.addLayer(l);
         });
         selectedLayers = [];
+        syncMoveModeOnLayers();
     }
 
     function layerToPoints(layer) {
@@ -833,7 +1210,7 @@
 
     function bindPolygonClick(layer) {
         layer.on('click', function (e) {
-            if (drawToolActive || deleteModeActive) return;
+            if (drawToolActive || deleteModeActive || moveModeActive) return;
             if (e.originalEvent) {
                 L.DomEvent.stopPropagation(e.originalEvent);
                 if (e.originalEvent.target && e.originalEvent.target.blur) {
@@ -1381,9 +1758,20 @@
         requestSectionFloorChange(newSection, fl, true);
     }
 
-    map.on('draw:drawstart', function () {
+    map.on('draw:drawstart', function (e) {
+        setMoveMode(false);
         drawToolActive = true;
         restorePageTextSelection();
+        // Тулбар Leaflet тоже стартует Draw.Polygon — вешаем видимую «резинку».
+        var toolbars = drawControl && drawControl._toolbars;
+        var modes = toolbars && toolbars.draw && toolbars.draw._modes;
+        var handler = modes && modes.polygon && modes.polygon.handler;
+        if (handler && handler.enabled && handler.enabled()) {
+            attachDrawCursorGuide(handler);
+            if (!polygonDrawer) polygonDrawer = handler;
+        } else if (e && e.layerType === 'polygon' && polygonDrawer) {
+            attachDrawCursorGuide(polygonDrawer);
+        }
     });
     map.on('draw:drawstop', function () {
         drawToolActive = false;
@@ -1393,6 +1781,7 @@
     map.on('mouseup', restorePageTextSelection);
     map.on('dragend', restorePageTextSelection);
     map.on('draw:editstart', function () {
+        setMoveMode(false);
         drawToolActive = true;
         if (!selectedLayers.length && !findLayersByFloor(activeFloor).length) {
             showMessage('Сначала выберите размеченный этаж в списке', 'error');
@@ -1404,6 +1793,7 @@
         markGeometryDirty();
     });
     map.on('draw:deletestart', function () {
+        setMoveMode(false);
         drawToolActive = true;
         deleteModeActive = true;
         showMessage('Удаление: клик по полигону → галочка ✓. В БД — только после «Сохранить» в форме.', 'info');

@@ -59,6 +59,7 @@ $sections   = isset($data['sections']) && is_array($data['sections']) ? $data['s
 
 <script src="/sahmatka/template/default/libs/leaflet/leaflet.js"></script>
 <script src="/sahmatka/template/default/libs/leaflet-draw/leaflet.draw.js"></script>
+<script src="/sahmatka/template/default/libs/leaflet-path-drag/L.Path.Drag.js"></script>
 <script>
 window.FACADE_CONFIG = {
     homeId: <?= $home_id ?>,

@@ -109,6 +109,28 @@
     padding-bottom: 1px;
 }
 
+/* Направляющая рисования: pane поверх ImageOverlay */
+.fp-editor__map .leaflet-drawGuidePane {
+    z-index: 550;
+    pointer-events: none;
+}
+.fp-editor__map .leaflet-draw-guides {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+}
+.fp-editor__map .leaflet-draw-guide-dash {
+    width: 7px !important;
+    height: 7px !important;
+    opacity: 1 !important;
+    border-radius: 1px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);
+}
+.fp-editor__map .fp-draw-cursor-guide {
+    pointer-events: none;
+}
+
 .fp-editor__btn {
     padding: 6px 14px;
     cursor: pointer;

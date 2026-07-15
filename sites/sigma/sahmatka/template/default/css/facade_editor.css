@@ -46,6 +46,28 @@
     background: #f3f8f4;
 }
 
+/* Направляющая рисования: pane поверх ImageOverlay */
+.facade-editor__map .leaflet-drawGuidePane {
+    z-index: 550;
+    pointer-events: none;
+}
+.facade-editor__map .leaflet-draw-guides {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+}
+.facade-editor__map .leaflet-draw-guide-dash {
+    width: 7px !important;
+    height: 7px !important;
+    opacity: 1 !important;
+    border-radius: 1px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);
+}
+.facade-editor__map .facade-draw-cursor-guide {
+    pointer-events: none;
+}
+
 /* Карточка формы: панель этажа + блок сообщений в одной рамке (единый визуальный блок) */
 .facade-editor__panel-card {
     margin-bottom: 10px;
@@ -325,9 +347,49 @@
     white-space: pre-line;
 }
 
-.facade-editor__modal-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: flex-end;
+.facade-editor__modal-field {
+    display: block;
+    margin: 0 0 16px;
+}
+.facade-editor__modal-select {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+/* Кнопки «копировать» / «двигать» в тулбаре Leaflet.Draw */
+.facade-editor__map .facade-draw-extra .leaflet-draw-toolbar {
+    margin-top: 0;
+}
+.facade-editor__map .facade-tool-btn {
+    background-image: none !important;
+    text-indent: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+    color: #333;
+    text-decoration: none;
+}
+.facade-editor__map .facade-tool-btn::before {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+}
+.facade-editor__map .facade-tool-copy::before {
+    content: '⧉';
+}
+.facade-editor__map .facade-tool-move::before {
+    content: '✥';
+}
+.facade-editor__map .facade-tool-move.leaflet-draw-toolbar-button-enabled {
+    background-color: #fff;
+}
+.facade-editor__map .leaflet-path-draggable {
+    cursor: move;
 }
