@@ -412,31 +412,42 @@
     '.fw-root.is-view-chessboard .fw-view--chessboard { display: block; }',
     '.fw-view.is-fading-out, .fw-view.is-fading-in { opacity: 0; }',
     '@media (prefers-reduced-motion: reduce) { .fw-view { transition: none; } }',
-    /* переключатель Визуально / На плане */
-    '.fw-mode-bar { display: flex; justify-content: flex-end; gap: 0; padding: 12px 16px 0; background: #f0f2f4; }',
+    /* переключатель Визуально / На плане — хост: фасад (под заголовком) или шахматка (справа сверху) */
+    '.fw-mode-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0; padding: 0; margin: 0; background: transparent; pointer-events: auto; }',
     '.fw-root.is-view-floor .fw-mode-bar, .fw-root.is-view-card .fw-mode-bar { display: none; }',
-    '.fw-mode-btn { appearance: none; border: 1px solid ' + ACCENT + '; background: #fff; color: ' + ACCENT + '; font: inherit; font-size: 13px; font-weight: 600; padding: 8px 16px; cursor: pointer; line-height: 1.2; border-radius: 999px; margin: 0 4px 0 0; }',
+    '.fw-mode-btn { appearance: none; border: 1px solid ' + ACCENT + '; background: #fff; color: ' + ACCENT + '; font: inherit; font-size: 13px; font-weight: 600; padding: 8px 16px; cursor: pointer; line-height: 1.2; border-radius: 999px; margin: 0 6px 0 0; }',
     '.fw-mode-btn:last-child { margin-right: 0; }',
     '.fw-mode-btn.is-active { background: ' + ACCENT + '; color: #fff; }',
     '.fw-mode-btn:focus-visible { outline: 2px solid ' + ACCENT + '; outline-offset: 2px; }',
+    /* оверлей фасада: заголовок + режимы слева снизу от title */
+    '.fw-facade-hero { position: absolute; left: 0; top: 0; z-index: 6; max-width: min(420px, 72%); padding: 28px 24px 20px; pointer-events: none; }',
+    '.fw-facade-title { margin: 0 0 18px; font-size: 28px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #2c2c2c; line-height: 1.2; text-shadow: 0 1px 0 rgba(255,255,255,0.35); }',
+    '@media (min-width: 900px) { .fw-facade-title { font-size: 34px; letter-spacing: 0.1em; } .fw-facade-hero { padding: 36px 40px 24px; } }',
+    '.fw-facade-hero .fw-mode-bar { margin-top: 0; }',
     /* шахматка */
-    '.fw-chess { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 12px 16px 28px; background: #fff; color: ' + TEXT_MAIN + '; }',
+    '.fw-chess { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px 16px 28px; background: #fff; color: ' + TEXT_MAIN + '; }',
     '@media (min-width: 900px) {',
-    '  .fw-chess { grid-template-columns: minmax(0, 1fr) minmax(220px, 320px); gap: 28px; padding: 16px 24px 36px; max-width: 1200px; margin: 0 auto; }',
+    '  .fw-chess { grid-template-columns: minmax(0, 1fr) minmax(200px, 280px); column-gap: 32px; row-gap: 0; padding: 20px 20px 36px; max-width: none; margin: 0; }',
+    '}',
+    '.fw-chess-mode-host { display: flex; justify-content: flex-end; margin: 0 0 8px; }',
+    '@media (min-width: 900px) {',
+    '  .fw-chess-mode-host { position: absolute; top: 20px; right: 20px; z-index: 3; margin: 0; }',
     '}',
     '.fw-chess-main { min-width: 0; }',
-    '.fw-chess-title { margin: 0 0 14px; font-size: 26px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2c2c2c; line-height: 1.15; }',
-    '.fw-chess-sections { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; margin: 0 0 16px; font-size: 14px; }',
+    '.fw-chess-title { margin: 0 0 12px; font-size: 26px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2c2c2c; line-height: 1.15; padding-right: 0; }',
+    '@media (min-width: 900px) { .fw-chess-title { padding-right: 220px; } }',
+    '.fw-chess-sections { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: 0 0 12px; font-size: 14px; line-height: 1.35; }',
     '.fw-chess-sec { appearance: none; border: 0; background: transparent; padding: 0; margin: 0; font: inherit; color: ' + TEXT_MUTED + '; cursor: pointer; text-decoration: none; }',
     '.fw-chess-sec.is-active { color: ' + TEXT_MAIN + '; font-weight: 700; }',
     '.fw-chess-sec:hover, .fw-chess-sec:focus-visible { color: ' + ACCENT + '; outline: none; }',
-    '.fw-chess-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 18px; font-size: 14px; color: ' + TEXT_MUTED + '; }',
+    '.fw-chess-sec-sep { opacity: 0.35; user-select: none; }',
+    '.fw-chess-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 14px; font-size: 14px; color: ' + TEXT_MUTED + '; }',
     '.fw-chess-filter__label { margin-right: 2px; color: ' + TEXT_MAIN + '; }',
     '.fw-chess-chk { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; color: ' + TEXT_MAIN + '; }',
     '.fw-chess-chk input { margin: 0; width: 14px; height: 14px; }',
-    '.fw-chess-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }',
-    '.fw-chess-table { border-collapse: separate; border-spacing: 5px; margin: 0; }',
-    '.fw-chess-floor { width: 28px; text-align: center; font-size: 13px; font-weight: 500; color: ' + TEXT_MUTED + '; vertical-align: middle; padding-right: 4px; }',
+    '.fw-chess-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0; margin: 0; }',
+    '.fw-chess-table { border-collapse: separate; border-spacing: 3px; margin: 0; }',
+    '.fw-chess-floor { width: 18px; min-width: 18px; text-align: right; font-size: 12px; font-weight: 500; color: ' + TEXT_MUTED + '; vertical-align: middle; padding: 0 2px 0 0; line-height: 1; }',
     '.fw-chess-cell { width: 34px; height: 34px; border: 0; padding: 0; margin: 0; border-radius: 3px; font: inherit; font-size: 11px; font-weight: 600; color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; letter-spacing: 0.02em; }',
     '.fw-chess-cell.is-empty { visibility: hidden; pointer-events: none; cursor: default; }',
     '.fw-chess-cell.is-filtered-out { background: var(--fw-chess-filtered, ' + CHESS_FILTERED + ') !important; color: rgba(255,255,255,0.65); cursor: default; pointer-events: none; }',
@@ -444,8 +455,8 @@
     '.fw-chess-cell[data-status-key="reserved"] { background: var(--fw-chess-reserved, ' + CHESS_RESERVED + '); }',
     '.fw-chess-cell[data-status-key="sold"] { background: var(--fw-chess-sold, ' + CHESS_SOLD + '); }',
     '.fw-chess-side { display: none; }',
-    '@media (min-width: 900px) { .fw-chess-side { display: block; padding-top: 2px; } }',
-    '.fw-chess-side-title { margin: 0 0 14px; font-size: 22px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2c2c2c; }',
+    '@media (min-width: 900px) { .fw-chess-side { display: block; padding-top: 0; margin-top: 0; } }',
+    '.fw-chess-side-title { margin: 0 0 12px; font-size: 20px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2c2c2c; line-height: 1.2; }',
     '.fw-chess-visual { display: block; width: 100%; height: auto; border: 0; border-radius: 0; background: #e8ecef; }',
     '.fw-chess-tip { position: absolute; z-index: 12; pointer-events: none; opacity: 0; transform: translate(-50%, calc(-100% - 10px)); transition: none; }',
     '.fw-chess-tip.is-visible { opacity: 1; }',
@@ -929,7 +940,40 @@
     root.insertBefore(crumbs, body);
     this._els.crumbs = crumbs;
 
+    var facadeView = document.createElement('div');
+    facadeView.className = 'fw-view fw-view--facade';
+    body.appendChild(facadeView);
+    this._els.facadeView = facadeView;
+
+    var viewport = document.createElement('div');
+    viewport.className = 'fw-viewport';
+    facadeView.appendChild(viewport);
+    this._els.viewport = viewport;
+
+    var stage = this._buildStage(true);
+    viewport.appendChild(stage);
+    this._els.stage = stage;
+
+    var tooltip = document.createElement('div');
+    tooltip.className = 'fw-tooltip';
+    tooltip.setAttribute('aria-hidden', 'true');
+    viewport.appendChild(tooltip);
+    this._els.tooltip = tooltip;
+
     if (this._chessboardEnabled) {
+      var facadeHero = document.createElement('div');
+      facadeHero.className = 'fw-facade-hero';
+      var facadeTitle = document.createElement('div');
+      facadeTitle.className = 'fw-facade-title';
+      facadeTitle.textContent = this.locale.chooseResidence || 'Выбор резиденции';
+      facadeHero.appendChild(facadeTitle);
+      var facadeModeHost = document.createElement('div');
+      facadeModeHost.className = 'fw-facade-mode-host';
+      facadeHero.appendChild(facadeModeHost);
+      viewport.appendChild(facadeHero);
+      this._els.facadeHero = facadeHero;
+      this._els.facadeModeHost = facadeModeHost;
+
       var modeBar = document.createElement('div');
       modeBar.className = 'fw-mode-bar';
       modeBar.setAttribute('role', 'tablist');
@@ -950,7 +994,7 @@
       btnPlan.textContent = this.locale.onPlan || 'На плане';
       modeBar.appendChild(btnVisual);
       modeBar.appendChild(btnPlan);
-      body.appendChild(modeBar);
+      facadeModeHost.appendChild(modeBar);
       this._els.modeBar = modeBar;
       this._els.modeBtnVisual = btnVisual;
       this._els.modeBtnPlan = btnPlan;
@@ -962,26 +1006,6 @@
         else self._showFacadeMode();
       });
     }
-
-    var facadeView = document.createElement('div');
-    facadeView.className = 'fw-view fw-view--facade';
-    body.appendChild(facadeView);
-    this._els.facadeView = facadeView;
-
-    var viewport = document.createElement('div');
-    viewport.className = 'fw-viewport';
-    facadeView.appendChild(viewport);
-    this._els.viewport = viewport;
-
-    var stage = this._buildStage(true);
-    viewport.appendChild(stage);
-    this._els.stage = stage;
-
-    var tooltip = document.createElement('div');
-    tooltip.className = 'fw-tooltip';
-    tooltip.setAttribute('aria-hidden', 'true');
-    viewport.appendChild(tooltip);
-    this._els.tooltip = tooltip;
 
     var chessView = document.createElement('div');
     chessView.className = 'fw-view fw-view--chessboard';
@@ -1408,7 +1432,10 @@
   FacadeWidgetInstance.prototype._buildChessboardShell = function (parent) {
     var wrap = document.createElement('div');
     wrap.className = 'fw-chess';
-    wrap.style.position = 'relative';
+
+    var modeHost = document.createElement('div');
+    modeHost.className = 'fw-chess-mode-host';
+    wrap.appendChild(modeHost);
 
     var main = document.createElement('div');
     main.className = 'fw-chess-main';
@@ -1451,6 +1478,7 @@
     parent.appendChild(wrap);
     this._chessEls = {
       wrap: wrap,
+      modeHost: modeHost,
       main: main,
       title: title,
       sections: sections,
@@ -1478,12 +1506,17 @@
   FacadeWidgetInstance.prototype._syncModeBar = function () {
     var visual = this._els.modeBtnVisual;
     var plan = this._els.modeBtnPlan;
-    if (!visual || !plan) return;
+    var bar = this._els.modeBar;
+    if (!visual || !plan || !bar) return;
     var isChess = this.currentView === 'chessboard';
     visual.classList.toggle('is-active', !isChess);
     plan.classList.toggle('is-active', isChess);
     visual.setAttribute('aria-selected', isChess ? 'false' : 'true');
     plan.setAttribute('aria-selected', isChess ? 'true' : 'false');
+    var host = null;
+    if (isChess && this._chessEls && this._chessEls.modeHost) host = this._chessEls.modeHost;
+    else if (this._els.facadeModeHost) host = this._els.facadeModeHost;
+    if (host && bar.parentNode !== host) host.appendChild(bar);
   };
 
   FacadeWidgetInstance.prototype._showFacadeMode = function () {
@@ -1568,8 +1601,9 @@
     (data.sections || []).forEach(function (sec, idx) {
       if (idx > 0) {
         var sep = document.createElement('span');
+        sep.className = 'fw-chess-sec-sep';
         sep.textContent = '|';
-        sep.style.opacity = '0.35';
+        sep.setAttribute('aria-hidden', 'true');
         els.sections.appendChild(sep);
       }
       var btn = document.createElement('button');
@@ -3925,7 +3959,7 @@
 
   var api = {
     mount: mount,
-    version: '1.3.1'
+    version: '1.3.2'
   };
 
   global.FacadeWidget = api;
