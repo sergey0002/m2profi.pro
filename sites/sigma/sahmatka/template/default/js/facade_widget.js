@@ -428,13 +428,18 @@
     '.fw-facade-hero .fw-mode-bar { gap: 12px; }',
     '.fw-facade-hero .fw-mode-btn { background: transparent; border: 1px solid rgba(255,255,255,0.95); color: #fff; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }',
     '.fw-facade-hero .fw-mode-btn.is-active { background: rgba(110,150,170,0.78); border-color: rgba(130,170,190,0.95); color: #fff; }',
-    /* шахматка — компактные боковые поля, сайдбар у правого края */
-    '.fw-chess { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px 12px 28px; background: #fff; color: ' + TEXT_MAIN + '; }',
+    /* шахматка — боковые отступы как у карточки на десктопе (24/32 + max-width 1140/1320) */
+    '.fw-chess { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px 12px 28px; background: #fff; color: ' + TEXT_MAIN + '; box-sizing: border-box; }',
     '@media (min-width: 900px) {',
-    '  .fw-chess { grid-template-columns: minmax(0, 1fr) minmax(200px, 260px); grid-template-rows: auto auto; column-gap: 28px; row-gap: 0; padding: 16px 16px 36px; max-width: none; margin: 0; }',
+    '  .fw-root.is-view-chessboard .fw-view--chessboard { width: 100%; box-sizing: border-box; padding: 0 24px 28px; background: #fff; }',
+    '  .fw-chess { width: 100%; max-width: 1140px; margin: 0 auto; grid-template-columns: minmax(0, 1fr) minmax(200px, 260px); grid-template-rows: auto auto; column-gap: 28px; row-gap: 0; padding: 28px 0 36px; }',
     '  .fw-chess-mode-host { grid-column: 2; grid-row: 1; margin: 0 0 14px; }',
     '  .fw-chess-main { grid-column: 1; grid-row: 1 / span 2; }',
     '  .fw-chess-side { grid-column: 2; grid-row: 2; }',
+    '}',
+    '@media (min-width: 1200px) {',
+    '  .fw-root.is-view-chessboard .fw-view--chessboard { padding: 0 32px 32px; }',
+    '  .fw-chess { max-width: 1320px; padding: 32px 0 40px; }',
     '}',
     '.fw-chess-mode-host { display: flex; justify-content: flex-end; width: 100%; margin: 0 0 8px; order: -1; }',
     '.fw-chess-main { min-width: 0; }',
@@ -3981,7 +3986,7 @@
 
   var api = {
     mount: mount,
-    version: '1.3.4'
+    version: '1.3.5'
   };
 
   global.FacadeWidget = api;
