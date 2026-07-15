@@ -424,6 +424,20 @@
     border: 1px solid #f0c48a;
     border-radius: 4px;
 }
+.fp-editor__modal-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: #222;
+    cursor: pointer;
+    user-select: text;
+}
+.fp-editor__modal-check input {
+    margin: 0;
+    flex-shrink: 0;
+}
 .fp-editor__modal-status {
     margin: 8px 0 12px;
     font-size: 13px;

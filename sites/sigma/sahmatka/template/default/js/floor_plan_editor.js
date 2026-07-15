@@ -990,6 +990,15 @@
         warn.textContent = 'Вся существующая разметка выбранного этажа будет очищена перед копированием.';
         box.appendChild(warn);
 
+        var copyFileLabel = document.createElement('label');
+        copyFileLabel.className = 'fp-editor__modal-check';
+        var copyFileCb = document.createElement('input');
+        copyFileCb.type = 'checkbox';
+        copyFileCb.checked = true;
+        copyFileLabel.appendChild(copyFileCb);
+        copyFileLabel.appendChild(document.createTextNode(' Заменить файл плана (скопировать фон с этажа ' + activeFloor + ')'));
+        box.appendChild(copyFileLabel);
+
         var tableWrap = document.createElement('div');
         tableWrap.className = 'fp-editor__copy-table-wrap';
         var table = document.createElement('table');
@@ -1161,15 +1170,19 @@
                 return;
             }
 
-            var confirmed = window.confirm(
+            var copyPlanFile = !!copyFileCb.checked;
+            var confirmMsg =
                 'Вся разметка этажа ' + targetFloor + ' будет очищена.\n' +
-                'Затем будет скопировано ' + mappings.length + ' полигон(ов) с этажа ' + activeFloor + '.\n\n' +
-                'Продолжить?'
-            );
+                'Затем будет скопировано ' + mappings.length + ' полигон(ов) с этажа ' + activeFloor + '.\n';
+            if (copyPlanFile) {
+                confirmMsg += 'Файл плана этажа ' + targetFloor + ' будет заменён копией с этажа ' + activeFloor + '.\n';
+            }
+            confirmMsg += '\nПродолжить?';
+            var confirmed = window.confirm(confirmMsg);
             if (!confirmed) return;
 
             cleanup();
-            executeCopyFloorMarkup(targetFloor, mappings);
+            executeCopyFloorMarkup(targetFloor, mappings, { copyPlanFile: copyPlanFile });
         });
     }
 
@@ -1226,8 +1239,35 @@
             });
     }
 
-    function executeCopyFloorMarkup(targetFloor, mappings) {
+    function copyFloorImageApi(section, sourceFloor, targetFloor) {
+        var body = new URLSearchParams({
+            home_id: String(cfg.homeId),
+            section: String(section),
+            source_floor: String(sourceFloor),
+            target_floor: String(targetFloor)
+        });
+        return fetch(cfg.ajaxBase + '&act=copy_floor_image', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (!res || !res.success) {
+                    return { ok: false, message: (res && res.message) || 'Ошибка копирования файла плана' };
+                }
+                return { ok: true, replaced: !!res.replaced, ext: res.ext || '' };
+            })
+            .catch(function () {
+                return { ok: false, message: 'Ошибка сети при копировании файла плана' };
+            });
+    }
+
+    function executeCopyFloorMarkup(targetFloor, mappings, opts) {
         if (isBusy()) return;
+        opts = opts || {};
+        var copyPlanFile = opts.copyPlanFile !== false;
         targetFloor = parseInt(targetFloor, 10);
         if (!targetFloor) {
             showMessage('Не выбран целевой этаж', 'error');
@@ -1238,6 +1278,7 @@
         showMessage('Копирование разметки на этаж ' + targetFloor + '…', 'info');
 
         var section = activeSection;
+        var sourceFloor = activeFloor;
         var firstAptId = mappings[0] && mappings[0].targetApt
             ? mappings[0].targetApt.apartamentId
             : 0;
@@ -1251,6 +1292,16 @@
         clearFloorPolygonsApi(section, targetFloor).then(function (clr) {
             if (!clr.ok) {
                 finishFail(clr.message);
+                return null;
+            }
+            if (!copyPlanFile) {
+                return { ok: true, skippedImage: true };
+            }
+            return copyFloorImageApi(section, sourceFloor, targetFloor);
+        }).then(function (imgRes) {
+            if (!imgRes) return;
+            if (!imgRes.ok) {
+                finishFail(imgRes.message);
                 return;
             }
 
@@ -1307,16 +1358,17 @@
                         return;
                     }
                     var shown = (loadRes && typeof loadRes.count === 'number') ? loadRes.count : saved;
+                    var extra = copyPlanFile ? ' (файл плана скопирован)' : '';
                     if (shown < 1) {
                         showMessage(
-                            'Сохранено ' + saved + ' полигон(ов) на этаж ' + targetFloor +
-                            ', но на карте их нет — проверьте секцию/этаж или обновите страницу.',
+                            'Сохранено ' + saved + ' полигон(ов) на этаж ' + targetFloor + extra +
+                            ', но на карте их нет — обновите страницу.',
                             'warning'
                         );
                         return;
                     }
                     showMessage(
-                        'Скопировано ' + saved + ' полигон(ов) на этаж ' + targetFloor,
+                        'Скопировано ' + saved + ' полигон(ов) на этаж ' + targetFloor + extra,
                         'success'
                     );
                 });

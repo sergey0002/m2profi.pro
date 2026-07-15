@@ -981,6 +981,92 @@ class ctr__floor_plans extends ctr__
     }
 
     /**
+     * Скопировать файл плана этажа source_floor → target_floor (та же секция).
+     * Заменяет существующий фон целевого этажа.
+     */
+    function act__copy_floor_image()
+    {
+        $this->require_admin();
+        global $mysql;
+        header('Content-Type: application/json; charset=utf-8');
+
+        $home_id      = (int) ($_POST['home_id'] ?? 0);
+        $section      = (int) ($_POST['section'] ?? 1);
+        $source_floor = (int) ($_POST['source_floor'] ?? 0);
+        $target_floor = (int) ($_POST['target_floor'] ?? 0);
+        if ($section < 1) {
+            $section = 1;
+        }
+
+        if (!$home_id || $source_floor < 1 || $target_floor < 1) {
+            echo json_encode(['success' => false, 'message' => 'Не указаны home_id / этажи']);
+            return;
+        }
+        if ($source_floor === $target_floor) {
+            echo json_encode(['success' => false, 'message' => 'Исходный и целевой этаж совпадают']);
+            return;
+        }
+
+        $home = $mysql->get_for_key('homes', 'home_id', $home_id);
+        if (!$home) {
+            echo json_encode(['success' => false, 'message' => 'Дом не найден']);
+            return;
+        }
+
+        $src = $this->floor_image_resolve($home_id, $section, $source_floor);
+        if (!$src) {
+            echo json_encode(['success' => false, 'message' => 'На исходном этаже нет файла плана']);
+            return;
+        }
+
+        $dir = $this->floor_section_dir($home_id, $section);
+        if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+            echo json_encode(['success' => false, 'message' => 'Не удалось создать каталог на сервере']);
+            return;
+        }
+
+        $ext = $src['ext'];
+        $target = $this->floor_image_target_path($home_id, $section, $target_floor, $ext);
+        try {
+            $this->assert_within_pbplans($src['path'], $home_id);
+            $this->assert_within_pbplans($target, $home_id);
+        } catch (Throwable $e) {
+            echo json_encode(['success' => false, 'message' => 'Ошибка проверки пути']);
+            return;
+        }
+
+        $existing = $this->floor_image_resolve($home_id, $section, $target_floor);
+        $replaced = $existing !== null;
+
+        if (!@copy($src['path'], $target)) {
+            echo json_encode(['success' => false, 'message' => 'Не удалось скопировать файл плана']);
+            return;
+        }
+        @chmod($target, 0644);
+
+        foreach (self::FLOOR_IMAGE_EXT_PRIORITY as $otherExt) {
+            if ($otherExt === $ext) {
+                continue;
+            }
+            $siblingPath = $this->floor_image_target_path($home_id, $section, $target_floor, $otherExt);
+            if (is_file($siblingPath)) {
+                @unlink($siblingPath);
+            }
+        }
+
+        $dims = $this->floor_image_dimensions($target, $ext);
+
+        echo json_encode([
+            'success'     => true,
+            'replaced'    => $replaced,
+            'ext'         => $ext,
+            'imageUrl'    => $this->floor_image_url($home_id, $section, $target_floor, $ext) . '?v=' . (int) @filemtime($target),
+            'imageWidth'  => $dims ? $dims['width'] : null,
+            'imageHeight' => $dims ? $dims['height'] : null,
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
      * Очистить весь план этажа: soft-delete полигонов + удаление файла фона.
      */
     function act__clear_floor_plan()
