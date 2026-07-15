@@ -410,9 +410,9 @@ class ctr__facades extends ctr__
         }
 
         $status_colors = [
-            'free'     => '#92b692',
-            'reserved' => '#daa152',
-            'sold'     => '#d3d3d3',
+            'free'     => '#6B95A5',
+            'reserved' => '#E5A35D',
+            'sold'     => '#9B938F',
         ];
 
         header('Content-Type: application/json; charset=utf-8');

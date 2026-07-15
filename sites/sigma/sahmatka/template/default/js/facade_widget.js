@@ -351,11 +351,11 @@
   var ACCENT_SOFT = '#E4ECEF';
   /* подсветка этажа на фасаде — чуть синее и плотнее accent */
   var FACADE_HL = '#5B8FB8';
-  /* шахматка — seed как .c-sale / .c-res / .c-sold в wiget_home2.css */
-  var CHESS_FREE = '#92b692';
-  var CHESS_RESERVED = '#daa152';
-  var CHESS_SOLD = '#d3d3d3';
-  var CHESS_FILTERED = '#c8c8c8';
+  /* шахматка — цветопроба по макету (не green из wiget_home2) */
+  var CHESS_FREE = '#6B95A5';
+  var CHESS_RESERVED = '#E5A35D';
+  var CHESS_SOLD = '#9B938F';
+  var CHESS_FILTERED = '#D1D1D1';
   var TEXT_MAIN = '#1A1A1A';
   var TEXT_MUTED = '#666666';
   var BORDER_SOFT = '#D1D5D8';
@@ -425,33 +425,33 @@
     '  .fw-chess { grid-template-columns: minmax(0, 1fr) minmax(220px, 320px); gap: 28px; padding: 16px 24px 36px; max-width: 1200px; margin: 0 auto; }',
     '}',
     '.fw-chess-main { min-width: 0; }',
-    '.fw-chess-title { margin: 0 0 12px; font-size: 22px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }',
-    '.fw-chess-sections { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 14px; font-size: 14px; }',
+    '.fw-chess-title { margin: 0 0 14px; font-size: 26px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2c2c2c; line-height: 1.15; }',
+    '.fw-chess-sections { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; margin: 0 0 16px; font-size: 14px; }',
     '.fw-chess-sec { appearance: none; border: 0; background: transparent; padding: 0; margin: 0; font: inherit; color: ' + TEXT_MUTED + '; cursor: pointer; text-decoration: none; }',
     '.fw-chess-sec.is-active { color: ' + TEXT_MAIN + '; font-weight: 700; }',
     '.fw-chess-sec:hover, .fw-chess-sec:focus-visible { color: ' + ACCENT + '; outline: none; }',
-    '.fw-chess-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 16px; font-size: 14px; color: ' + TEXT_MUTED + '; }',
-    '.fw-chess-filter__label { margin-right: 4px; }',
+    '.fw-chess-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 18px; font-size: 14px; color: ' + TEXT_MUTED + '; }',
+    '.fw-chess-filter__label { margin-right: 2px; color: ' + TEXT_MAIN + '; }',
     '.fw-chess-chk { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; color: ' + TEXT_MAIN + '; }',
-    '.fw-chess-chk input { margin: 0; }',
-    '.fw-chess-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }',
-    '.fw-chess-table { border-collapse: separate; border-spacing: 3px; margin: 0; }',
-    '.fw-chess-floor { width: 28px; text-align: center; font-size: 12px; font-weight: 600; color: ' + TEXT_MUTED + '; vertical-align: middle; }',
-    '.fw-chess-cell { width: 36px; height: 36px; border: 0; padding: 0; margin: 0; border-radius: 2px; font: inherit; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }',
+    '.fw-chess-chk input { margin: 0; width: 14px; height: 14px; }',
+    '.fw-chess-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }',
+    '.fw-chess-table { border-collapse: separate; border-spacing: 5px; margin: 0; }',
+    '.fw-chess-floor { width: 28px; text-align: center; font-size: 13px; font-weight: 500; color: ' + TEXT_MUTED + '; vertical-align: middle; padding-right: 4px; }',
+    '.fw-chess-cell { width: 34px; height: 34px; border: 0; padding: 0; margin: 0; border-radius: 3px; font: inherit; font-size: 11px; font-weight: 600; color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; letter-spacing: 0.02em; }',
     '.fw-chess-cell.is-empty { visibility: hidden; pointer-events: none; cursor: default; }',
-    '.fw-chess-cell.is-filtered-out { background: var(--fw-chess-filtered, ' + CHESS_FILTERED + ') !important; color: rgba(255,255,255,0.55); cursor: default; pointer-events: none; }',
+    '.fw-chess-cell.is-filtered-out { background: var(--fw-chess-filtered, ' + CHESS_FILTERED + ') !important; color: rgba(255,255,255,0.65); cursor: default; pointer-events: none; }',
     '.fw-chess-cell[data-status-key="free"] { background: var(--fw-chess-free, ' + CHESS_FREE + '); }',
     '.fw-chess-cell[data-status-key="reserved"] { background: var(--fw-chess-reserved, ' + CHESS_RESERVED + '); }',
     '.fw-chess-cell[data-status-key="sold"] { background: var(--fw-chess-sold, ' + CHESS_SOLD + '); }',
     '.fw-chess-side { display: none; }',
-    '@media (min-width: 900px) { .fw-chess-side { display: block; } }',
-    '.fw-chess-side-title { margin: 0 0 12px; font-size: 22px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }',
-    '.fw-chess-visual { display: block; width: 100%; height: auto; border: 0; border-radius: 4px; background: #e8ecef; }',
+    '@media (min-width: 900px) { .fw-chess-side { display: block; padding-top: 2px; } }',
+    '.fw-chess-side-title { margin: 0 0 14px; font-size: 22px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2c2c2c; }',
+    '.fw-chess-visual { display: block; width: 100%; height: auto; border: 0; border-radius: 0; background: #e8ecef; }',
     '.fw-chess-tip { position: absolute; z-index: 12; pointer-events: none; opacity: 0; transform: translate(-50%, calc(-100% - 10px)); transition: none; }',
     '.fw-chess-tip.is-visible { opacity: 1; }',
-    '.fw-chess-tip.is-chip { padding: 8px 12px; font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,0.18); }',
-    '.fw-chess-tip.is-chip[data-status-key="reserved"] { background: ' + CHESS_RESERVED + '; }',
-    '.fw-chess-tip.is-chip[data-status-key="sold"] { background: #5a5a5a; }',
+    '.fw-chess-tip.is-chip { padding: 8px 12px; font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,0.18); border-radius: 0; }',
+    '.fw-chess-tip.is-chip[data-status-key="reserved"] { background: var(--fw-chess-reserved, ' + CHESS_RESERVED + '); }',
+    '.fw-chess-tip.is-chip[data-status-key="sold"] { background: var(--fw-chess-sold, ' + CHESS_SOLD + '); }',
     '.fw-chess-tip.is-preview { min-width: 180px; max-width: 240px; padding: 12px 14px; background: rgba(255,255,255,0.92); color: ' + TEXT_MAIN + '; text-align: left; box-shadow: 0 4px 18px rgba(0,0,0,0.16); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }',
     '.fw-chess-tip__code { display: block; font-weight: 700; font-size: 16px; margin-bottom: 4px; }',
     '.fw-chess-tip__spec { display: block; font-size: 14px; color: ' + TEXT_MUTED + '; margin-bottom: 8px; }',
@@ -3925,7 +3925,7 @@
 
   var api = {
     mount: mount,
-    version: '1.3.0'
+    version: '1.3.1'
   };
 
   global.FacadeWidget = api;
