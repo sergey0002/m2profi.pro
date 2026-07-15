@@ -632,6 +632,14 @@
         }
     }
 
+    function ensureFloorImagePane() {
+        if (map.getPane('floorImagePane')) return;
+        var pane = map.createPane('floorImagePane');
+        // Ниже overlayPane (400), иначе после смены этажа новый ImageOverlay
+        // оказывается поверх SVG и полигоны «пропадают», хотя в БД есть.
+        pane.style.zIndex = 350;
+    }
+
     function setFloorImage(url, w, h) {
         imgW = w;
         imgH = h;
@@ -640,11 +648,26 @@
             map.removeLayer(currentOverlay);
             currentOverlay = null;
         }
+        ensureFloorImagePane();
         imageBounds = L.latLngBounds([[0, 0], [h, w]]);
-        currentOverlay = L.imageOverlay(url, imageBounds).addTo(map);
+        currentOverlay = L.imageOverlay(url, imageBounds, { pane: 'floorImagePane' }).addTo(map);
         map.fitBounds(imageBounds);
         updateMinZoomFromImage();
         map.setMaxBounds(imageBounds.pad(0.5));
+    }
+
+    function bringPolygonsAboveImage() {
+        // На случай старых сессий / иного порядка DOM
+        if (otherPolygons && otherPolygons.eachLayer) {
+            otherPolygons.eachLayer(function (l) {
+                if (l.bringToFront) l.bringToFront();
+            });
+        }
+        if (editablePolygons && editablePolygons.eachLayer) {
+            editablePolygons.eachLayer(function (l) {
+                if (l.bringToFront) l.bringToFront();
+            });
+        }
     }
 
     map.on('resize', updateMinZoomFromImage);
@@ -950,16 +973,16 @@
 
         var floorField = document.createElement('label');
         floorField.className = 'fp-editor__modal-field';
-        var floorSelect = document.createElement('select');
-        floorSelect.className = 'fp-editor__modal-select';
+        var targetFloorSelect = document.createElement('select');
+        targetFloorSelect.className = 'fp-editor__modal-select';
         targetFloors.forEach(function (f) {
             var opt = document.createElement('option');
             opt.value = String(f);
             opt.textContent = 'Этаж ' + f;
             if (f === defaultTarget) opt.selected = true;
-            floorSelect.appendChild(opt);
+            targetFloorSelect.appendChild(opt);
         });
-        floorField.appendChild(floorSelect);
+        floorField.appendChild(targetFloorSelect);
         box.appendChild(floorField);
 
         var warn = document.createElement('p');
@@ -1081,7 +1104,7 @@
         }
 
         function loadTargetFloorApts() {
-            var targetFloor = parseInt(floorSelect.value, 10);
+            var targetFloor = parseInt(targetFloorSelect.value, 10);
             okBtn.disabled = true;
             status.textContent = 'Загрузка квартир этажа ' + targetFloor + '…';
             return fetchFloorMeta(activeSection, targetFloor).then(function (meta) {
@@ -1101,11 +1124,11 @@
             });
         }
 
-        floorSelect.addEventListener('change', loadTargetFloorApts);
+        targetFloorSelect.addEventListener('change', loadTargetFloorApts);
         loadTargetFloorApts();
 
         okBtn.addEventListener('click', function () {
-            var targetFloor = parseInt(floorSelect.value, 10);
+            var targetFloor = parseInt(targetFloorSelect.value, 10);
             var mappings = [];
             var usedTargets = {};
             for (var i = 0; i < rowControls.length; i++) {
@@ -1205,10 +1228,16 @@
 
     function executeCopyFloorMarkup(targetFloor, mappings) {
         if (isBusy()) return;
+        targetFloor = parseInt(targetFloor, 10);
+        if (!targetFloor) {
+            showMessage('Не выбран целевой этаж', 'error');
+            return;
+        }
         clearingMarkup = true;
         setControlsBusy(true);
         showMessage('Копирование разметки на этаж ' + targetFloor + '…', 'info');
 
+        var section = activeSection;
         var firstAptId = mappings[0] && mappings[0].targetApt
             ? mappings[0].targetApt.apartamentId
             : 0;
@@ -1219,19 +1248,24 @@
             showMessage(msg || 'Ошибка копирования', 'error');
         }
 
-        clearFloorPolygonsApi(activeSection, targetFloor).then(function (clr) {
+        clearFloorPolygonsApi(section, targetFloor).then(function (clr) {
             if (!clr.ok) {
                 finishFail(clr.message);
                 return;
             }
 
-            var chain = Promise.resolve({ ok: true });
+            var saved = 0;
             var failMsg = '';
+            var chain = Promise.resolve({ ok: true });
             mappings.forEach(function (m) {
                 chain = chain.then(function (prev) {
                     if (!prev || !prev.ok) return prev;
+                    if (!m.points || m.points.length < 3) {
+                        failMsg = 'У исходного полигона меньше 3 точек';
+                        return { ok: false, message: failMsg };
+                    }
                     return savePolygonToApartment(
-                        activeSection,
+                        section,
                         targetFloor,
                         m.targetApt.apartamentId,
                         m.points,
@@ -1242,6 +1276,7 @@
                             failMsg = res.message || 'Ошибка сохранения полигона';
                             return res;
                         }
+                        saved += 1;
                         return { ok: true };
                     });
                 });
@@ -1250,22 +1285,40 @@
             return chain.then(function (res) {
                 clearingMarkup = false;
                 setControlsBusy(false);
-                invalidateFloorMapsCache(activeSection);
-                if (!res || !res.ok) {
+                invalidateFloorMapsCache(section);
+                if (!res || !res.ok || saved < 1) {
                     showMessage(failMsg || (res && res.message) || 'Копирование прервано с ошибкой', 'error');
-                    loadFloor(activeSection, targetFloor, {
+                    return loadFloor(section, targetFloor, {
                         autoDraw: false,
                         initialApartmentId: firstAptId
                     });
-                    return;
                 }
-                var okMsg = 'Скопировано ' + mappings.length + ' полигон(ов) на этаж ' + targetFloor;
-                return loadFloor(activeSection, targetFloor, {
+                return loadFloor(section, targetFloor, {
                     autoDraw: false,
                     initialApartmentId: firstAptId,
                     silent: true
-                }).then(function () {
-                    showMessage(okMsg, 'success');
+                }).then(function (loadRes) {
+                    if (loadRes && loadRes.noImage) {
+                        showMessage(
+                            'В БД сохранено ' + saved + ' полигон(ов) на этаж ' + targetFloor +
+                            ', но у этажа нет файла плана — загрузите план, чтобы увидеть разметку.',
+                            'warning'
+                        );
+                        return;
+                    }
+                    var shown = (loadRes && typeof loadRes.count === 'number') ? loadRes.count : saved;
+                    if (shown < 1) {
+                        showMessage(
+                            'Сохранено ' + saved + ' полигон(ов) на этаж ' + targetFloor +
+                            ', но на карте их нет — проверьте секцию/этаж или обновите страницу.',
+                            'warning'
+                        );
+                        return;
+                    }
+                    showMessage(
+                        'Скопировано ' + saved + ' полигон(ов) на этаж ' + targetFloor,
+                        'success'
+                    );
                 });
             });
         }).catch(function () {
@@ -2235,6 +2288,8 @@
         activeSection = section;
         activeFloor = floor;
         activeApartmentId = 0;
+        // Всегда синхронизируем селект этажа (иначе после copy UI остаётся на старом этаже)
+        rebuildFloorSelect(section, floor);
         clearMapLayers();
         if (!silent) {
             showMessage('Загрузка плана этажа…', 'info');
@@ -2246,12 +2301,18 @@
 
             if (!meta || !meta.success) {
                 hasImage = false;
-                showMessage('Вначале загрузите файл плана этажа', 'info');
+                if (currentOverlay) {
+                    try { map.removeLayer(currentOverlay); } catch (e) { /* ignore */ }
+                    currentOverlay = null;
+                }
+                if (!silent) {
+                    showMessage('Вначале загрузите файл плана этажа', 'info');
+                }
                 loadingFloor = false;
                 setControlsBusy(false);
                 updateDirtyUi();
                 syncUrlSelection();
-                return;
+                return { ok: false, noImage: true, apartments: currentApartments };
             }
 
             hasImage = true;
@@ -2259,6 +2320,7 @@
 
             return fetchPolygons(section, floor).then(function (list) {
                 list.forEach(function (item) { addPolygonLayer(item, false); });
+                bringPolygonsAboveImage();
                 var pickId = 0;
                 if (initialApartmentId && apartmentExistsOnFloor(initialApartmentId)) {
                     pickId = initialApartmentId;
@@ -2281,12 +2343,14 @@
                 loadingFloor = false;
                 setControlsBusy(false);
                 restorePageTextSelection();
+                return { ok: true, count: list.length };
             });
         }).catch(function () {
             showMessage('Ошибка сети при загрузке плана', 'error');
             loadingFloor = false;
             setControlsBusy(false);
             syncUrlSelection();
+            return { ok: false };
         });
     }
 

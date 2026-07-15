@@ -764,6 +764,7 @@ class ctr__floor_plans extends ctr__
             'label'         => trim((string) ($_POST['label'] ?? '')),
             'points'        => json_encode($points),
             'color'         => trim((string) ($_POST['color'] ?? '#4da3ff')),
+            'del'           => 0,
         ];
 
         if ($id) {
@@ -775,6 +776,10 @@ class ctr__floor_plans extends ctr__
             $mysql->update_for_key('floor_plan_polygons', 'floor_plan_polygon_id', $id, $data);
         } else {
             $id = $mysql->insert('floor_plan_polygons', $data);
+            if (!$id) {
+                echo json_encode(['success' => false, 'message' => 'Не удалось записать полигон в БД']);
+                return;
+            }
         }
 
         echo json_encode(['success' => true, 'id' => (int) $id]);
