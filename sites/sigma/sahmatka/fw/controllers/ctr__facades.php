@@ -253,6 +253,186 @@ class ctr__facades extends ctr__
         echo json_encode($payload, JSON_UNESCAPED_UNICODE);
     }
 
+    /**
+     * Публичные данные шахматки для виджета (Stage 5).
+     * GET home_id, section (логический section_id).
+     * Нумерация/дыры — как disp_home_p_n (get_sec_arr + get_data_appart_arr).
+     */
+    function act__chessboard_data()
+    {
+        global $mysql, $connection;
+
+        $home_id = (int) ($_REQUEST['home_id'] ?? 0);
+        $section = (int) ($_REQUEST['section'] ?? 0);
+
+        if (!$home_id) {
+            $this->widget_json_error('Не указан home_id');
+            return;
+        }
+
+        $home = $mysql->get_for_key('homes', 'home_id', $home_id);
+        if (!$home) {
+            $this->widget_json_error('Дом не найден');
+            return;
+        }
+
+        if (!class_exists('sahmatka')) {
+            $this->widget_json_error('Модуль шахматки не найден');
+            return;
+        }
+
+        $sections_raw = $this->get_home_sections($home);
+        $sections = [];
+        foreach ($sections_raw as $sec) {
+            $sections[] = [
+                'id'      => (int) $sec['id'],
+                'caption' => (string) $sec['caption'],
+            ];
+        }
+
+        if (!$sections) {
+            $this->widget_json_error('Секции не найдены');
+            return;
+        }
+
+        if ($section < 1) {
+            $section = (int) $sections[0]['id'];
+        }
+
+        $section_ok = false;
+        $section_caption = '';
+        foreach ($sections as $sec) {
+            if ((int) $sec['id'] === $section) {
+                $section_ok = true;
+                $section_caption = (string) $sec['caption'];
+                break;
+            }
+        }
+        if (!$section_ok) {
+            $this->widget_json_error('Секция не найдена');
+            return;
+        }
+
+        $sa = new sahmatka($_SESSION, $connection);
+        $conf = $sa->get_sec_arr($home_id, $section);
+        if (!$conf || empty($conf['floor']) || empty($conf['apartments'])) {
+            $this->widget_json_error('Конфиг секции не найден');
+            return;
+        }
+
+        $data = $sa->get_data_appart_arr($home_id, $section);
+        if (!is_array($data)) {
+            $data = [];
+        }
+
+        $clean = (isset($conf['clean_apartments']) && is_array($conf['clean_apartments']))
+            ? $conf['clean_apartments']
+            : [];
+
+        $ckv = 0;
+        foreach ($clean as $floor_holes) {
+            if (is_array($floor_holes)) {
+                $ckv += count($floor_holes);
+            }
+        }
+
+        $floors = (int) $conf['floor'];
+        $cols = (int) $conf['apartments'];
+        $start_num = (int) $conf['start_num'];
+        $endnum = ($floors * $cols) + $start_num - $ckv;
+
+        $rows = [];
+        for ($i = $floors; $i > 0; $i--) {
+            $nezk = count((array) ($clean[$i] ?? []));
+            // Как в disp_home_p_n: стартовый счётчик + инкремент на «нулевой» столбец этажа.
+            $end_etza_num = $endnum - $cols - 1 + $nezk;
+            if (empty($clean[$i][0])) {
+                $end_etza_num++;
+            }
+            $cells = [];
+
+            for ($k = 1; $k <= $cols; $k++) {
+                if (empty($clean[$i][$k])) {
+                    $end_etza_num++;
+                }
+
+                if (!empty($clean[$i][$k])) {
+                    $cells[] = [
+                        'empty' => true,
+                        'col'   => $k,
+                    ];
+                    continue;
+                }
+
+                $apart = $data[$home_id][$end_etza_num] ?? null;
+                $status_raw = $apart['status'] ?? null;
+                if ($status_raw === null || $status_raw === '') {
+                    $status_raw = '2';
+                }
+                $status = (int) $status_raw;
+
+                if ($status === 0 || $status === 1 || $status === 2 || !$apart) {
+                    $status_key = 'free';
+                    $status_label = 'Свободна';
+                } elseif ($status === 4) {
+                    $status_key = 'reserved';
+                    $status_label = 'Бронь';
+                } else {
+                    $status_key = 'sold';
+                    $status_label = 'Продана';
+                }
+
+                $rooms = (int) ($apart['rooms'] ?? 0);
+                $apt_num = (int) ($apart['apartment_num'] ?? $end_etza_num);
+                $image = $apart['image_pb'] ?? '';
+
+                $cells[] = [
+                    'empty'         => false,
+                    'col'           => $k,
+                    'apartmentNum'  => $apt_num,
+                    'apartamentId'  => (int) ($apart['apartament_id'] ?? 0),
+                    'rooms'         => $rooms,
+                    'label'         => $rooms > 0 ? ($rooms . 'K') : '',
+                    'area'          => isset($apart['area']) ? (float) $apart['area'] : null,
+                    'status'        => $status,
+                    'statusKey'     => $status_key,
+                    'statusLabel'   => $status_label,
+                    'imageUrl'      => $this->widget_absolute_url($image),
+                ];
+
+                $endnum--;
+            }
+
+            $rows[] = [
+                'floor' => $i,
+                'cells' => $cells,
+            ];
+        }
+
+        $status_colors = [
+            'free'     => '#92b692',
+            'reserved' => '#daa152',
+            'sold'     => '#d3d3d3',
+        ];
+
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success'      => true,
+            'homeId'       => $home_id,
+            'section'      => [
+                'id'      => $section,
+                'caption' => $section_caption !== '' ? $section_caption : (string) ($conf['caption'] ?? ('Секция ' . $section)),
+            ],
+            'sections'     => $sections,
+            'floors'       => $floors,
+            'columns'      => $cols,
+            'statusColors' => $status_colors,
+            'visualUrl'    => $this->facade_image_absolute_url($home_id),
+            'rows'         => $rows,
+            'unitLabels'   => $this->widget_unit_labels(),
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
     /** Абсолютный URL для embed (root-relative пути картинок квартир). */
     function widget_absolute_url($path)
     {

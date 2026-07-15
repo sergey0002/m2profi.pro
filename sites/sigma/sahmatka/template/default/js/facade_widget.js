@@ -42,7 +42,14 @@
     bookingSuccess: 'Ваша заявка успешно отправлена',
     bookingError: 'Не удалось отправить заявку',
     crumbsLabel: 'Навигация',
-    crumbHome: 'Дом'
+    crumbHome: 'Дом',
+    visual: 'Визуально',
+    onPlan: 'На плане',
+    chooseResidence: 'Выбор резиденции',
+    showResidences: 'Показать резиденции:',
+    statusFree: 'Свободна',
+    statusReserved: 'Бронь',
+    statusSold: 'Продана'
   };
 
   // Общий счётчик блокировки скролла страницы (несколько виджетов на одной странице).
@@ -273,20 +280,24 @@
     };
   }
 
-  /** #fw=1.12.458 → { section, floor, apartmentNum? } */
+  /** #fw=1.12.458 | #fw=c.1 (шахматка) */
   function parseFwHash(hash) {
     var raw = String(hash || '');
     if (raw.charAt(0) === '#') raw = raw.slice(1);
     var m = raw.match(/(?:^|&)fw=([^&]*)/);
     if (!m) {
-      if (/^\d+\.\d+/.test(raw)) {
-        /* допускаем #1.12.3 без префикса fw только если весь hash — наши числа */
+      if (/^\d+\.\d+/.test(raw) || /^c\.\d+/i.test(raw)) {
         m = [null, raw];
       } else {
         return null;
       }
     }
     var parts = String(m[1] || '').split('.');
+    if (parts.length >= 2 && (parts[0] === 'c' || parts[0] === 'C')) {
+      var cSec = parseInt(parts[1], 10);
+      if (!cSec) return null;
+      return { mode: 'chessboard', section: cSec };
+    }
     if (parts.length < 2) return null;
     var section = parseInt(parts[0], 10);
     var floor = parseInt(parts[1], 10);
@@ -340,6 +351,11 @@
   var ACCENT_SOFT = '#E4ECEF';
   /* подсветка этажа на фасаде — чуть синее и плотнее accent */
   var FACADE_HL = '#5B8FB8';
+  /* шахматка — seed как .c-sale / .c-res / .c-sold в wiget_home2.css */
+  var CHESS_FREE = '#92b692';
+  var CHESS_RESERVED = '#daa152';
+  var CHESS_SOLD = '#d3d3d3';
+  var CHESS_FILTERED = '#c8c8c8';
   var TEXT_MAIN = '#1A1A1A';
   var TEXT_MUTED = '#666666';
   var BORDER_SOFT = '#D1D5D8';
@@ -387,13 +403,59 @@
     '.fw-explore-inner .fw-stage.is-dragging { cursor: grabbing; }',
     '.fw-body { position: relative; width: 100%; }',
     '.fw-view { display: block; width: 100%; opacity: 1; transition: opacity var(--fw-fade-ms) ease; }',
-    '.fw-view--floor, .fw-view--card { display: none; }',
+    '.fw-view--floor, .fw-view--card, .fw-view--chessboard { display: none; }',
     '.fw-root.is-view-floor .fw-view--facade { display: none; }',
     '.fw-root.is-view-floor .fw-view--floor { display: flex; flex-direction: column; }',
-    '.fw-root.is-view-card.is-desktop .fw-view--facade, .fw-root.is-view-card.is-desktop .fw-view--floor { display: none; }',
+    '.fw-root.is-view-card.is-desktop .fw-view--facade, .fw-root.is-view-card.is-desktop .fw-view--floor, .fw-root.is-view-card.is-desktop .fw-view--chessboard { display: none; }',
     '.fw-root.is-view-card.is-desktop .fw-view--card { display: block; }',
+    '.fw-root.is-view-chessboard .fw-view--facade { display: none; }',
+    '.fw-root.is-view-chessboard .fw-view--chessboard { display: block; }',
     '.fw-view.is-fading-out, .fw-view.is-fading-in { opacity: 0; }',
     '@media (prefers-reduced-motion: reduce) { .fw-view { transition: none; } }',
+    /* переключатель Визуально / На плане */
+    '.fw-mode-bar { display: flex; justify-content: flex-end; gap: 0; padding: 12px 16px 0; background: #f0f2f4; }',
+    '.fw-root.is-view-floor .fw-mode-bar, .fw-root.is-view-card .fw-mode-bar { display: none; }',
+    '.fw-mode-btn { appearance: none; border: 1px solid ' + ACCENT + '; background: #fff; color: ' + ACCENT + '; font: inherit; font-size: 13px; font-weight: 600; padding: 8px 16px; cursor: pointer; line-height: 1.2; border-radius: 999px; margin: 0 4px 0 0; }',
+    '.fw-mode-btn:last-child { margin-right: 0; }',
+    '.fw-mode-btn.is-active { background: ' + ACCENT + '; color: #fff; }',
+    '.fw-mode-btn:focus-visible { outline: 2px solid ' + ACCENT + '; outline-offset: 2px; }',
+    /* шахматка */
+    '.fw-chess { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 12px 16px 28px; background: #fff; color: ' + TEXT_MAIN + '; }',
+    '@media (min-width: 900px) {',
+    '  .fw-chess { grid-template-columns: minmax(0, 1fr) minmax(220px, 320px); gap: 28px; padding: 16px 24px 36px; max-width: 1200px; margin: 0 auto; }',
+    '}',
+    '.fw-chess-main { min-width: 0; }',
+    '.fw-chess-title { margin: 0 0 12px; font-size: 22px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }',
+    '.fw-chess-sections { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 14px; font-size: 14px; }',
+    '.fw-chess-sec { appearance: none; border: 0; background: transparent; padding: 0; margin: 0; font: inherit; color: ' + TEXT_MUTED + '; cursor: pointer; text-decoration: none; }',
+    '.fw-chess-sec.is-active { color: ' + TEXT_MAIN + '; font-weight: 700; }',
+    '.fw-chess-sec:hover, .fw-chess-sec:focus-visible { color: ' + ACCENT + '; outline: none; }',
+    '.fw-chess-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 16px; font-size: 14px; color: ' + TEXT_MUTED + '; }',
+    '.fw-chess-filter__label { margin-right: 4px; }',
+    '.fw-chess-chk { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; color: ' + TEXT_MAIN + '; }',
+    '.fw-chess-chk input { margin: 0; }',
+    '.fw-chess-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }',
+    '.fw-chess-table { border-collapse: separate; border-spacing: 3px; margin: 0; }',
+    '.fw-chess-floor { width: 28px; text-align: center; font-size: 12px; font-weight: 600; color: ' + TEXT_MUTED + '; vertical-align: middle; }',
+    '.fw-chess-cell { width: 36px; height: 36px; border: 0; padding: 0; margin: 0; border-radius: 2px; font: inherit; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }',
+    '.fw-chess-cell.is-empty { visibility: hidden; pointer-events: none; cursor: default; }',
+    '.fw-chess-cell.is-filtered-out { background: var(--fw-chess-filtered, ' + CHESS_FILTERED + ') !important; color: rgba(255,255,255,0.55); cursor: default; pointer-events: none; }',
+    '.fw-chess-cell[data-status-key="free"] { background: var(--fw-chess-free, ' + CHESS_FREE + '); }',
+    '.fw-chess-cell[data-status-key="reserved"] { background: var(--fw-chess-reserved, ' + CHESS_RESERVED + '); }',
+    '.fw-chess-cell[data-status-key="sold"] { background: var(--fw-chess-sold, ' + CHESS_SOLD + '); }',
+    '.fw-chess-side { display: none; }',
+    '@media (min-width: 900px) { .fw-chess-side { display: block; } }',
+    '.fw-chess-side-title { margin: 0 0 12px; font-size: 22px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }',
+    '.fw-chess-visual { display: block; width: 100%; height: auto; border: 0; border-radius: 4px; background: #e8ecef; }',
+    '.fw-chess-tip { position: absolute; z-index: 12; pointer-events: none; opacity: 0; transform: translate(-50%, calc(-100% - 10px)); transition: none; }',
+    '.fw-chess-tip.is-visible { opacity: 1; }',
+    '.fw-chess-tip.is-chip { padding: 8px 12px; font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,0.18); }',
+    '.fw-chess-tip.is-chip[data-status-key="reserved"] { background: ' + CHESS_RESERVED + '; }',
+    '.fw-chess-tip.is-chip[data-status-key="sold"] { background: #5a5a5a; }',
+    '.fw-chess-tip.is-preview { min-width: 180px; max-width: 240px; padding: 12px 14px; background: rgba(255,255,255,0.92); color: ' + TEXT_MAIN + '; text-align: left; box-shadow: 0 4px 18px rgba(0,0,0,0.16); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }',
+    '.fw-chess-tip__code { display: block; font-weight: 700; font-size: 16px; margin-bottom: 4px; }',
+    '.fw-chess-tip__spec { display: block; font-size: 14px; color: ' + TEXT_MUTED + '; margin-bottom: 8px; }',
+    '.fw-chess-tip__img { display: block; max-width: 100%; max-height: 120px; margin: 0 auto; }',
     /* хлебные крошки */
     '.fw-crumbs { display: none; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 10px 16px; background: #e8ecef; border-bottom: 1px solid ' + BORDER_SOFT + '; font-size: 13px; line-height: 1.35; color: ' + TEXT_MUTED + '; }',
     '.fw-crumbs.is-visible { display: flex; }',
@@ -551,7 +613,7 @@
     '}',
     /* печать: только карточка, крупная планировка */
     '@media print {',
-    '  .fw-view--facade, .fw-view--floor, .fw-explore-layer, .fw-crumbs { display: none !important; }',
+    '  .fw-view--facade, .fw-view--chessboard, .fw-view--floor, .fw-explore-layer, .fw-crumbs, .fw-mode-bar { display: none !important; }',
     '  .fw-root { background: #fff !important; }',
     '  .fw-root.is-view-card .fw-view--card { display: block !important; }',
     '  .fw-root.is-view-card.is-mobile-ui .fw-view--card { display: none !important; }',
@@ -678,12 +740,23 @@
     this._onKeyDown = this._onKeyDown.bind(this);
     this._ro = null;
 
-    // Stage 3: навигация facade | floor | card
+    // Stage 3–5: навигация facade | chessboard | floor | card
     this.currentView = 'facade';
     this._navContext = {};
     this._cardData = null;
     this._cardTab = 'layout';
     this._cardHighlightId = 0;
+    this._chessboardEnabled = !(options.chessboard && options.chessboard.enabled === false);
+    this._chessSection = 0;
+    this._chessData = null;
+    this._chessRoomFilter = { 1: true, 2: true, 3: true, 4: true };
+    this._chessStatusColors = Object.assign({
+      free: CHESS_FREE,
+      reserved: CHESS_RESERVED,
+      sold: CHESS_SOLD,
+      filteredOut: CHESS_FILTERED
+    }, (options.chessboardStatusColors || (options.chessboard && options.chessboard.statusColors) || {}));
+    this._defaultVisualMode = (options.defaultVisualMode === 'chessboard') ? 'chessboard' : 'facade';
 
     // Поэтажный план
     this.planOpen = false;
@@ -704,6 +777,7 @@
     this._planHoverKey = null;
     this._onPlanKeyDown = this._onPlanKeyDown.bind(this);
     this._onNavKeyDown = this._onNavKeyDown.bind(this);
+    this._chessEls = {};
     this._planEls = {};
     this._cardEls = {};
 
@@ -855,6 +929,40 @@
     root.insertBefore(crumbs, body);
     this._els.crumbs = crumbs;
 
+    if (this._chessboardEnabled) {
+      var modeBar = document.createElement('div');
+      modeBar.className = 'fw-mode-bar';
+      modeBar.setAttribute('role', 'tablist');
+      modeBar.setAttribute('aria-label', 'Режим просмотра');
+      var btnVisual = document.createElement('button');
+      btnVisual.type = 'button';
+      btnVisual.className = 'fw-mode-btn is-active';
+      btnVisual.setAttribute('role', 'tab');
+      btnVisual.setAttribute('aria-selected', 'true');
+      btnVisual.dataset.mode = 'facade';
+      btnVisual.textContent = this.locale.visual || 'Визуально';
+      var btnPlan = document.createElement('button');
+      btnPlan.type = 'button';
+      btnPlan.className = 'fw-mode-btn';
+      btnPlan.setAttribute('role', 'tab');
+      btnPlan.setAttribute('aria-selected', 'false');
+      btnPlan.dataset.mode = 'chessboard';
+      btnPlan.textContent = this.locale.onPlan || 'На плане';
+      modeBar.appendChild(btnVisual);
+      modeBar.appendChild(btnPlan);
+      body.appendChild(modeBar);
+      this._els.modeBar = modeBar;
+      this._els.modeBtnVisual = btnVisual;
+      this._els.modeBtnPlan = btnPlan;
+      modeBar.addEventListener('click', function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest('.fw-mode-btn') : null;
+        if (!btn || !modeBar.contains(btn)) return;
+        var mode = btn.dataset.mode;
+        if (mode === 'chessboard') self._showChessboard();
+        else self._showFacadeMode();
+      });
+    }
+
     var facadeView = document.createElement('div');
     facadeView.className = 'fw-view fw-view--facade';
     body.appendChild(facadeView);
@@ -874,6 +982,12 @@
     tooltip.setAttribute('aria-hidden', 'true');
     viewport.appendChild(tooltip);
     this._els.tooltip = tooltip;
+
+    var chessView = document.createElement('div');
+    chessView.className = 'fw-view fw-view--chessboard';
+    body.appendChild(chessView);
+    this._els.chessboardView = chessView;
+    this._buildChessboardShell(chessView);
 
     var floorView = document.createElement('div');
     floorView.className = 'fw-view fw-view--floor';
@@ -959,6 +1073,9 @@
     this._updateBreadcrumbs();
     this._bindUrlState();
     this._applyUrlStateOnLoad();
+    if (this._chessboardEnabled && this._defaultVisualMode === 'chessboard' && !parseFwHash(location.hash)) {
+      this._showChessboard();
+    }
   };
 
   FacadeWidgetInstance.prototype._buildStage = function (storeEls) {
@@ -1277,14 +1394,377 @@
   };
 
   /* ------------------------------------------------------------------ */
-  /* Stage 3–4: навигация + fade + крошки + hash + план + карточка       */
+  /* Stage 3–5: навигация + fade + крошки + hash + план + карточка       */
   /* ------------------------------------------------------------------ */
 
   FacadeWidgetInstance.prototype._viewEl = function (view) {
     if (view === 'facade') return this._els.facadeView;
+    if (view === 'chessboard') return this._els.chessboardView;
     if (view === 'floor') return this._els.floorView;
     if (view === 'card') return this._els.cardView;
     return null;
+  };
+
+  FacadeWidgetInstance.prototype._buildChessboardShell = function (parent) {
+    var wrap = document.createElement('div');
+    wrap.className = 'fw-chess';
+    wrap.style.position = 'relative';
+
+    var main = document.createElement('div');
+    main.className = 'fw-chess-main';
+
+    var title = document.createElement('h2');
+    title.className = 'fw-chess-title';
+    title.textContent = this.locale.chooseResidence || 'Выбор резиденции';
+    main.appendChild(title);
+
+    var sections = document.createElement('div');
+    sections.className = 'fw-chess-sections';
+    main.appendChild(sections);
+
+    var filter = document.createElement('div');
+    filter.className = 'fw-chess-filter';
+    main.appendChild(filter);
+
+    var scroll = document.createElement('div');
+    scroll.className = 'fw-chess-scroll';
+    main.appendChild(scroll);
+
+    var side = document.createElement('aside');
+    side.className = 'fw-chess-side';
+    var sideTitle = document.createElement('div');
+    sideTitle.className = 'fw-chess-side-title';
+    side.appendChild(sideTitle);
+    var visual = document.createElement('img');
+    visual.className = 'fw-chess-visual';
+    visual.alt = '';
+    side.appendChild(visual);
+
+    wrap.appendChild(main);
+    wrap.appendChild(side);
+
+    var tip = document.createElement('div');
+    tip.className = 'fw-chess-tip';
+    tip.setAttribute('aria-hidden', 'true');
+    wrap.appendChild(tip);
+
+    parent.appendChild(wrap);
+    this._chessEls = {
+      wrap: wrap,
+      main: main,
+      title: title,
+      sections: sections,
+      filter: filter,
+      scroll: scroll,
+      side: side,
+      sideTitle: sideTitle,
+      visual: visual,
+      tip: tip
+    };
+  };
+
+  FacadeWidgetInstance.prototype._chessboardApiUrl = function (section) {
+    var base = this.options.apiBase || detectApiBase();
+    if (!base) return '';
+    var q = 'act=chessboard_data&home_id=' + encodeURIComponent(this.options.homeId) +
+      '&section=' + encodeURIComponent(section || 0);
+    if (/[?&]ctr=/.test(base)) {
+      return base + '&' + q;
+    }
+    var join = base.indexOf('?') >= 0 ? '&' : '?';
+    return base + join + 'ctr=facades&' + q;
+  };
+
+  FacadeWidgetInstance.prototype._syncModeBar = function () {
+    var visual = this._els.modeBtnVisual;
+    var plan = this._els.modeBtnPlan;
+    if (!visual || !plan) return;
+    var isChess = this.currentView === 'chessboard';
+    visual.classList.toggle('is-active', !isChess);
+    plan.classList.toggle('is-active', isChess);
+    visual.setAttribute('aria-selected', isChess ? 'false' : 'true');
+    plan.setAttribute('aria-selected', isChess ? 'true' : 'false');
+  };
+
+  FacadeWidgetInstance.prototype._showFacadeMode = function () {
+    var self = this;
+    if (this.destroyed) return;
+    if (this.currentView === 'facade') {
+      this._syncModeBar();
+      return;
+    }
+    this._hideChessTip();
+    this._transitionTo('facade', function () {
+      self._navContext = Object.assign({}, self._navContext, { fromChessboard: false });
+    });
+    this._syncModeBar();
+    this._resumeRevealHighlight();
+  };
+
+  FacadeWidgetInstance.prototype._showChessboard = function (section) {
+    var self = this;
+    if (this.destroyed || !this._chessboardEnabled) return;
+    if (this.exploring) this._exitExplore();
+    this._applyScrollRevealIndex(-1);
+    var sec = section || this._chessSection || (this.data && this.data.sections && this.data.sections[0] && this.data.sections[0].id) || 1;
+    this._chessSection = sec;
+    this._navPush('chessboard', { section: sec, fromChessboard: true, floor: null, apartmentNum: null });
+    this._syncModeBar();
+    this._loadChessboard(sec);
+  };
+
+  FacadeWidgetInstance.prototype._loadChessboard = function (section) {
+    var self = this;
+    var els = this._chessEls;
+    if (!els || !els.scroll) return Promise.resolve(null);
+    els.scroll.innerHTML = '<div class="fw-msg is-loading">' + this.locale.loading + '</div>';
+    this._hideChessTip();
+    var url = this._chessboardApiUrl(section);
+    if (!url) {
+      els.scroll.innerHTML = '<div class="fw-msg is-error">' + this.locale.error + '</div>';
+      return Promise.resolve(null);
+    }
+    return fetch(url, { credentials: 'omit', cache: 'no-cache' }).then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function (json) {
+      if (self.destroyed || self.currentView !== 'chessboard') return null;
+      if (!json || json.success === false) {
+        els.scroll.innerHTML = '<div class="fw-msg is-error">' + ((json && json.message) || self.locale.error) + '</div>';
+        return null;
+      }
+      self._chessData = json;
+      self._chessSection = (json.section && json.section.id) || section;
+      if (json.statusColors) {
+        self._chessStatusColors = Object.assign({}, self._chessStatusColors, json.statusColors);
+        self._applyHighlightCssVars();
+      }
+      self._renderChessboard(json);
+      self._writeUrlState();
+      return json;
+    }).catch(function (err) {
+      if (self.destroyed) return null;
+      els.scroll.innerHTML = '<div class="fw-msg is-error">' + self.locale.error + (err && err.message ? ' (' + err.message + ')' : '') + '</div>';
+      return null;
+    });
+  };
+
+  FacadeWidgetInstance.prototype._renderChessboard = function (data) {
+    var self = this;
+    var els = this._chessEls;
+    if (!els) return;
+
+    var caption = (data.section && data.section.caption) || '';
+    els.sideTitle.textContent = (this.locale.tower || 'Башня') + (caption ? ' «' + caption + '»' : '');
+    if (data.visualUrl) {
+      els.visual.src = data.visualUrl;
+      els.visual.style.display = '';
+    } else {
+      els.visual.removeAttribute('src');
+      els.visual.style.display = 'none';
+    }
+
+    els.sections.innerHTML = '';
+    (data.sections || []).forEach(function (sec, idx) {
+      if (idx > 0) {
+        var sep = document.createElement('span');
+        sep.textContent = '|';
+        sep.style.opacity = '0.35';
+        els.sections.appendChild(sep);
+      }
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'fw-chess-sec' + ((sec.id === self._chessSection) ? ' is-active' : '');
+      btn.textContent = (self.locale.tower || 'Башня') + ' «' + (sec.caption || sec.id) + '»';
+      btn.addEventListener('click', function () {
+        if (sec.id === self._chessSection) return;
+        self._chessSection = sec.id;
+        self._navContext.section = sec.id;
+        self._loadChessboard(sec.id);
+      });
+      els.sections.appendChild(btn);
+    });
+
+    els.filter.innerHTML = '';
+    var flabel = document.createElement('span');
+    flabel.className = 'fw-chess-filter__label';
+    flabel.textContent = this.locale.showResidences || 'Показать резиденции:';
+    els.filter.appendChild(flabel);
+    [1, 2, 3, 4].forEach(function (n) {
+      var lab = document.createElement('label');
+      lab.className = 'fw-chess-chk';
+      var inp = document.createElement('input');
+      inp.type = 'checkbox';
+      inp.checked = !!self._chessRoomFilter[n];
+      inp.addEventListener('change', function () {
+        self._chessRoomFilter[n] = !!inp.checked;
+        self._applyChessRoomFilter();
+      });
+      var span = document.createElement('span');
+      span.textContent = n + 'K';
+      lab.appendChild(inp);
+      lab.appendChild(span);
+      els.filter.appendChild(lab);
+    });
+
+    els.scroll.innerHTML = '';
+    var table = document.createElement('table');
+    table.className = 'fw-chess-table';
+    var tbody = document.createElement('tbody');
+    (data.rows || []).forEach(function (row) {
+      var tr = document.createElement('tr');
+      var tdFloor = document.createElement('td');
+      tdFloor.className = 'fw-chess-floor';
+      tdFloor.textContent = String(row.floor);
+      tr.appendChild(tdFloor);
+      (row.cells || []).forEach(function (cell) {
+        var td = document.createElement('td');
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'fw-chess-cell';
+        if (cell.empty) {
+          btn.classList.add('is-empty');
+          btn.disabled = true;
+          btn.tabIndex = -1;
+          btn.setAttribute('aria-hidden', 'true');
+        } else {
+          btn.dataset.statusKey = cell.statusKey || 'free';
+          btn.dataset.apartmentNum = String(cell.apartmentNum || '');
+          btn.dataset.apartamentId = String(cell.apartamentId || '');
+          btn.dataset.rooms = String(cell.rooms || '');
+          btn.dataset.area = cell.area != null ? String(cell.area) : '';
+          btn.dataset.floor = String(row.floor);
+          btn.dataset.section = String(self._chessSection);
+          btn.dataset.statusLabel = cell.statusLabel || '';
+          btn.dataset.imageUrl = cell.imageUrl || '';
+          btn.dataset.label = cell.label || (cell.rooms ? cell.rooms + 'K' : '');
+          btn.textContent = btn.dataset.label || '';
+          btn.setAttribute('aria-label', '№' + cell.apartmentNum + ' ' + (cell.statusLabel || ''));
+        }
+        td.appendChild(btn);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    els.scroll.appendChild(table);
+
+    if (!els._bound) {
+      els._bound = true;
+      els.scroll.addEventListener('pointerover', function (ev) {
+        if (!isDesktopUi()) return;
+        var cell = ev.target && ev.target.closest ? ev.target.closest('.fw-chess-cell') : null;
+        if (!cell || !els.scroll.contains(cell) || cell.classList.contains('is-empty') || cell.classList.contains('is-filtered-out')) {
+          self._hideChessTip();
+          return;
+        }
+        self._showChessTip(cell, ev);
+      });
+      els.scroll.addEventListener('pointerout', function (ev) {
+        var related = ev.relatedTarget;
+        if (related && els.scroll.contains(related) && related.closest && related.closest('.fw-chess-cell')) return;
+        self._hideChessTip();
+      });
+      els.scroll.addEventListener('click', function (ev) {
+        var cell = ev.target && ev.target.closest ? ev.target.closest('.fw-chess-cell') : null;
+        if (!cell || !els.scroll.contains(cell)) return;
+        if (cell.classList.contains('is-empty') || cell.classList.contains('is-filtered-out')) return;
+        self._fireChessCellClick(cell);
+      });
+    }
+
+    this._applyChessRoomFilter();
+  };
+
+  FacadeWidgetInstance.prototype._applyChessRoomFilter = function () {
+    var els = this._chessEls;
+    if (!els || !els.scroll) return;
+    var filter = this._chessRoomFilter;
+    var nodes = els.scroll.querySelectorAll('.fw-chess-cell:not(.is-empty)');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var rooms = parseInt(el.dataset.rooms, 10) || 0;
+      var active = rooms >= 1 && rooms <= 4 ? !!filter[rooms] : true;
+      el.classList.toggle('is-filtered-out', !active);
+    }
+    this._hideChessTip();
+  };
+
+  FacadeWidgetInstance.prototype._showChessTip = function (cell, ev) {
+    var tip = this._chessEls && this._chessEls.tip;
+    var wrap = this._chessEls && this._chessEls.wrap;
+    if (!tip || !wrap || !cell) return;
+    var key = cell.dataset.statusKey || 'free';
+    tip.className = 'fw-chess-tip is-visible';
+    tip.dataset.statusKey = key;
+    tip.innerHTML = '';
+    if (key === 'reserved' || key === 'sold') {
+      tip.classList.add('is-chip');
+      tip.textContent = cell.dataset.statusLabel
+        || (key === 'reserved' ? (this.locale.statusReserved || 'Бронь') : (this.locale.statusSold || 'Продана'));
+    } else {
+      tip.classList.add('is-preview');
+      var code = document.createElement('span');
+      code.className = 'fw-chess-tip__code';
+      code.textContent = '№' + (cell.dataset.apartmentNum || '');
+      var spec = document.createElement('span');
+      spec.className = 'fw-chess-tip__spec';
+      var parts = [];
+      if (cell.dataset.label) parts.push(cell.dataset.label);
+      if (cell.dataset.area) parts.push(formatAreaRu(cell.dataset.area) + ' м²');
+      spec.textContent = parts.join(' | ');
+      tip.appendChild(code);
+      if (spec.textContent) tip.appendChild(spec);
+      if (cell.dataset.imageUrl) {
+        var img = document.createElement('img');
+        img.className = 'fw-chess-tip__img';
+        img.src = cell.dataset.imageUrl;
+        img.alt = '';
+        tip.appendChild(img);
+      }
+    }
+    var rect = wrap.getBoundingClientRect();
+    var x = 0;
+    var y = 0;
+    if (cell.getBoundingClientRect) {
+      var cr = cell.getBoundingClientRect();
+      x = cr.left + cr.width / 2 - rect.left;
+      y = cr.top - rect.top;
+    } else if (ev) {
+      x = ev.clientX - rect.left;
+      y = ev.clientY - rect.top;
+    }
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  };
+
+  FacadeWidgetInstance.prototype._hideChessTip = function () {
+    var tip = this._chessEls && this._chessEls.tip;
+    if (!tip) return;
+    tip.classList.remove('is-visible');
+    tip.innerHTML = '';
+  };
+
+  FacadeWidgetInstance.prototype._fireChessCellClick = function (cell) {
+    this._hideChessTip();
+    var payload = {
+      homeId: this.options.homeId,
+      section: parseInt(cell.dataset.section, 10) || this._chessSection || 1,
+      floor: parseInt(cell.dataset.floor, 10) || 0,
+      apartamentId: parseInt(cell.dataset.apartamentId, 10) || 0,
+      apartmentNum: parseInt(cell.dataset.apartmentNum, 10) || 0,
+      displayCode: cell.dataset.apartmentNum || '',
+      rooms: cell.dataset.rooms || '',
+      area: cell.dataset.area || '',
+      fromChessboard: true
+    };
+    if (typeof this.options.onApartmentClick === 'function') {
+      var result = this.options.onApartmentClick(payload);
+      if (result && result.preventDefault) return;
+    }
+    if (!payload.apartmentNum && !payload.apartamentId) return;
+    this._navContext.fromChessboard = true;
+    this._openApartmentCard(payload);
   };
 
   FacadeWidgetInstance.prototype._applyHighlightCssVars = function () {
@@ -1302,10 +1782,15 @@
     root.style.setProperty('--fw-apt-hl-color', a.color);
     root.style.setProperty('--fw-apt-hl-opacity', String(a.opacity));
     root.style.setProperty('--fw-apt-hover-opacity', String(a.hoverOpacity));
+    var c = this._chessStatusColors || {};
+    root.style.setProperty('--fw-chess-free', c.free || CHESS_FREE);
+    root.style.setProperty('--fw-chess-reserved', c.reserved || CHESS_RESERVED);
+    root.style.setProperty('--fw-chess-sold', c.sold || CHESS_SOLD);
+    root.style.setProperty('--fw-chess-filtered', c.filteredOut || CHESS_FILTERED);
   };
 
   FacadeWidgetInstance.prototype._clearViewFadeStyles = function () {
-    ['facadeView', 'floorView', 'cardView'].forEach(function (key) {
+    ['facadeView', 'chessboardView', 'floorView', 'cardView'].forEach(function (key) {
       var el = this._els[key];
       if (!el) return;
       el.classList.remove('is-fading-out', 'is-fading-in');
@@ -1325,10 +1810,10 @@
     this.currentView = nextView;
     if (nextView === 'floor') this.planOpen = true;
     if (nextView === 'card') this.planOpen = false;
-    if (nextView === 'facade') this.planOpen = false;
+    if (nextView === 'facade' || nextView === 'chessboard') this.planOpen = false;
 
     document.removeEventListener('keydown', this._onNavKeyDown);
-    if (nextView !== 'facade') {
+    if (nextView !== 'facade' && nextView !== 'chessboard') {
       document.addEventListener('keydown', this._onNavKeyDown);
     }
 
@@ -1394,7 +1879,7 @@
     return {
       view: this.currentView,
       homeId: this.options.homeId,
-      section: ctx.section || (this._planData && this._planData.section) || null,
+      section: ctx.section || this._chessSection || (this._planData && this._planData.section) || null,
       floor: ctx.floor || (this._planData && this._planData.floor) || null,
       apartmentNum: ctx.apartmentNum || card.apartmentNum || null,
       apartamentId: ctx.apartamentId || card.apartamentId || null,
@@ -1408,7 +1893,7 @@
     nav.innerHTML = '';
     var cfg = this._breadcrumbs;
     var view = this.currentView;
-    if (view === 'facade') {
+    if (view === 'facade' || view === 'chessboard') {
       nav.classList.remove('is-visible');
       return;
     }
@@ -1515,12 +2000,24 @@
 
   FacadeWidgetInstance.prototype._crumbGoHome = function () {
     if (this.currentView === 'facade') return;
+    if (this.currentView === 'chessboard') {
+      this._showFacadeMode();
+      return;
+    }
+    if (this._navContext && this._navContext.fromChessboard) {
+      this._showChessboard(this._navContext.section || this._chessSection);
+      return;
+    }
     this._closeFloorPlan(false);
   };
 
   FacadeWidgetInstance.prototype._crumbGoFloor = function () {
     if (this.currentView !== 'card') return;
     var self = this;
+    if (this._navContext && this._navContext.fromChessboard) {
+      this._showChessboard(this._navContext.section || this._chessSection);
+      return;
+    }
     this._transitionTo('floor', function () {
       self._cardData = null;
       self.planOpen = true;
@@ -1532,6 +2029,7 @@
     if (!h || h === '#') return true;
     if (/^#fw=/.test(h)) return true;
     if (/^#\d+\.\d+/.test(h)) return true;
+    if (/^#c\.\d+/i.test(h)) return true;
     return false;
   };
 
@@ -1540,7 +2038,10 @@
     if (!this._hostHashIsOurs()) return;
     var state = this.getState();
     var value = '';
-    if (this.currentView === 'floor' || this.currentView === 'card') {
+    if (this.currentView === 'chessboard') {
+      var sec = state.section || this._chessSection;
+      if (sec) value = 'c.' + String(sec);
+    } else if (this.currentView === 'floor' || this.currentView === 'card') {
       value = buildFwHashValue({
         section: state.section,
         floor: state.floor,
@@ -1576,13 +2077,19 @@
     if (!this._urlState || this.destroyed) return;
     var parsed = parseFwHash(location.hash);
     if (!parsed) {
-      if (this.currentView !== 'facade' && this._hostHashIsOurs()) {
+      if (this.currentView !== 'facade' && this.currentView !== 'chessboard' && this._hostHashIsOurs()) {
         this._crumbGoHome();
       }
       return;
     }
     this._urlApplying = true;
     var self = this;
+    if (parsed.mode === 'chessboard') {
+      this._showChessboard(parsed.section);
+      this._urlApplying = false;
+      this._writeUrlState();
+      return;
+    }
     var payload = { section: parsed.section, floor: parsed.floor };
     Promise.resolve(this._openFloorPlan(payload)).then(function () {
       if (self.destroyed) return;
@@ -1614,9 +2121,10 @@
       if (this.exploring) this._exitExplore();
     }
     root.classList.toggle('is-desktop', isDesktopUi());
-    root.classList.remove('is-view-facade', 'is-view-floor', 'is-view-card');
+    root.classList.remove('is-view-facade', 'is-view-chessboard', 'is-view-floor', 'is-view-card');
     root.classList.add('is-view-' + this.currentView);
     root.classList.toggle('is-plan-open', this.currentView === 'floor' || this.currentView === 'card');
+    this._syncModeBar();
   };
 
   FacadeWidgetInstance.prototype._reparentPlanLayer = function () {
@@ -2283,6 +2791,12 @@
     var shell = this._activeCardShell();
     if (!shell) return;
 
+    if (!(payload && payload.fromChessboard) && !(this._navContext && this._navContext.fromChessboard && this.currentView === 'chessboard')) {
+      if (this.currentView === 'floor' || this.currentView === 'facade') {
+        this._navContext.fromChessboard = false;
+      }
+    }
+
     shell.innerHTML = '<div class="fw-msg is-loading">' + this.locale.loading + '</div>';
     this._navPush('card', payload);
     this._layoutCardView();
@@ -2307,7 +2821,10 @@
       self._navContext = Object.assign({}, self._navContext, {
         apartmentNum: json.apartmentNum || payload.apartmentNum,
         apartamentId: json.apartamentId || payload.apartamentId,
-        displayCode: json.displayCode || payload.displayCode || ''
+        displayCode: json.displayCode || payload.displayCode || '',
+        fromChessboard: !!(payload.fromChessboard || self._navContext.fromChessboard),
+        section: payload.section || self._navContext.section,
+        floor: payload.floor || self._navContext.floor
       });
       self._renderApartmentCard(json, payload);
       self._updateBreadcrumbs();
@@ -3397,6 +3914,7 @@
     if (options.scrollRevealSpeed == null) options.scrollRevealSpeed = 1;
     if (options.exploreFullscreen == null) options.exploreFullscreen = true;
     if (options.floorPlan == null) options.floorPlan = { enabled: true };
+    if (options.chessboard == null) options.chessboard = { enabled: true };
     if (options.floorPlanZoom == null && options.planZoom == null) {
       options.floorPlanZoom = { desktop: false, mobile: true };
     }
@@ -3407,7 +3925,7 @@
 
   var api = {
     mount: mount,
-    version: '1.2.26'
+    version: '1.3.0'
   };
 
   global.FacadeWidget = api;

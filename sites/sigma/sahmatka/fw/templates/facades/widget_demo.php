@@ -69,13 +69,13 @@ if ($api_base === '' || $script_src === '') {
   <pre id="fw_demo_snippet_full"></pre>
 </section>
 
-<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=1.2.26"></script>
+<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=1.3.0"></script>
 <script>
 (function () {
   var SCRIPT_SRC = <?= json_encode($script_src, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var API_BASE = <?= json_encode($api_base, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var HOME_ID = <?= (int) $home_id ?>;
-  var VER = (window.FacadeWidget && FacadeWidget.version) || '1.2.26';
+  var VER = (window.FacadeWidget && FacadeWidget.version) || '1.3.0';
   var MAX_HEIGHT_DEFAULT = 'Math.round(window.innerWidth * 2)';
 
   FacadeWidget.mount({
@@ -117,6 +117,7 @@ if ($api_base === '' || $script_src === '') {
     '  <span class="tok-key">scrollRevealSpeed</span><span class="tok-punct">:</span> <span class="tok-num">1</span><span class="tok-punct">,</span>                <span class="tok-comment">// множитель скорости reveal</span>',
     '  <span class="tok-key">exploreFullscreen</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>            <span class="tok-comment">// pan/zoom фасада (мобилка)</span>',
     '  <span class="tok-key">floorPlan</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">enabled</span><span class="tok-punct">:</span> <span class="tok-key">true</span> <span class="tok-punct">},</span>     <span class="tok-comment">// клик по этажу → план</span>',
+    '  <span class="tok-key">chessboard</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">enabled</span><span class="tok-punct">:</span> <span class="tok-key">true</span> <span class="tok-punct">},</span>    <span class="tok-comment">// toggle «На плане» → шахматка</span>',
     '  <span class="tok-key">floorPlanZoom</span><span class="tok-punct">:</span> <span class="tok-punct">{</span> <span class="tok-key">desktop</span><span class="tok-punct">:</span> <span class="tok-key">false</span><span class="tok-punct">,</span> <span class="tok-key">mobile</span><span class="tok-punct">:</span> <span class="tok-key">true</span> <span class="tok-punct">},</span>',
     '',
     '  <span class="tok-key">facadeHighlight</span><span class="tok-punct">:</span> <span class="tok-punct">{</span>',
@@ -125,6 +126,9 @@ if ($api_base === '' || $script_src === '') {
     '    <span class="tok-key">idleOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0</span><span class="tok-punct">,</span>                  <span class="tok-comment">// в покое — не видно</span>',
     '    <span class="tok-key">revealOpacity</span><span class="tok-punct">:</span> <span class="tok-num">0.65</span>              <span class="tok-comment">// scrollReveal</span>',
     '  <span class="tok-punct">},</span>  <span class="tok-comment">// обводка: тот же color, opacity×0.7, 2px — автоматически</span>',
+    '  <span class="tok-key">chessboardStatusColors</span><span class="tok-punct">:</span> <span class="tok-punct">{</span>',
+    '    <span class="tok-key">free</span><span class="tok-punct">:</span> <span class="tok-str">\'#92b692\'</span><span class="tok-punct">,</span> <span class="tok-key">reserved</span><span class="tok-punct">:</span> <span class="tok-str">\'#daa152\'</span><span class="tok-punct">,</span> <span class="tok-key">sold</span><span class="tok-punct">:</span> <span class="tok-str">\'#d3d3d3\'</span>',
+    '  <span class="tok-punct">},</span>',
     '  <span class="tok-key">apartmentHighlight</span><span class="tok-punct">:</span> <span class="tok-punct">{</span>',
     '    <span class="tok-key">color</span><span class="tok-punct">:</span> <span class="tok-str">\'#76939D\'</span><span class="tok-punct">,</span>               <span class="tok-comment">// accent палитры</span>',
     '    <span class="tok-key">opacity</span><span class="tok-punct">:</span> <span class="tok-num">0.28</span><span class="tok-punct">,</span>                   <span class="tok-comment">// вкладка «На этаже»</span>',
