@@ -6,7 +6,8 @@ $home_id = $data['home_id'];
 $apartment_num = $data['apartment_num'];
 $apartments = $data['apartments'] ?? (int)($_GET['apartments'] ?? 0);
 
-$curr_apart_status = isset($apartment['status']) ? (int)$apartment['status'] : 0;
+// Актуальный статус для сводной/шахматки — status2; legacy status только fallback
+$curr_apart_status = (int)($apartment['status2'] ?? $apartment['status'] ?? 0);
 $o1 = (int)($apartment['window_orient_1'] ?? 0);
 $o2 = (int)($apartment['window_orient_2'] ?? 0);
 $window_orient = $GLOBALS['window_orient'] ?? [];

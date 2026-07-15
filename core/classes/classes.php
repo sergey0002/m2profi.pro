@@ -269,31 +269,46 @@ $user_id = isset($_SESSION['sh_id']) ? (int)$_SESSION['sh_id'] : 0;
 	function up_broni($broni_id, $status = '', $comment = '')
 {
     // 1. Текущий пользователь и его права
-    $current_user_id   = $_SESSION['sh_id'];
-    $is_admin          = (check_access('admin') || $_SESSION['sh_login'] == 'demo_admin'  || $_SESSION['sh_login'] == 'em_nsv');
+    $current_user_id   = isset($_SESSION['sh_id']) ? (int)$_SESSION['sh_id'] : 0;
+    $is_admin          = (check_access('admin') || ($_SESSION['sh_login'] ?? '') == 'demo_admin'  || ($_SESSION['sh_login'] ?? '') == 'em_nsv');
     $is_agency_admin   = !empty($_SESSION['adm_caption']);
 
     // 2. Получаем старую бронь
     $data = $this->sql->get_for_key('broni', 'broni_id', $broni_id);
     if (!$data) {
         $this->mess('Ошибка: бронь не найдена');
-        return;
+        add_log("up_broni: бронь не найдена broni_id=$broni_id");
+        return 0;
     }
 
-    // === ДОБАВЬ: подтягиваем актуальную цену ===
-    $apartament_id = $data['apartament_id'];
-    $apartment = $this->sql->get_for_key('apartaments', 'apartament_id', $apartament_id);
-    $data['price'] = isset($apartment['price']) ? $apartment['price'] : 0;
-    // === /ДОБАВЬ ===
+    // Подтягиваем актуальную цену / гарантируем apartament_id
+    $apartament_id = (int)($data['apartament_id'] ?? 0);
+    $apartment = null;
+    if ($apartament_id > 0) {
+        $apartment = $this->sql->get_for_key('apartaments', 'apartament_id', $apartament_id);
+    }
+    if (!$apartment && !empty($data['home_id']) && (isset($data['apartments_num']) || isset($data['apartments_num1']))) {
+        $anum = $data['apartments_num'] ?? $data['apartments_num1'];
+        $apartment = $this->sql->get_arr(
+            'SELECT * FROM apartaments WHERE home_id="'.(int)$data['home_id'].'" AND apartment_num="'.addslashes($anum).'" ',
+            1
+        );
+        if ($apartment) {
+            $apartament_id = (int)$apartment['apartament_id'];
+            $data['apartament_id'] = $apartament_id;
+        }
+    }
+    $data['price'] = isset($apartment['price']) ? $apartment['price'] : ($data['price'] ?? 0);
 
     // 3. Проверка прав доступа
     $is_owner = ($data['user_id'] == $current_user_id);
     $user_info = $this->sql->get_for_key('users', 'id', $data['user_id']);
-    $is_same_agency = isset($user_info['agency_id']) && ($user_info['agency_id'] == $_SESSION['agency_id']);
+    $is_same_agency = isset($user_info['agency_id']) && ($user_info['agency_id'] == ($_SESSION['agency_id'] ?? null));
 
     if (!$is_admin && !$is_owner && !($is_agency_admin && $is_same_agency)) {
         $this->mess('Ошибка: у вас нет прав на управление этой бронью');
-        return;
+        add_log("up_broni: нет прав broni_id=$broni_id user=$current_user_id");
+        return 0;
     }
 
     // 4. Проверка давности продлеваемой брони (для НЕ админов)
@@ -301,22 +316,24 @@ $user_id = isset($_SESSION['sh_id']) ? (int)$_SESSION['sh_id'] : 0;
     $max_days = 15;
     if (!$is_admin && time() - $old_date > 60 * 60 * 24 * $max_days) {
         $this->mess("Ошибка: бронь устарела (более $max_days дней)");
-        return;
+        return 0;
     }
 
-    // 5. Обновляем статус
-    if (!empty($status)) {
-        $data['status'] = $status;
+    // 5. Обновляем статус (!empty ломал status=0 — используем явную проверку)
+    if ($status !== '' && $status !== null) {
+        $data['status'] = (int)$status;
     }
+    $new_status = (int)$data['status'];
 
     // 6. Подготовка новой записи брони
     $new_date = date("Y-m-d H:i:s");
     unset($data['broni_id']);
     $data['date'] = $new_date;
     $data['comment'] = $comment;
+    $data['apartament_id'] = $apartament_id;
 
-    // ✅ Меняем user_id только если это автоматическое системное удаление (например, из cron)
-    if ($status == 2) {
+    // Меняем user_id при снятии (cron/admin cancel)
+    if ($new_status === 2 && $current_user_id > 0) {
         $data['user_id'] = $current_user_id;
     }
 
@@ -331,27 +348,36 @@ $user_id = isset($_SESSION['sh_id']) ? (int)$_SESSION['sh_id'] : 0;
 
     // 8. Вставляем новую запись брони
     $new_broni_id = $this->sql->insert('broni', $data);
-
-    // 9. Обновляем состояние квартиры
-    if ($new_broni_id) {
-        $this->sql->sql("
-            UPDATE `apartaments` SET
-                `status` = {$data['status']},
-                `status2` = {$data['status']},
-                `status_broni_id` = {$new_broni_id},
-                `status_broni_date` = NOW()
-            WHERE `apartament_id` = {$data['apartament_id']}
-        ");
+    if (!$new_broni_id) {
+        $this->mess('Ошибка: не удалось создать запись в broni');
+        add_log("up_broni: insert broni failed from broni_id=$broni_id");
+        return 0;
     }
 
+    // 9. Обновляем состояние квартиры — оба поля status и status2 (сводная считает status2)
+    if ($apartament_id > 0) {
+        $this->sql->update_for_key('apartaments', 'apartament_id', $apartament_id, [
+            'status'            => $new_status,
+            'status2'           => $new_status,
+            'status_broni_id'   => $new_broni_id,
+            'status_broni_date' => $new_date,
+        ]);
+    } else {
+        add_log("up_broni: нет apartament_id, статус квартиры не обновлён (broni_id=$broni_id → $new_broni_id)");
+    }
+
+    add_log("up_broni: ok broni_id=$broni_id → $new_broni_id status=$new_status apartament_id=$apartament_id");
+
     // 10. Вывод сообщения
-    if ($data['status'] == 2) {
+    if ($new_status === 2) {
         $this->mess('Отмена брони успешно выполнена');
-    } elseif ($data['status'] == 4) {
+    } elseif ($new_status === 4) {
         $this->mess('Продление брони успешно выполнено');
     } else {
         $this->mess('Бронь обновлена');
     }
+
+    return (int)$new_broni_id;
 }
 
 

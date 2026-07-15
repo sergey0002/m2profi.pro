@@ -483,10 +483,28 @@ if (!empty($results_broni)) {
 
     // Если AUTO_REMOVE == true, вызываем up_broni()
     if ($AUTO_REMOVE) {
+        $ok = 0;
+        $fail = 0;
         foreach ($results_broni as $row) {
-            $sa->up_broni($row['broni_id'], 2, 'Автоматическое снятие просроченной брони');
+            $new_id = $sa->up_broni($row['broni_id'], 2, 'Автоматическое снятие просроченной брони');
+            if ($new_id) {
+                $ok++;
+                // Страховка: status и status2 должны быть 2 (сводная считает status2; форма админа — status)
+                $home_id = (int)$row['home_id'];
+                $anum = (int)$row['apartment_num'];
+                $sa->sql->sql("
+                    UPDATE apartaments
+                    SET status = 2, status2 = 2
+                    WHERE home_id = {$home_id}
+                      AND apartment_num = {$anum}
+                      AND status_broni_id = ".(int)$new_id."
+                ");
+            } else {
+                $fail++;
+                echo "⚠️ up_broni не применился к broni_id={$row['broni_id']} (дом {$row['home_id']}, кв. {$row['apartment_num']})\n";
+            }
         }
-        echo "✅ Применён метод up_broni() для всех просроченных броней. Статус изменён на 'Свободна'.\n";
+        echo "✅ Снято броней: {$ok}. Ошибок: {$fail}. Статус квартиры: status=status2=2 (свободна).\n";
     } else {
         echo "ℹ️ Режим просмотра: брони не были изменены. Для применения изменений установите \$AUTO_REMOVE = true.\n";
     }

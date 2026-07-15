@@ -12,6 +12,16 @@
 !sites/sigma/
 !sites/sigma/**
 
+# Local developer docs (override whitelist !sites/em/** and !sites/sigma/**)
+sites/em/.doc/
+sites/em/.doc/**
+sites/em/**/.doc/
+sites/em/**/.doc/**
+sites/sigma/.doc/
+sites/sigma/.doc/**
+sites/sigma/**/.doc/
+sites/sigma/**/.doc/**
+
 # Tenant oferta documents (server/local only)
 sites/*/oferta/
 
