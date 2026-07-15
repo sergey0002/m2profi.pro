@@ -639,7 +639,7 @@
       ? Math.max(0, options.fadeMs)
       : (typeof options.fadeDuration === 'number' ? Math.max(0, options.fadeDuration) : 280);
     this._breadcrumbs = normalizeBreadcrumbs(options.breadcrumbs);
-    this._urlState = options.urlState === true;
+    this._urlState = options.urlState !== false;
     this._facadeHighlight = normalizeHighlightOpts(options.facadeHighlight, {
       color: ACCENT,
       opacity: 0.45,
@@ -3111,7 +3111,10 @@
     }
 
     var maxHOpt = this.options.maxHeight;
-    var maxH = typeof maxHOpt === 'number' ? maxHOpt : Math.min(window.innerHeight * 0.9, 900);
+    // По умолчанию — как в демо: высокий потолок, чтобы фасад не обрезался по ширине 100%.
+    var maxH = typeof maxHOpt === 'number'
+      ? maxHOpt
+      : Math.round((typeof window !== 'undefined' ? window.innerWidth : 1200) * 2);
 
     // Ширина = контейнер; высота строго по пропорции картинки (без пустого поля снизу).
     var scale = vw / this._imgW;
@@ -3360,6 +3363,17 @@
     if (!options.homeId) {
       throw new Error('[FacadeWidget] homeId is required');
     }
+    // Дефолты = поведение демо (остальное нормализуется в конструкторе).
+    if (options.width == null) options.width = '100%';
+    if (options.fadeMs == null && options.fadeDuration == null) options.fadeMs = 280;
+    if (options.urlState == null) options.urlState = true;
+    if (options.scrollReveal == null) options.scrollReveal = true;
+    if (options.scrollRevealSpeed == null) options.scrollRevealSpeed = 1;
+    if (options.exploreFullscreen == null) options.exploreFullscreen = true;
+    if (options.floorPlan == null) options.floorPlan = { enabled: true };
+    if (options.floorPlanZoom == null && options.planZoom == null) {
+      options.floorPlanZoom = { desktop: false, mobile: true };
+    }
     var inst = new FacadeWidgetInstance(host, options);
     inst.mount();
     return inst;
@@ -3367,7 +3381,7 @@
 
   var api = {
     mount: mount,
-    version: '1.2.4'
+    version: '1.2.20'
   };
 
   global.FacadeWidget = api;
