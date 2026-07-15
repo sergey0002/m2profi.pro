@@ -33,7 +33,7 @@
     fio: 'ФИО',
     phone: 'Номер телефона для связи',
     message: 'Ваши вопросы и пожелания',
-    consent: 'Нажимая кнопку «Забронировать», вы подтверждаете согласие на обработку персональных данных.',
+    consent: 'Нажимая кнопку «Забронировать», вы подтверждаете свое согласие на обработку персональных данных и получение рекламных рассылок.',
     jk: 'Жилой комплекс',
     tower: 'Башня',
     floorLabel: 'Этаж',
@@ -277,8 +277,10 @@
     '.fw-poly.is-hover, .fw-poly.is-active, .fw-poly:focus-visible { fill: var(--fw-facade-hl-color, ' + ACCENT + ') !important; stroke: var(--fw-facade-hl-color, ' + ACCENT + ') !important; fill-opacity: var(--fw-facade-hl-opacity, 0.45); stroke-opacity: 1; stroke-width: 2.5; }',
     '.fw-poly.is-scroll-reveal { fill: var(--fw-facade-hl-color, ' + ACCENT + ') !important; stroke: var(--fw-facade-hl-color, ' + ACCENT + ') !important; fill-opacity: var(--fw-facade-reveal-opacity, 0.52); stroke-opacity: 1; stroke-width: 2.75; }',
     '@media (prefers-reduced-motion: reduce) { .fw-poly { transition: none; } }',
-    '.fw-tooltip { position: absolute; z-index: 5; pointer-events: none; max-width: min(240px, 80%); padding: 6px 10px; border-radius: 6px; background: rgba(20,20,20,0.88); color: #fff; font-size: 13px; line-height: 1.35; opacity: 0; transform: translate(-50%, -120%); transition: opacity 0.1s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+    /* тултип фасада — тот же glass-стиль, что у плана (макет) */
+    '.fw-tooltip { position: absolute; z-index: 5; pointer-events: none; max-width: min(260px, 85%); padding: 10px 16px; border-radius: 10px; background: rgba(32,32,36,0.72); color: #fff; font-size: 13px; font-weight: 600; line-height: 1.35; text-align: center; opacity: 0; transform: translate(-50%, -120%); transition: opacity 0.12s ease; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 4px 18px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06); }',
     '.fw-tooltip.is-visible { opacity: 1; }',
+    '@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .fw-tooltip { background: rgba(32,32,36,0.92); } }',
     '.fw-btn { appearance: none; border: 0; border-radius: 8px; background: rgba(255,255,255,0.95); color: #111; box-shadow: 0 1px 6px rgba(0,0,0,0.22); cursor: pointer; font: inherit; line-height: 1; margin: 0; padding: 0; }',
     '.fw-btn-close { position: absolute; top: 12px; right: 12px; z-index: 20; width: 40px; height: 40px; padding: 0; display: none; align-items: center; justify-content: center; }',
     '.fw-btn-close svg { display: block; width: 18px; height: 18px; }',
@@ -313,21 +315,27 @@
     '.fw-crumb.is-link:hover, .fw-crumb.is-link:focus-visible { color: ' + ACCENT_HOVER + '; outline: none; }',
     '.fw-crumb.is-current { color: ' + TEXT_MAIN + '; font-weight: 600; cursor: default; }',
     '.fw-crumb-sep { opacity: 0.4; user-select: none; }',
-    /* на плане этажа крошки стоят под «Назад» в стиле бывшего заголовка */
-    '.fw-plan-head .fw-crumbs { padding: 0; background: transparent; border: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #3d3d3d; line-height: 1.25; gap: 6px 10px; max-width: 100%; }',
-    '.fw-plan-head .fw-crumbs .fw-crumb { color: #3d3d3d; font-weight: 700; }',
-    '.fw-plan-head .fw-crumbs .fw-crumb.is-link { color: #3d3d3d; text-decoration: none; cursor: pointer; }',
+    /* на плане этажа крошки стоят под «Назад» в стиле заголовка макета «БАШНЯ …» */
+    '.fw-plan-head .fw-crumbs { padding: 0; background: transparent; border: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2c2c2c; line-height: 1.2; gap: 8px 12px; max-width: 100%; }',
+    '.fw-plan-head .fw-crumbs .fw-crumb { color: #2c2c2c; font-weight: 700; }',
+    '.fw-plan-head .fw-crumbs .fw-crumb.is-link { color: #2c2c2c; text-decoration: none; cursor: pointer; }',
     '.fw-plan-head .fw-crumbs .fw-crumb.is-link:hover, .fw-plan-head .fw-crumbs .fw-crumb.is-link:focus-visible { color: ' + ACCENT + '; }',
-    '.fw-plan-head .fw-crumbs .fw-crumb.is-current { color: #3d3d3d; font-weight: 700; }',
-    '.fw-plan-head .fw-crumbs .fw-crumb-sep { opacity: 0.45; font-weight: 700; }',
-    /* на карточке — под «Назад» в том же стиле заголовка */
-    '.fw-card-crumbs-host { margin: 4px 0 0; max-width: 100%; }',
-    '.fw-card-crumbs-host .fw-crumbs { padding: 0; background: transparent; border: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #3d3d3d; line-height: 1.25; gap: 6px 10px; max-width: 100%; }',
-    '.fw-card-crumbs-host .fw-crumbs .fw-crumb { color: #3d3d3d; font-weight: 700; }',
-    '.fw-card-crumbs-host .fw-crumbs .fw-crumb.is-link { color: #3d3d3d; text-decoration: none; cursor: pointer; }',
-    '.fw-card-crumbs-host .fw-crumbs .fw-crumb.is-link:hover, .fw-card-crumbs-host .fw-crumbs .fw-crumb.is-link:focus-visible { color: ' + ACCENT + '; }',
-    '.fw-card-crumbs-host .fw-crumbs .fw-crumb.is-current { color: #3d3d3d; font-weight: 700; }',
-    '.fw-card-crumbs-host .fw-crumbs .fw-crumb-sep { opacity: 0.45; font-weight: 700; }',
+    '.fw-plan-head .fw-crumbs .fw-crumb.is-current { color: #2c2c2c; font-weight: 700; }',
+    '.fw-plan-head .fw-crumbs .fw-crumb-sep { opacity: 0.4; font-weight: 700; }',
+    '@media (min-width: 900px) {',
+    '  .fw-plan-head .fw-crumbs { font-size: 28px; letter-spacing: 0.08em; }',
+    '}',
+    /* на карточке — крошки под «Назад» (на десктопе компактные; заголовок заявки отдельный) */
+    '.fw-card-crumbs-host { margin: 0; max-width: 100%; }',
+    '.fw-card-crumbs-host .fw-crumbs { padding: 0; background: transparent; border: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: ' + TEXT_MUTED + '; line-height: 1.35; gap: 4px 8px; max-width: 100%; }',
+    '.fw-card-crumbs-host .fw-crumbs .fw-crumb { color: ' + TEXT_MUTED + '; font-weight: 600; }',
+    '.fw-card-crumbs-host .fw-crumbs .fw-crumb.is-link { color: ' + ACCENT + '; text-decoration: none; cursor: pointer; }',
+    '.fw-card-crumbs-host .fw-crumbs .fw-crumb.is-link:hover, .fw-card-crumbs-host .fw-crumbs .fw-crumb.is-link:focus-visible { color: ' + ACCENT_HOVER + '; }',
+    '.fw-card-crumbs-host .fw-crumbs .fw-crumb.is-current { color: ' + TEXT_MAIN + '; font-weight: 700; }',
+    '.fw-card-crumbs-host .fw-crumbs .fw-crumb-sep { opacity: 0.45; font-weight: 600; }',
+    '@media (min-width: 900px) {',
+    '  .fw-card-crumbs-host { display: none; }',
+    '}',
     '.fw-root.is-mobile-ui.is-view-floor .fw-explore-stage-wrap { display: none !important; }',
     '.fw-root.is-mobile-ui.is-view-floor .fw-explore-plan-host { display: flex !important; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; height: 100%; }',
     '.fw-root.is-mobile-ui.is-view-floor .fw-explore-inner { background: #fff; }',
@@ -336,13 +344,20 @@
     '.fw-explore-plan-host { display: none; }',
     '.fw-explore-stage-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }',
     '.fw-explore-inner { display: flex; flex-direction: column; }',
-    /* поэтажный план — Stage 3 */
+    /* поэтажный план — Stage 3 / макет desktop */
     '.fw-plan-layer { display: none; flex-direction: column; background: #fff; color: ' + TEXT_MAIN + '; min-height: 0; width: 100%; }',
     '.fw-root.is-view-floor .fw-plan-layer, .fw-root.is-view-card .fw-plan-layer { display: flex; }',
-    '.fw-plan-head { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 16px 6px; background: #fff; }',
-    '.fw-plan-back { appearance: none; border: 0; background: #A8BEC6; color: #fff; border-radius: 999px; padding: 8px 16px; font: inherit; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
-    '.fw-plan-back:hover, .fw-plan-back:focus-visible { background: ' + ACCENT + '; }',
-    '.fw-plan-viewport { position: relative; flex: 0 0 auto; overflow: hidden; touch-action: none; min-height: 0; height: auto; background: #fff; padding: 0; }',
+    '.fw-plan-head { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding: 16px 16px 12px; background: #fff; }',
+    '.fw-plan-back { appearance: none; border: 1px solid rgba(118,147,157,0.35); background: #C5D6DC; color: #fff; border-radius: 999px; padding: 7px 14px 7px 12px; font: inherit; font-size: 13px; font-weight: 500; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: none; }',
+    '.fw-plan-back svg { display: block; flex: 0 0 auto; }',
+    '.fw-plan-back:hover, .fw-plan-back:focus-visible { background: ' + ACCENT + '; border-color: ' + ACCENT + '; outline: none; }',
+    '.fw-plan-viewport { position: relative; flex: 0 0 auto; overflow: hidden; touch-action: none; min-height: 0; height: auto; background: #fff; padding: 0 8px 12px; }',
+    '@media (min-width: 900px) {',
+    '  .fw-root.is-view-floor .fw-plan-layer { padding: 32px 48px 48px; box-sizing: border-box; }',
+    '  .fw-root.is-view-floor .fw-plan-head { padding: 0 0 28px; gap: 18px; }',
+    '  .fw-root.is-view-floor .fw-plan-viewport { padding: 0 24px 8px; }',
+    '  .fw-root.is-view-floor .fw-plan-back { padding: 8px 16px 8px 14px; font-size: 14px; background: #B8CDD4; border-color: transparent; }',
+    '}',
     '.fw-plan-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }',
     '.fw-plan-stage.is-dragging { cursor: grabbing; }',
     '.fw-plan-stage.is-readonly { cursor: default; }',
@@ -353,17 +368,20 @@
     '.fw-apt-poly.is-highlight { fill: var(--fw-apt-hl-color, ' + ACCENT + ') !important; stroke: var(--fw-apt-hl-color, ' + ACCENT + ') !important; fill-opacity: var(--fw-apt-hl-opacity, 0.28) !important; stroke-opacity: 0.95 !important; stroke-width: 2.5 !important; }',
     '.fw-plan-banner { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: min(92%, 520px); padding: 10px 16px; border-radius: 8px; background: rgba(20,20,20,0.85); color: #fff; font-size: 13px; text-align: center; line-height: 1.4; }',
     '.fw-plan-viewport .fw-msg { max-width: min(92%, 420px); text-align: center; }',
-    '.fw-apt-tooltip { position: absolute; z-index: 8; pointer-events: none; padding: 10px 16px; border-radius: 10px; background: rgba(45,45,48,0.92); color: #fff; text-align: center; line-height: 1.35; opacity: 0; transform: translate(-50%, calc(-100% - 10px)); transition: opacity 0.12s ease; white-space: nowrap; }',
+    /* тултип квартиры на плане — макет: glass dark, № сверху, «NК | S м²» снизу */
+    '.fw-apt-tooltip { position: absolute; z-index: 8; pointer-events: none; padding: 12px 18px; border-radius: 10px; background: rgba(32,32,36,0.72); color: #fff; text-align: center; line-height: 1.25; opacity: 0; transform: translate(-50%, calc(-100% - 12px)); transition: opacity 0.12s ease; white-space: nowrap; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 4px 18px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06); }',
     '.fw-apt-tooltip.is-visible { opacity: 1; }',
-    '.fw-apt-tooltip__code { display: block; font-weight: 600; font-size: 14px; margin-bottom: 2px; }',
-    '.fw-apt-tooltip__spec { display: block; font-size: 13px; opacity: 0.95; }',
-    /* карточка — цветопроба макета */
-    '.fw-card { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 0; background: #fff; align-items: start; overflow: hidden; }',
+    '@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .fw-apt-tooltip { background: rgba(32,32,36,0.92); } }',
+    '.fw-apt-tooltip__code { display: block; font-weight: 700; font-size: 16px; letter-spacing: 0.01em; margin-bottom: 4px; color: #fff; }',
+    '.fw-apt-tooltip__spec { display: block; font-weight: 400; font-size: 13px; color: rgba(255,255,255,0.92); }',
+    /* карточка — desktop макет / цветопроба */
+    '.fw-card { display: grid; grid-template-columns: minmax(340px, 420px) 1fr; gap: 0; background: #fff; align-items: stretch; overflow: hidden; min-height: 0; }',
     '@media (max-width: 899.98px) {',
     '  .fw-card { display: flex; flex-direction: column; grid-template-columns: none; }',
     '  .fw-card-side { display: contents; border: 0; padding: 0; }',
     '  .fw-card-head-row { order: 1; padding: 16px 16px 0; }',
-    '  .fw-card-crumbs-host { order: 2; padding: 8px 16px 4px; margin: 0; }',
+    '  .fw-card-crumbs-host { order: 2; padding: 8px 16px 4px; margin: 0; display: block; }',
+    '  .fw-card-title { order: 2; padding: 4px 16px 0; }',
     '  .fw-card-visual { order: 3; }',
     '  .fw-card-spec { order: 4; padding: 12px 16px 0; }',
     '  .fw-card-meta { order: 5; padding: 0 16px; }',
@@ -371,41 +389,60 @@
     '  .fw-card-status { order: 7; margin: 8px 16px 0; }',
     '  .fw-card-form { order: 8; padding: 8px 16px 16px; }',
     '}',
-    '.fw-card-side { padding: 24px 28px 28px; border-right: 1px solid #ececec; display: flex; flex-direction: column; gap: 12px; background: #fff; }',
+    '.fw-card-side { padding: 28px 32px 36px; border-right: 1px solid #E8E8E8; display: flex; flex-direction: column; gap: 14px; background: #fff; }',
+    '@media (min-width: 900px) {',
+    '  .fw-card-side { padding: 32px 36px 40px; gap: 16px; }',
+    '}',
     '@media (max-width: 899.98px) { .fw-card-side { border-right: 0; } }',
-    '.fw-card-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }',
-    '.fw-card-back { appearance: none; border: 0; background: #A8BEC6; color: #fff; border-radius: 999px; padding: 10px 16px; font: inherit; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
-    '.fw-card-back:hover { background: ' + ACCENT + '; }',
-    '.fw-card-tools { display: flex; gap: 8px; }',
-    '.fw-card-tool { width: 36px; height: 36px; border-radius: 50%; border: 1px solid ' + BORDER_SOFT + '; background: #fff; color: ' + TEXT_MAIN + '; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }',
+    '.fw-card-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }',
+    '.fw-card-back { appearance: none; border: 1px solid transparent; background: #B8CDD4; color: #fff; border-radius: 999px; padding: 8px 16px 8px 14px; font: inherit; font-size: 13px; font-weight: 500; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
+    '.fw-card-back svg { display: block; flex: 0 0 auto; }',
+    '.fw-card-back:hover, .fw-card-back:focus-visible { background: ' + ACCENT + '; outline: none; }',
+    '.fw-card-tools { display: flex; gap: 10px; flex-shrink: 0; }',
+    '.fw-card-tool { width: 40px; height: 40px; border-radius: 50%; border: 1px solid ' + ACCENT + '; background: #fff; color: ' + ACCENT + '; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; text-decoration: none; box-sizing: border-box; transition: background 0.15s ease, color 0.15s ease; }',
+    '.fw-card-tool:hover, .fw-card-tool:focus-visible { background: ' + ACCENT_SOFT + '; color: ' + ACCENT_HOVER + '; outline: none; }',
+    'a.fw-card-tool { color: ' + ACCENT + '; }',
     '.fw-card-tool svg { width: 18px; height: 18px; }',
-    '.fw-card-title { font-size: 18px; font-weight: 500; color: ' + TEXT_MAIN + '; margin: 4px 0 0; line-height: 1.3; }',
-    '.fw-card-spec { font-size: 34px; font-weight: 700; color: ' + TEXT_MAIN + '; line-height: 1.15; margin: 0; }',
-    '.fw-card-meta { font-size: 14px; line-height: 1.6; color: ' + TEXT_MUTED + '; margin: 0; }',
+    '.fw-card-title { font-size: 17px; font-weight: 500; color: ' + TEXT_MAIN + '; margin: 4px 0 2px; line-height: 1.35; }',
+    '@media (min-width: 900px) { .fw-card-title { font-size: 18px; margin: 8px 0 4px; } }',
+    '.fw-card-spec { font-size: 32px; font-weight: 700; color: ' + TEXT_MAIN + '; line-height: 1.15; margin: 0; letter-spacing: -0.01em; }',
+    '@media (min-width: 900px) { .fw-card-spec { font-size: 36px; } }',
+    '.fw-card-meta { font-size: 14px; line-height: 1.65; color: ' + TEXT_MUTED + '; margin: 0; }',
     '.fw-card-meta div { margin-bottom: 2px; }',
     '.fw-card-meta strong { font-weight: 600; color: ' + TEXT_MUTED + '; }',
-    '.fw-card-price { font-size: 30px; font-weight: 700; color: ' + TEXT_MAIN + '; margin: 8px 0 4px; }',
+    '.fw-card-price { font-size: 28px; font-weight: 700; color: ' + TEXT_MAIN + '; margin: 4px 0 8px; line-height: 1.2; }',
+    '@media (min-width: 900px) { .fw-card-price { font-size: 34px; margin: 8px 0 12px; } }',
     '.fw-card-status { padding: 8px 12px; border-radius: 8px; font-size: 14px; font-weight: 600; }',
-    '.fw-card-form { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }',
-    '.fw-card-field { display: flex; flex-direction: column; gap: 4px; }',
-    '.fw-card-form input, .fw-card-form textarea { width: 100%; border: 1px solid ' + BORDER_SOFT + '; border-radius: 12px; padding: 14px 16px; font: inherit; font-size: 14px; background: #fff; color: ' + TEXT_MAIN + '; }',
-    '.fw-card-form textarea { min-height: 96px; resize: vertical; }',
-    '.fw-card-form input:focus, .fw-card-form textarea:focus { outline: 2px solid rgba(118,147,157,0.35); border-color: ' + ACCENT + '; }',
-    '.fw-card-form input.is-error, .fw-card-form textarea.is-error { border-color: #c62828; background: #fff8f8; outline: 2px solid rgba(198,40,40,0.18); }',
+    '.fw-card-form { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; width: 100%; }',
+    '@media (min-width: 900px) { .fw-card-form { gap: 14px; margin-top: 8px; } }',
+    '.fw-card-field { display: flex; flex-direction: column; gap: 4px; width: 100%; }',
+    '.fw-card-form input, .fw-card-form textarea { width: 100%; border: 1px solid ' + BORDER_SOFT + '; border-radius: 16px; padding: 15px 18px; font: inherit; font-size: 14px; background: #fff; color: ' + TEXT_MAIN + '; box-sizing: border-box; transition: border-color 0.15s ease, box-shadow 0.15s ease; }',
+    '.fw-card-form input::placeholder, .fw-card-form textarea::placeholder { color: #9AA0A6; opacity: 1; }',
+    '.fw-card-form textarea { min-height: 110px; resize: vertical; border-radius: 16px; line-height: 1.45; }',
+    '@media (min-width: 900px) {',
+    '  .fw-card-form input, .fw-card-form textarea { border-radius: 18px; padding: 16px 20px; }',
+    '  .fw-card-form textarea { min-height: 120px; }',
+    '}',
+    '.fw-card-form input:focus, .fw-card-form textarea:focus { outline: none; border-color: ' + ACCENT + '; box-shadow: 0 0 0 3px rgba(118,147,157,0.2); }',
+    '.fw-card-form input.is-error, .fw-card-form textarea.is-error { border-color: #c62828; background: #fff8f8; box-shadow: 0 0 0 3px rgba(198,40,40,0.12); }',
     '.fw-card-field-error { display: none; font-size: 12px; line-height: 1.35; color: #c62828; padding: 0 2px; }',
     '.fw-card-field-error.is-visible { display: block; }',
-    '.fw-card-submit { appearance: none; border: 0; border-radius: 999px; background: ' + ACCENT + '; color: #fff; font: inherit; font-size: 16px; font-weight: 600; padding: 16px 24px; cursor: pointer; margin-top: 4px; }',
+    '.fw-card-submit { appearance: none; border: 0; border-radius: 999px; background: ' + ACCENT + '; color: #fff; font: inherit; font-size: 16px; font-weight: 600; padding: 16px 24px; cursor: pointer; margin-top: 4px; width: 100%; text-align: center; line-height: 1.2; }',
+    '@media (min-width: 900px) { .fw-card-submit { padding: 17px 24px; font-size: 17px; margin-top: 6px; } }',
     '.fw-card-submit:hover { background: ' + ACCENT_HOVER + '; }',
     '.fw-card-submit:disabled { opacity: 0.6; cursor: wait; }',
-    '.fw-card-consent { font-size: 11px; line-height: 1.45; color: #999; margin: 0; }',
+    '.fw-card-consent { font-size: 11px; line-height: 1.45; color: #A0A4A8; margin: 2px 0 0; }',
     '.fw-card-msg { font-size: 14px; padding: 10px 12px; border-radius: 8px; }',
     '.fw-card-msg.is-ok { background: #e8f5e9; color: #2e7d32; }',
     '.fw-card-msg.is-err { background: #fdecea; color: #8a1f11; }',
     '.fw-card-msg ul { margin: 6px 0 0; padding-left: 18px; }',
-    '.fw-card-visual { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; padding: 20px 24px 24px; background: #fff; }',
-    '@media (max-width: 899.98px) { .fw-card-visual { padding: 12px 16px 16px; border-bottom: 1px solid #ececec; } }',
-    '.fw-card-tabs { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }',
-    '.fw-card-tab { appearance: none; border: 1px solid ' + ACCENT + '; background: #fff; color: ' + ACCENT + '; border-radius: 999px; padding: 10px 22px; font: inherit; font-size: 14px; cursor: pointer; }',
+    '.fw-card-visual { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; padding: 20px 24px 24px; background: #fafafa; }',
+    '@media (min-width: 900px) { .fw-card-visual { padding: 28px 40px 40px; background: #fafafa; } }',
+    '@media (max-width: 899.98px) { .fw-card-visual { padding: 12px 16px 16px; border-bottom: 1px solid #ececec; background: #fff; } }',
+    '.fw-card-tabs { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }',
+    '@media (min-width: 900px) { .fw-card-tabs { gap: 12px; margin-bottom: 20px; } }',
+    '.fw-card-tab { appearance: none; border: 1px solid ' + ACCENT + '; background: #fff; color: ' + ACCENT + '; border-radius: 999px; padding: 10px 22px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; line-height: 1.2; transition: background 0.15s ease, color 0.15s ease; }',
+    '.fw-card-tab:hover:not(.is-active) { background: ' + ACCENT_SOFT + '; }',
     '.fw-card-tab.is-active { background: ' + ACCENT + '; color: #fff; border-color: ' + ACCENT + '; }',
     '.fw-card-panel { display: none; flex-direction: column; flex: 1 1 auto; width: 100%; min-width: 0; }',
     '.fw-card-panel.is-active { display: flex; }',
@@ -415,6 +452,10 @@
     '.fw-card-floor-vp { position: relative; flex: 1 1 auto; width: 100%; min-height: min(52vh, 480px); height: min(60vh, 560px); overflow: hidden; background: #fff; border-radius: 8px; }',
     '.fw-card-layer-mobile { display: none; position: fixed; inset: 0; z-index: 2147483002; background: #fff; overflow: auto; -webkit-overflow-scrolling: touch; }',
     '.fw-root.is-view-card.is-mobile-ui .fw-card-layer-mobile { display: block; }',
+    '@media (min-width: 900px) {',
+    '  .fw-root.is-view-card .fw-view--card { padding: 0; background: #fff; }',
+    '  .fw-root.is-view-card .fw-card { min-height: min(88vh, 920px); }',
+    '}',
     /* печать: только карточка, крупная планировка */
     '@media print {',
     '  .fw-view--facade, .fw-view--floor, .fw-explore-layer, .fw-crumbs { display: none !important; }',
@@ -1275,17 +1316,17 @@
       items.push({
         key: 'section',
         label: secLabel,
-        clickable: cfg.section.clickable,
-        current: view === 'floor' && !cfg.floor.show,
+        clickable: cfg.section.clickable && view !== 'floor',
+        current: view === 'floor',
         action: function () { self._crumbGoHome(); }
       });
     }
-    if (cfg.floor.show && state.floor) {
+    if (cfg.floor.show && state.floor && view !== 'floor') {
       items.push({
         key: 'floor',
         label: (this.locale.floorLabel || 'Этаж') + ' ' + state.floor,
         clickable: cfg.floor.clickable && view === 'card',
-        current: view === 'floor',
+        current: false,
         action: function () { self._crumbGoFloor(); }
       });
     }
@@ -1525,7 +1566,7 @@
     var backBtn = document.createElement('button');
     backBtn.type = 'button';
     backBtn.className = 'fw-plan-back';
-    backBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>' + (this.locale.back || 'Назад') + '</span>';
+    backBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>' + (this.locale.back || 'Назад') + '</span>';
     backBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       self._navPop();
@@ -2096,7 +2137,7 @@
     var backBtn = document.createElement('button');
     backBtn.type = 'button';
     backBtn.className = 'fw-card-back';
-    backBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>' + (L.backToChoice || 'Назад к выбору') + '</span>';
+    backBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>' + (L.backToChoice || 'Назад к выбору') + '</span>';
     backBtn.addEventListener('click', function (e) {
       e.preventDefault();
       self._navPop();
@@ -2116,6 +2157,17 @@
       self._printApartmentCard();
     });
     tools.appendChild(printBtn);
+    if (data.imageLayoutUrl) {
+      var dlBtn = document.createElement('a');
+      dlBtn.className = 'fw-card-tool';
+      dlBtn.href = data.imageLayoutUrl;
+      dlBtn.setAttribute('download', '');
+      dlBtn.setAttribute('target', '_blank');
+      dlBtn.setAttribute('rel', 'noopener');
+      dlBtn.setAttribute('aria-label', 'Скачать планировку');
+      dlBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>';
+      tools.appendChild(dlBtn);
+    }
     headRow.appendChild(tools);
     side.appendChild(headRow);
 
@@ -2127,6 +2179,11 @@
     } else if (shell === this._cardEls.shellMobile) {
       this._cardEls.crumbsHostMobile = crumbsHost;
     }
+
+    var title = document.createElement('h2');
+    title.className = 'fw-card-title';
+    title.textContent = L.bookingTitle || 'Заявка на бронирование';
+    side.appendChild(title);
 
     var spec = document.createElement('p');
     spec.className = 'fw-card-spec';
@@ -2178,13 +2235,13 @@
       var phoneInput = makeField('input', {
         type: 'tel',
         name: 'phone',
-        placeholder: '+7 (___) ___-__-__',
+        placeholder: L.phone || 'Номер телефона для связи',
         required: true,
         autocomplete: 'tel',
         inputMode: 'tel'
       });
       this._bindPhoneMask(phoneInput);
-      makeField('textarea', { name: 'message', placeholder: L.message || 'Сообщение' });
+      makeField('textarea', { name: 'message', placeholder: L.message || 'Ваши вопросы и пожелания' });
 
       var booking = data.booking || {};
       var hidden = booking.hiddenFields || {};
