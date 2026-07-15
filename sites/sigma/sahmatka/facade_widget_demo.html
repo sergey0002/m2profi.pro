@@ -87,10 +87,11 @@
   <pre id="fw_snippet"></pre>
 </section>
 
-<script src="https://sigma.m2profi.pro.test/sahmatka/template/default/js/facade_widget.js?v=1.2.4"></script>
+<script src="/sahmatka/template/default/js/facade_widget.js?v=1.2.5"></script>
 <script>
 (function () {
-  var ORIGIN = 'https://sigma.m2profi.pro.test';
+  // Тот же хост, что у страницы (https://sigma.m2profi.pro / локальный стенд) — без .test в прод-URL.
+  var ORIGIN = window.location.origin;
   var SCRIPT_SRC = ORIGIN + '/sahmatka/template/default/js/facade_widget.js';
   var API_BASE = ORIGIN + '/sahmatka/ajax_router.php?ctr=facades';
   var HOME_ID = 60;
