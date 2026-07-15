@@ -704,16 +704,19 @@
 
     /**
      * Перетаскивание целого полигона: Leaflet.Path.Drag (w8r).
-     * Включается отдельной кнопкой между draw/edit в тулбаре.
+     * Кнопка ✥ включает режим → сразу тянете полигон мышью (без «Готово» / лишних кликов).
      */
     function onPolygonDragEnd() {
         markGeometryDirty();
-        showMessage('Полигон сдвинут — нажмите «Сохранить»', 'warning');
     }
 
     function setLayerDraggable(layer, on) {
         if (!layer || !L.Handler || !L.Handler.PathDrag) return;
         if (on) {
+            if (!layer.options.interactive) {
+                layer.options.interactive = true;
+                if (layer._path) L.DomUtil.addClass(layer._path, 'leaflet-interactive');
+            }
             if (!layer.dragging) {
                 L.Handler.PathDrag.makeDraggable(layer);
             }
@@ -724,17 +727,28 @@
                 layer._fwDragBound = true;
                 layer.on('dragend', onPolygonDragEnd);
             }
+            if (layer.bringToFront) layer.bringToFront();
         } else if (layer.dragging && layer.dragging.enabled()) {
             layer.dragging.disable();
         }
+    }
+
+    /** В режиме move — все полигоны текущего этажа/секции, не только «выбранные». */
+    function layersForMoveMode() {
+        return findLayersBySectionFloor(activeSection, activeFloor);
     }
 
     function syncMoveModeOnLayers() {
         eachPolygon(function (layer) {
             setLayerDraggable(layer, false);
         });
-        if (!moveModeActive) return;
-        selectedLayers.forEach(function (layer) {
+        if (!moveModeActive) {
+            if (map && map.dragging && !map.dragging.enabled()) {
+                map.dragging.enable();
+            }
+            return;
+        }
+        layersForMoveMode().forEach(function (layer) {
             setLayerDraggable(layer, true);
         });
     }
@@ -753,7 +767,7 @@
             }
             stopPolygonDraw();
             forceExitVertexEdit();
-            if (!selectedLayers.length) {
+            if (!layersForMoveMode().length) {
                 showMessage('Нет полигона на текущем этаже — нечего двигать', 'info');
                 return;
             }
@@ -761,11 +775,18 @@
             if (facadeToolMoveBtn) {
                 L.DomUtil.addClass(facadeToolMoveBtn, 'leaflet-draw-toolbar-button-enabled');
             }
-            showMessage('Режим перемещения: перетащите полигон мышью, затем «Сохранить»', 'info');
+            // Карту не паним в этом режиме — жест мыши сразу двигает полигон
+            if (map.dragging && map.dragging.enabled()) {
+                map.dragging.disable();
+            }
+            showMessage('Тяните полигон мышью. Готово — снова нажмите ✥ или «Сохранить»', 'info');
         } else {
             moveModeActive = false;
             if (facadeToolMoveBtn) {
                 L.DomUtil.removeClass(facadeToolMoveBtn, 'leaflet-draw-toolbar-button-enabled');
+            }
+            if (map.dragging && !map.dragging.enabled()) {
+                map.dragging.enable();
             }
         }
         syncMoveModeOnLayers();
@@ -798,9 +819,9 @@
 
         facadeToolMoveBtn = L.DomUtil.create('a', 'leaflet-draw-draw-move facade-tool-btn facade-tool-move', toolbar);
         facadeToolMoveBtn.href = '#';
-        facadeToolMoveBtn.title = 'Переместить полигон (перетаскивание)';
+        facadeToolMoveBtn.title = 'Двигать полигон целиком (тянуть мышью)';
         facadeToolMoveBtn.setAttribute('role', 'button');
-        facadeToolMoveBtn.setAttribute('aria-label', 'Переместить полигон');
+        facadeToolMoveBtn.setAttribute('aria-label', 'Двигать полигон');
 
         L.DomEvent.on(facadeToolCopyBtn, 'click', L.DomEvent.stop)
             .on(facadeToolCopyBtn, 'mousedown', L.DomEvent.stop)
