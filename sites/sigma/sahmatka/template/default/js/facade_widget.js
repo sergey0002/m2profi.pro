@@ -352,7 +352,7 @@
     '.fw-stage { position: relative; transform-origin: 0 0; will-change: transform; margin: 0; width: 100%; }',
     '.fw-stage img { display: block; width: 100%; height: auto; border: 0; max-width: none; pointer-events: none; -webkit-user-drag: none; vertical-align: top; }',
     '.fw-stage svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }',
-    '.fw-poly { fill-opacity: var(--fw-facade-idle-opacity, 0.12); stroke-width: 1.5; stroke-opacity: 0.55; cursor: pointer; transition: fill-opacity 0.18s ease, stroke-width 0.18s ease, stroke-opacity 0.18s ease, fill 0.18s ease, stroke 0.18s ease; outline: none; }',
+    '.fw-poly { fill-opacity: var(--fw-facade-idle-opacity, 0.12); stroke-width: 2; stroke-opacity: 0; cursor: pointer; transition: fill-opacity 0.18s ease, stroke-width 0.18s ease, stroke-opacity 0.18s ease, fill 0.18s ease, stroke 0.18s ease; outline: none; }',
     '.fw-poly.is-hover, .fw-poly.is-active, .fw-poly:focus-visible { fill: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; stroke: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; fill-opacity: var(--fw-facade-hl-opacity, 0.58); stroke-opacity: var(--fw-facade-stroke-opacity, 0.4); stroke-width: 2; }',
     '.fw-poly.is-scroll-reveal { fill: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; stroke: var(--fw-facade-hl-color, ' + FACADE_HL + ') !important; fill-opacity: var(--fw-facade-reveal-opacity, 0.65); stroke-opacity: var(--fw-facade-reveal-stroke-opacity, 0.45); stroke-width: 2; }',
     '@media (prefers-reduced-motion: reduce) { .fw-poly { transition: none; } }',
@@ -3407,7 +3407,7 @@
 
   var api = {
     mount: mount,
-    version: '1.2.24'
+    version: '1.2.25'
   };
 
   global.FacadeWidget = api;
