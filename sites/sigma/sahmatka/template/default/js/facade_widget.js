@@ -108,6 +108,83 @@
     }
   }
 
+  function resolveExportLib(relPath) {
+    if (SCRIPT_SRC) {
+      try {
+        var u = new URL(SCRIPT_SRC);
+        var base = u.pathname.replace(/\/js\/[^/]+$/, '/libs/ultimate-export/libs/');
+        return u.origin + base + relPath;
+      } catch (e) { /* fall through */ }
+    }
+    if (relPath.indexOf('html2canvas') >= 0) {
+      return 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    }
+    return 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+  }
+
+  var _scriptLoadCache = {};
+  function loadScriptOnce(src) {
+    if (_scriptLoadCache[src]) return _scriptLoadCache[src];
+    _scriptLoadCache[src] = new Promise(function (resolve, reject) {
+      var found = document.querySelector('script[src="' + src.replace(/"/g, '\\"') + '"]');
+      if (found) {
+        resolve();
+        return;
+      }
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = function () { resolve(); };
+      s.onerror = function () {
+        delete _scriptLoadCache[src];
+        reject(new Error('Не удалось загрузить ' + src));
+      };
+      document.head.appendChild(s);
+    });
+    return _scriptLoadCache[src];
+  }
+
+  function waitForImages(root, timeoutMs) {
+    return new Promise(function (resolve) {
+      var imgs = root.querySelectorAll ? root.querySelectorAll('img') : [];
+      imgs = Array.prototype.slice.call(imgs);
+      if (!imgs.length) {
+        resolve();
+        return;
+      }
+      var left = imgs.length;
+      var done = false;
+      function tick() {
+        left -= 1;
+        if (left <= 0 && !done) {
+          done = true;
+          resolve();
+        }
+      }
+      imgs.forEach(function (img) {
+        if (img.complete) {
+          tick();
+          return;
+        }
+        img.addEventListener('load', tick);
+        img.addEventListener('error', tick);
+      });
+      setTimeout(function () {
+        if (!done) {
+          done = true;
+          resolve();
+        }
+      }, timeoutMs || 4000);
+    });
+  }
+
+  function escapeHtmlAttr(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/"/g, '&quot;');
+  }
+
   function floorKey(section, floor) {
     return String(section) + ':' + String(floor);
   }
@@ -375,12 +452,12 @@
     '.fw-apt-poly.is-highlight { fill: var(--fw-apt-hl-color, ' + ACCENT + ') !important; stroke: var(--fw-apt-hl-color, ' + ACCENT + ') !important; fill-opacity: var(--fw-apt-hl-opacity, 0.28) !important; stroke-opacity: 0.95 !important; stroke-width: 2.5 !important; }',
     '.fw-plan-banner { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: min(92%, 520px); padding: 10px 16px; border-radius: 8px; background: rgba(20,20,20,0.85); color: #fff; font-size: 13px; text-align: center; line-height: 1.4; }',
     '.fw-plan-viewport .fw-msg { max-width: min(92%, 420px); text-align: center; }',
-    /* тултип квартиры — макет: без скруглений, текст слева, слева от курсора */
-    '.fw-apt-tooltip { position: absolute; z-index: 8; pointer-events: none; padding: 12px 16px; border-radius: 0; background: rgba(36,36,40,0.78); color: #fff; text-align: left; line-height: 1.3; opacity: 0; transform: translate(-100%, -50%); transition: none; white-space: nowrap; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 2px 12px rgba(0,0,0,0.22); }',
+    /* тултип квартиры — над указателем, без скруглений, текст слева */
+    '.fw-apt-tooltip { position: absolute; z-index: 8; pointer-events: none; padding: 12px 16px; border-radius: 0; background: rgba(36,36,40,0.58); color: #fff; text-align: left; line-height: 1.3; opacity: 0; transform: translate(-50%, calc(-100% - 12px)); transition: none; white-space: nowrap; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: 0 2px 12px rgba(0,0,0,0.22); }',
     '.fw-apt-tooltip.is-visible { opacity: 1; transition: opacity 300ms ease; }',
-    '@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .fw-apt-tooltip { background: rgba(36,36,40,0.88); } }',
-    '.fw-apt-tooltip__code { display: block; font-weight: 700; font-size: 18px; letter-spacing: 0.01em; margin-bottom: 4px; color: #fff; }',
-    '.fw-apt-tooltip__spec { display: block; font-weight: 400; font-size: 15px; color: rgba(255,255,255,0.95); }',
+    '@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .fw-apt-tooltip { background: rgba(36,36,40,0.72); } }',
+    '.fw-apt-tooltip__code { display: block; font-weight: 700; font-size: 20px; letter-spacing: 0.01em; margin-bottom: 4px; color: #fff; }',
+    '.fw-apt-tooltip__spec { display: block; font-weight: 400; font-size: 17px; color: rgba(255,255,255,0.95); }',
     /* карточка — desktop макет / цветопроба */
     '.fw-card { display: grid; grid-template-columns: minmax(360px, 460px) minmax(0, 1fr); gap: 0; background: #fff; align-items: stretch; overflow: hidden; min-height: 0; }',
     '@media (max-width: 899.98px) {',
@@ -480,8 +557,8 @@
     '  .fw-card-back, .fw-card-tools, .fw-card-tabs, .fw-card-form, .fw-card-consent, .fw-card-submit, .fw-card-msg, .fw-btn-close { display: none !important; }',
     '  .fw-card-visual { padding: 0 !important; }',
     '  .fw-card-panel { display: none !important; }',
-    '  .fw-card-panel[data-panel="layout"] { display: flex !important; flex-direction: column !important; }',
-    '  .fw-card-pln-img { display: block !important; width: 100% !important; max-width: 100% !important; max-height: none !important; height: auto !important; object-fit: contain !important; margin: 8px 0 !important; }',
+    '  .fw-card-panel[data-panel="layout"] { display: flex !important; flex-direction: column !important; align-items: center !important; min-height: 0 !important; break-before: avoid; page-break-before: avoid; }',
+    '  .fw-card-pln-img { display: block !important; width: auto !important; max-width: 100% !important; max-height: 165mm !important; height: auto !important; object-fit: contain !important; margin: 4px auto !important; }',
     '  .fw-card-pln-label { font-size: 12px !important; color: #555 !important; }',
     '  .fw-card-floor-vp { display: none !important; }',
     '  .fw-card-crumbs-host .fw-crumbs { display: flex !important; padding: 0 !important; background: transparent !important; border: 0 !important; }',
@@ -492,24 +569,25 @@
     '@page { margin: 10mm; size: auto; }',
     'html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; color: #1a1a1a; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; height: auto !important; min-height: 0 !important; overflow: visible !important; }',
     '*, *::before, *::after { box-sizing: border-box; }',
-    /* мобильная колонка: текст сверху, план на всю ширину снизу */
+    /* колонка: текст + планировка на одной странице (картинка сжимается под остаток листа) */
     '.fw-print-sheet { width: 100%; max-width: 100%; margin: 0; padding: 0; background: #fff; }',
     '.fw-card { display: flex !important; flex-direction: column !important; width: 100% !important; max-width: 100% !important; background: #fff !important; overflow: visible !important; gap: 0 !important; }',
-    '.fw-card-side { display: flex !important; flex-direction: column !important; width: 100% !important; gap: 8px; padding: 0 0 12px !important; border: 0 !important; order: 1 !important; }',
-    '.fw-card-visual { display: flex !important; flex-direction: column !important; width: 100% !important; padding: 0 !important; order: 2 !important; background: #fff !important; }',
+    '.fw-card-side { display: flex !important; flex-direction: column !important; width: 100% !important; gap: 8px; padding: 0 0 8px !important; border: 0 !important; order: 1 !important; break-after: avoid; page-break-after: avoid; }',
+    '.fw-card-visual { display: flex !important; flex-direction: column !important; width: 100% !important; padding: 0 !important; order: 2 !important; background: #fff !important; break-before: avoid; page-break-before: avoid; }',
     '.fw-card-head-row, .fw-card-back, .fw-card-tools, .fw-card-tabs, .fw-card-form, .fw-card-consent, .fw-card-submit, .fw-card-msg, .fw-card-floor-vp, .fw-card-panel[data-panel="floor"] { display: none !important; }',
     '.fw-card-crumbs-host { margin: 0 0 8px; width: 100%; }',
     '.fw-card-crumbs-host .fw-crumbs { display: flex !important; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 0 !important; background: transparent !important; border: 0 !important; font-size: 16px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #3d3d3d; line-height: 1.3; }',
     '.fw-card-crumbs-host .fw-crumb { color: #3d3d3d; font-weight: 700; }',
     '.fw-card-crumbs-host .fw-crumb-sep { opacity: 0.45; font-weight: 700; }',
-    '.fw-card-spec { font-size: 26px; font-weight: 700; margin: 0; line-height: 1.15; width: 100%; }',
-    '.fw-card-meta { font-size: 13px; line-height: 1.5; color: #555; margin: 0; width: 100%; }',
-    '.fw-card-price { font-size: 24px; font-weight: 700; margin: 6px 0 0; width: 100%; }',
+    '.fw-card-spec { font-size: 22px; font-weight: 700; margin: 0; line-height: 1.15; width: 100%; }',
+    '.fw-card-meta { font-size: 12px; line-height: 1.45; color: #555; margin: 0; width: 100%; }',
+    '.fw-card-price { font-size: 20px; font-weight: 700; margin: 4px 0 0; width: 100%; }',
     '.fw-card-status { padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-top: 6px; width: 100%; }',
     '.fw-card-panel { display: none !important; }',
-    '.fw-card-panel[data-panel="layout"] { display: flex !important; flex-direction: column !important; width: 100% !important; min-height: 0 !important; }',
-    '.fw-card-pln-label { text-align: center; font-size: 12px; color: #666; margin: 4px 0; width: 100%; }',
-    '.fw-card-pln-img { display: block !important; width: 100% !important; max-width: 100% !important; height: auto !important; max-height: none !important; margin: 8px 0 0 !important; object-fit: contain !important; }'
+    '.fw-card-panel[data-panel="layout"] { display: flex !important; flex-direction: column !important; align-items: center !important; width: 100% !important; min-height: 0 !important; flex: 0 0 auto !important; break-before: avoid; page-break-before: avoid; break-inside: avoid; page-break-inside: avoid; }',
+    '.fw-card-pln-label { text-align: center; font-size: 11px; color: #666; margin: 2px 0; width: 100%; }',
+    /* без лимита высоты браузер выносит крупный PNG на 2-ю страницу и оставляет дыру */
+    '.fw-card-pln-img { display: block !important; width: auto !important; max-width: 100% !important; height: auto !important; max-height: 165mm !important; margin: 4px auto 0 !important; object-fit: contain !important; break-inside: avoid; page-break-inside: avoid; }'
   ].join('\n');
 
   function FacadeWidgetInstance(host, options) {
@@ -1625,12 +1703,11 @@
   };
 
   /**
-   * Печать только карточки: скрытый iframe (без пустого popup),
-   * вёрстка колонкой как на мобилке, план на всю ширину, без пустых страниц.
+   * Клон карточки для печати / PDF: без формы, вкладок и UI-кнопок.
    */
-  FacadeWidgetInstance.prototype._printApartmentCard = function () {
+  FacadeWidgetInstance.prototype._buildPrintableCardClone = function () {
     var shell = this._activeCardShell();
-    if (!shell) return;
+    if (!shell) return null;
 
     var clone = shell.cloneNode(true);
     clone.removeAttribute('id');
@@ -1644,7 +1721,6 @@
       if (clonedCrumbs) clonedCrumbs.classList.add('is-visible');
     }
 
-    // Удаляем всё лишнее, чтобы не раздувать высоту печати.
     Array.prototype.forEach.call(clone.querySelectorAll(
       '.fw-card-head-row, .fw-card-back, .fw-card-tools, .fw-card-tabs, .fw-card-form, .fw-card-consent, .fw-card-submit, .fw-card-msg, .fw-card-floor-vp, .fw-card-panel[data-panel="floor"]'
     ), function (el) {
@@ -1655,14 +1731,37 @@
       if (panel.getAttribute('data-panel') === 'layout') {
         panel.classList.add('is-active');
         panel.style.display = 'flex';
+        panel.style.minHeight = '0';
       } else if (panel.parentNode) {
         panel.parentNode.removeChild(panel);
       }
     });
 
+    Array.prototype.forEach.call(clone.querySelectorAll('.fw-card-pln-img'), function (img) {
+      img.removeAttribute('width');
+      img.removeAttribute('height');
+      img.style.maxHeight = '165mm';
+      img.style.width = 'auto';
+      img.style.height = 'auto';
+    });
+
     var title = (this.locale && this.locale.residence) || 'Квартира';
     var apt = this._cardData && this._cardData.apartmentNum;
     if (apt) title += ' №' + apt;
+
+    var fileBase = 'kvartira';
+    if (apt) fileBase += '-' + apt;
+
+    return { clone: clone, title: title, fileName: fileBase + '.pdf' };
+  };
+
+  /**
+   * Печать только карточки: скрытый iframe (без пустого popup),
+   * вёрстка колонкой как на мобилке, план на всю ширину.
+   */
+  FacadeWidgetInstance.prototype._printApartmentCard = function () {
+    var payload = this._buildPrintableCardClone();
+    if (!payload) return;
 
     var prev = document.getElementById('fw-print-frame');
     if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
@@ -1684,9 +1783,9 @@
     doc.write(
       '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8">' +
       '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-      '<title>' + String(title).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;') + '</title>' +
+      '<title>' + escapeHtmlAttr(payload.title) + '</title>' +
       '<style>' + PRINT_DOC_CSS + '</style></head><body>' +
-      '<div class="fw-print-sheet">' + clone.outerHTML + '</div>' +
+      '<div class="fw-print-sheet">' + payload.clone.outerHTML + '</div>' +
       '</body></html>'
     );
     doc.close();
@@ -1712,30 +1811,97 @@
       cleanup();
     }
 
-    function waitImagesThenPrint() {
-      var imgs = doc.images ? Array.prototype.slice.call(doc.images) : [];
-      if (!imgs.length) {
-        setTimeout(doPrint, 60);
-        return;
-      }
-      var left = imgs.length;
-      function tick() {
-        left--;
-        if (left <= 0) setTimeout(doPrint, 60);
-      }
-      imgs.forEach(function (img) {
-        if (img.complete) {
-          tick();
-          return;
-        }
-        img.addEventListener('load', tick);
-        img.addEventListener('error', tick);
-      });
-      setTimeout(doPrint, 2000);
+    waitForImages(doc.body || doc.documentElement, 2000).then(function () {
+      setTimeout(doPrint, 60);
+    });
+  };
+
+  /**
+   * Скачать PDF карточки (та же вёрстка, что для печати) — без диалога печати.
+   */
+  FacadeWidgetInstance.prototype._downloadApartmentCardPdf = function () {
+    var self = this;
+    if (self._pdfBusy) return;
+    var payload = self._buildPrintableCardClone();
+    if (!payload) return;
+
+    self._pdfBusy = true;
+
+    var host = document.createElement('div');
+    host.id = 'fw-pdf-host';
+    host.setAttribute('aria-hidden', 'true');
+    host.style.cssText = 'position:fixed;left:-12000px;top:0;width:794px;max-width:794px;background:#fff;z-index:-1;pointer-events:none;';
+
+    var style = document.createElement('style');
+    style.textContent = PRINT_DOC_CSS;
+    host.appendChild(style);
+
+    var sheet = document.createElement('div');
+    sheet.className = 'fw-print-sheet';
+    sheet.appendChild(payload.clone);
+    host.appendChild(sheet);
+    document.body.appendChild(host);
+
+    function cleanupHost() {
+      if (host.parentNode) host.parentNode.removeChild(host);
+      self._pdfBusy = false;
     }
 
-    // Даём браузеру применить стили/layout iframe.
-    setTimeout(waitImagesThenPrint, 50);
+    function failAndPrint() {
+      cleanupHost();
+      self._printApartmentCard();
+    }
+
+    Promise.resolve()
+      .then(function () {
+        return waitForImages(sheet, 4000);
+      })
+      .then(function () {
+        return loadScriptOnce(resolveExportLib('html2canvas.min.js'));
+      })
+      .then(function () {
+        return loadScriptOnce(resolveExportLib('jsPDF/jspdf.umd.min.js'));
+      })
+      .then(function () {
+        if (typeof html2canvas !== 'function') {
+          throw new Error('html2canvas unavailable');
+        }
+        var JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+        if (typeof JsPDF !== 'function') {
+          throw new Error('jsPDF unavailable');
+        }
+        return html2canvas(sheet, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: '#ffffff',
+          logging: false
+        }).then(function (canvas) {
+          var pdf = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+          var pageW = pdf.internal.pageSize.getWidth();
+          var pageH = pdf.internal.pageSize.getHeight();
+          var margin = 10;
+          var maxW = pageW - margin * 2;
+          var maxH = pageH - margin * 2;
+          var imgW = maxW;
+          var imgH = (canvas.height * imgW) / canvas.width;
+          if (imgH > maxH) {
+            imgH = maxH;
+            imgW = (canvas.width * imgH) / canvas.height;
+          }
+          var x = margin + (maxW - imgW) / 2;
+          var y = margin;
+          var imgData = canvas.toDataURL('image/jpeg', 0.92);
+          pdf.addImage(imgData, 'JPEG', x, y, imgW, imgH);
+          pdf.save(payload.fileName);
+        });
+      })
+      .then(function () {
+        cleanupHost();
+      })
+      .catch(function () {
+        failAndPrint();
+      });
   };
 
   FacadeWidgetInstance.prototype._floorPlanApiUrl = function (section, floor) {
@@ -2044,23 +2210,23 @@
         var cy = clientY - rect.top;
         var tw = tooltipEl.offsetWidth || 140;
         var th = tooltipEl.offsetHeight || 48;
-        var gap = 14;
-        var leftOfCursor = cx - gap >= tw + 4;
-        var x;
-        var y = Math.max(th / 2 + 4, Math.min(rect.height - th / 2 - 4, cy));
-        if (leftOfCursor) {
-          tooltipEl.style.transform = 'translate(-100%, -50%)';
-          x = Math.max(tw + 4, Math.min(rect.width - 4, cx - gap));
+        var gap = 12;
+        var x = Math.max(tw / 2 + 4, Math.min(rect.width - tw / 2 - 4, cx));
+        var above = cy - gap >= th + 4;
+        var y;
+        if (above) {
+          tooltipEl.style.transform = 'translate(-50%, calc(-100% - ' + gap + 'px))';
+          y = Math.max(th + gap + 4, Math.min(rect.height - 4, cy));
         } else {
-          tooltipEl.style.transform = 'translate(0, -50%)';
-          x = Math.max(4, Math.min(rect.width - tw - 4, cx + gap));
+          tooltipEl.style.transform = 'translate(-50%, ' + gap + 'px)';
+          y = Math.max(4, Math.min(rect.height - th - gap - 4, cy));
         }
         tooltipEl.style.left = x + 'px';
         tooltipEl.style.top = y + 'px';
       }
     } else if (tooltipEl) {
       tooltipEl.classList.remove('is-visible');
-      tooltipEl.style.transform = 'translate(-100%, -50%)';
+      tooltipEl.style.transform = 'translate(-50%, calc(-100% - 12px))';
     }
   };
 
@@ -2181,7 +2347,7 @@
     });
     tools.appendChild(printBtn);
 
-    // Как в старой public_card: PDF = та же печать карточки (Save as PDF в диалоге).
+    // PDF — скачивание файла с той же вёрсткой, что у печати (html2canvas + jsPDF).
     var pdfBtn = document.createElement('button');
     pdfBtn.type = 'button';
     pdfBtn.className = 'fw-card-tool';
@@ -2191,7 +2357,7 @@
     pdfBtn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
-      self._printApartmentCard();
+      self._downloadApartmentCardPdf();
     });
     tools.appendChild(pdfBtn);
     headRow.appendChild(tools);

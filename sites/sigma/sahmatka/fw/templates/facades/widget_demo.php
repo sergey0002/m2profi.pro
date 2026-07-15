@@ -63,7 +63,7 @@ if ($api_base === '' || $script_src === '') {
   <pre id="fw_demo_snippet"></pre>
 </section>
 
-<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=1.2.16"></script>
+<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=1.2.19"></script>
 <script>
 (function () {
   var SCRIPT_SRC = <?= json_encode($script_src, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
@@ -110,7 +110,7 @@ if ($api_base === '' || $script_src === '') {
     '<span class="tok-tag">&lt;div</span> <span class="tok-attr">id</span>=<span class="tok-str">"facade"</span><span class="tok-tag">&gt;&lt;/div&gt;</span>',
     '',
     '<span class="tok-comment">&lt;!-- 2) Скрипт: на чужом домене — только absolute URL на хост Sigma --&gt;</span>',
-    '<span class="tok-tag">&lt;script</span> <span class="tok-attr">src</span>=<span class="tok-str">"' + SCRIPT_SRC + '?v=1.2.16"</span><span class="tok-tag">&gt;&lt;/script&gt;</span>',
+    '<span class="tok-tag">&lt;script</span> <span class="tok-attr">src</span>=<span class="tok-str">"' + SCRIPT_SRC + '?v=1.2.19"</span><span class="tok-tag">&gt;&lt;/script&gt;</span>',
     '',
     '<span class="tok-tag">&lt;script&gt;</span>',
     '<span class="tok-punct">FacadeWidget.mount({</span>',
