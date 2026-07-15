@@ -560,7 +560,7 @@ class ctr__floor_plans extends ctr__
 
         $sections = $this->get_home_sections($home);
 
-        $t['h1'] = 'Разметка планов этажей — ' . $home['title'];
+        $t['h1'] = 'Разметка планов этажей';
 
         $tpl = [
             'home_id'          => $home_id,
@@ -752,16 +752,6 @@ class ctr__floor_plans extends ctr__
         );
         if ($dup) {
             echo json_encode(['success' => false, 'message' => 'У этой квартиры уже есть активный полигон (id ' . $dup['floor_plan_polygon_id'] . ')']);
-            return;
-        }
-
-        $overlap = $this->find_overlapping_polygon($home_id, $section, $floor, $points, $id);
-        if ($overlap) {
-            echo json_encode([
-                'success'    => false,
-                'message'    => 'Полигон перекрывает существующий (квартира №' . (int) $overlap['apartment_num'] . '). Отредактируйте существующий.',
-                'overlap_id' => (int) $overlap['floor_plan_polygon_id'],
-            ], JSON_UNESCAPED_UNICODE);
             return;
         }
 
@@ -1048,80 +1038,6 @@ class ctr__floor_plans extends ctr__
             $out[] = [(float) $p[0], (float) $p[1]];
         }
         return $out;
-    }
-
-    function bbox($points)
-    {
-        $minX = $minY = PHP_FLOAT_MAX;
-        $maxX = $maxY = -PHP_FLOAT_MAX;
-        foreach ($points as $p) {
-            $x = (float) $p[0];
-            $y = (float) $p[1];
-            if ($x < $minX) { $minX = $x; }
-            if ($y < $minY) { $minY = $y; }
-            if ($x > $maxX) { $maxX = $x; }
-            if ($y > $maxY) { $maxY = $y; }
-        }
-        return [$minX, $minY, $maxX, $maxY];
-    }
-
-    function bbox_intersects($a, $b)
-    {
-        return !($a[2] < $b[0] || $b[2] < $a[0] || $a[3] < $b[1] || $b[3] < $a[1]);
-    }
-
-    function bbox_overlap_ratio($a, $b)
-    {
-        if (!$this->bbox_intersects($a, $b)) {
-            return 0;
-        }
-        $ix = max(0, min($a[2], $b[2]) - max($a[0], $b[0]));
-        $iy = max(0, min($a[3], $b[3]) - max($a[1], $b[1]));
-        $inter = $ix * $iy;
-        $areaA = max(1, ($a[2] - $a[0]) * ($a[3] - $a[1]));
-        $areaB = max(1, ($b[2] - $b[0]) * ($b[3] - $b[1]));
-        return $inter / min($areaA, $areaB);
-    }
-
-    /**
-     * Соседние квартиры на плане делят стены: тонкая полоска bbox-пересечения
-     * не должна блокировать сохранение. 0.85 — только почти-дубликаты
-     * (синхронно с ctr__facades::overlap_conflict_threshold).
-     */
-    function overlap_conflict_threshold()
-    {
-        return 0.85;
-    }
-
-    function find_overlapping_polygon($home_id, $section, $floor, $points, $exclude_id = 0)
-    {
-        global $mysql;
-        $q = 'SELECT * FROM floor_plan_polygons
-              WHERE home_id="' . (int) $home_id . '" AND section="' . (int) $section . '" AND floor="' . (int) $floor . '" AND del="0"';
-        if ($exclude_id) {
-            $q .= ' AND floor_plan_polygon_id != "' . (int) $exclude_id . '"';
-        }
-        $existing = $mysql->get_arr($q);
-        if (!$existing) {
-            return null;
-        }
-
-        $newBbox = $this->bbox($points);
-        $threshold = $this->overlap_conflict_threshold();
-        foreach ($existing as $row) {
-            $existingPoints = json_decode($row['points'], true);
-            if (!is_array($existingPoints)) {
-                continue;
-            }
-            $existingBbox = $this->bbox($existingPoints);
-            if (!$this->bbox_intersects($newBbox, $existingBbox)) {
-                continue;
-            }
-            if ($this->bbox_overlap_ratio($newBbox, $existingBbox) > $threshold) {
-                return $row;
-            }
-        }
-        return null;
     }
 
     /**

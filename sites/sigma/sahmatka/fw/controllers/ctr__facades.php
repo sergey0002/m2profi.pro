@@ -771,17 +771,6 @@ class ctr__facades extends ctr__
             return;
         }
 
-        $overlap = $this->find_overlapping_polygon($home_id, $points, $id);
-        if ($overlap) {
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode([
-                'success'    => false,
-                'message'    => 'Полигон перекрывает существующий (секция ' . (int) ($overlap['section'] ?? 1) . ', этаж ' . (int) $overlap['floor'] . '). Отредактируйте существующий.',
-                'overlap_id' => (int) $overlap['facade_polygon_id'],
-            ], JSON_UNESCAPED_UNICODE);
-            return;
-        }
-
         $data = [
             'home_id' => $home_id,
             'section' => $section,
@@ -845,82 +834,6 @@ class ctr__facades extends ctr__
             $out[] = [(float) $p[0], (float) $p[1]];
         }
         return $out;
-    }
-
-    function bbox($points)
-    {
-        $minX = $minY = PHP_FLOAT_MAX;
-        $maxX = $maxY = -PHP_FLOAT_MAX;
-        foreach ($points as $p) {
-            $x = (float) $p[0];
-            $y = (float) $p[1];
-            if ($x < $minX) { $minX = $x; }
-            if ($y < $minY) { $minY = $y; }
-            if ($x > $maxX) { $maxX = $x; }
-            if ($y > $maxY) { $maxY = $y; }
-        }
-        return [$minX, $minY, $maxX, $maxY];
-    }
-
-    function bbox_intersects($a, $b)
-    {
-        return !($a[2] < $b[0] || $b[2] < $a[0] || $a[3] < $b[1] || $b[3] < $a[1]);
-    }
-
-    function bbox_overlap_ratio($a, $b)
-    {
-        if (!$this->bbox_intersects($a, $b)) {
-            return 0;
-        }
-        $ix = max(0, min($a[2], $b[2]) - max($a[0], $b[0]));
-        $iy = max(0, min($a[3], $b[3]) - max($a[1], $b[1]));
-        $inter = $ix * $iy;
-        $areaA = max(1, ($a[2] - $a[0]) * ($a[3] - $a[1]));
-        $areaB = max(1, ($b[2] - $b[0]) * ($b[3] - $b[1]));
-        return $inter / min($areaA, $areaB);
-    }
-
-    /**
-     * Порог «почти-дубликат» по bbox. Соседние этажи — горизонтальные полоски
-     * одинаковой ширины: даже касание / тонкая полоска пересечения bbox даёт
-     * ratio 0.3–0.6 от высоты тонкого этажа. Старый порог 0.5 блокировал валидную
-     * разметку смежных этажей. 0.85 ловит только почти совпадающие полигоны.
-     */
-    function overlap_conflict_threshold()
-    {
-        return 0.85;
-    }
-
-    function find_overlapping_polygon($home_id, $points, $exclude_id = 0)
-    {
-        global $mysql;
-        $home_id = (int) $home_id;
-        $exclude_id = (int) $exclude_id;
-        $q = 'SELECT * FROM facade_polygons WHERE home_id="' . $home_id . '" AND del="0"';
-        if ($exclude_id) {
-            $q .= ' AND facade_polygon_id != "' . $exclude_id . '"';
-        }
-        $existing = $mysql->get_arr($q);
-        if (!$existing) {
-            return null;
-        }
-
-        $newBbox = $this->bbox($points);
-        $threshold = $this->overlap_conflict_threshold();
-        foreach ($existing as $row) {
-            $existingPoints = json_decode($row['points'], true);
-            if (!is_array($existingPoints)) {
-                continue;
-            }
-            $existingBbox = $this->bbox($existingPoints);
-            if (!$this->bbox_intersects($newBbox, $existingBbox)) {
-                continue;
-            }
-            if ($this->bbox_overlap_ratio($newBbox, $existingBbox) > $threshold) {
-                return $row;
-            }
-        }
-        return null;
     }
 
     function act__upload_facade_image()

@@ -96,12 +96,16 @@
     var dirtyActions = document.getElementById('fp_dirty_actions');
     var uploadInput = document.getElementById('fp_upload_input');
     var uploadBtn = document.getElementById('fp_upload_btn');
+    var copyFloorBtn = document.getElementById('fp_copy_floor');
     var clearApartmentBtn = document.getElementById('fp_clear_apartment');
     var clearMarkupBtn = document.getElementById('fp_clear_markup');
     var clearPlanBtn = document.getElementById('fp_clear_plan');
 
     var drawToolActive = false;
     var deleteModeActive = false;
+    var moveModeActive = false;
+    var fpToolMoveBtn = null;
+    var fpToolCopyBtn = null;
     var savingGeometry = false;
     var reverting = false;
     var loadingFloor = false;
@@ -355,6 +359,7 @@
         if (floorSelect) floorSelect.disabled = !!busy;
         if (apartmentSelect) apartmentSelect.disabled = !!busy;
         if (uploadBtn) uploadBtn.disabled = !!busy;
+        if (copyFloorBtn) copyFloorBtn.disabled = !!busy;
         if (clearApartmentBtn) clearApartmentBtn.disabled = !!busy;
         if (clearMarkupBtn) clearMarkupBtn.disabled = !!busy;
         if (clearPlanBtn) clearPlanBtn.disabled = !!busy;
@@ -697,6 +702,578 @@
     map.addControl(drawControl);
 
     /**
+     * Перетаскивание полигона целиком (Leaflet.Path.Drag).
+     * Кнопка ✥ → тянете мышью без «Готово» / лишних кликов.
+     */
+    function onPolygonDragEnd(e) {
+        var layer = (e && e.target) || this;
+        if (!layer || !layer.fpData) {
+            markGeometryDirty();
+            return;
+        }
+        layer.edited = true;
+        var aptId = parseInt(layer.fpData.apartamentId, 10) || 0;
+        if (aptId) {
+            activeApartmentId = aptId;
+            suppressApartmentChange = true;
+            if (apartmentSelect) apartmentSelect.value = String(aptId);
+            suppressApartmentChange = false;
+            setEditableLayer(layer);
+            updatePolygonDrawButton();
+            syncUrlSelection();
+        }
+        markGeometryDirty();
+    }
+
+    function setLayerDraggable(layer, on) {
+        if (!layer || !L.Handler || !L.Handler.PathDrag) return;
+        if (on) {
+            if (!layer.options.interactive) {
+                layer.options.interactive = true;
+                if (layer._path) L.DomUtil.addClass(layer._path, 'leaflet-interactive');
+            }
+            if (!layer.dragging) {
+                L.Handler.PathDrag.makeDraggable(layer);
+            }
+            if (layer.dragging && !layer.dragging.enabled()) {
+                layer.dragging.enable();
+            }
+            if (!layer._fpDragBound) {
+                layer._fpDragBound = true;
+                layer.on('dragend', onPolygonDragEnd);
+            }
+            if (layer.bringToFront) layer.bringToFront();
+        } else if (layer.dragging && layer.dragging.enabled()) {
+            layer.dragging.disable();
+        }
+    }
+
+    function syncMoveModeOnLayers() {
+        eachPolygon(function (layer) {
+            setLayerDraggable(layer, false);
+        });
+        if (!moveModeActive) {
+            if (map && map.dragging && !map.dragging.enabled()) {
+                map.dragging.enable();
+            }
+            return;
+        }
+        eachPolygon(function (layer) {
+            setLayerDraggable(layer, true);
+        });
+    }
+
+    function setMoveMode(on) {
+        on = !!on;
+        if (on === moveModeActive) {
+            syncMoveModeOnLayers();
+            return;
+        }
+        if (on) {
+            if (!L.Handler || !L.Handler.PathDrag) {
+                showMessage('Плагин перетаскивания полигонов не загружен', 'error');
+                return;
+            }
+            stopPolygonDraw();
+            forceExitVertexEdit();
+            var any = false;
+            eachPolygon(function () { any = true; });
+            if (!any) {
+                showMessage('На этаже нет полигонов — нечего двигать', 'info');
+                return;
+            }
+            moveModeActive = true;
+            if (fpToolMoveBtn) {
+                L.DomUtil.addClass(fpToolMoveBtn, 'leaflet-draw-toolbar-button-enabled');
+            }
+            if (map.dragging && map.dragging.enabled()) {
+                map.dragging.disable();
+            }
+            showMessage('Тяните полигон мышью. Выход — снова ✥ или «Сохранить»', 'info');
+        } else {
+            moveModeActive = false;
+            if (fpToolMoveBtn) {
+                L.DomUtil.removeClass(fpToolMoveBtn, 'leaflet-draw-toolbar-button-enabled');
+            }
+            if (map.dragging && !map.dragging.enabled()) {
+                map.dragging.enable();
+            }
+        }
+        syncMoveModeOnLayers();
+    }
+
+    function injectFpToolbarTools() {
+        var container = drawControl && drawControl._container;
+        if (!container || container.querySelector('.fp-draw-extra')) return;
+
+        var sections = container.querySelectorAll('.leaflet-draw-section');
+        var editSection = sections.length > 1 ? sections[1] : null;
+
+        var section = L.DomUtil.create('div', 'leaflet-draw-section fp-draw-extra');
+        if (editSection) {
+            container.insertBefore(section, editSection);
+        } else {
+            container.appendChild(section);
+        }
+
+        var toolbar = L.DomUtil.create('div', 'leaflet-draw-toolbar leaflet-bar', section);
+
+        fpToolCopyBtn = L.DomUtil.create('a', 'leaflet-draw-draw-copy fp-tool-btn fp-tool-copy', toolbar);
+        fpToolCopyBtn.href = '#';
+        fpToolCopyBtn.title = 'Копировать разметку этажа';
+        fpToolCopyBtn.setAttribute('role', 'button');
+        fpToolCopyBtn.setAttribute('aria-label', 'Копировать разметку этажа');
+
+        fpToolMoveBtn = L.DomUtil.create('a', 'leaflet-draw-draw-move fp-tool-btn fp-tool-move', toolbar);
+        fpToolMoveBtn.href = '#';
+        fpToolMoveBtn.title = 'Двигать полигон целиком (тянуть мышью)';
+        fpToolMoveBtn.setAttribute('role', 'button');
+        fpToolMoveBtn.setAttribute('aria-label', 'Двигать полигон');
+
+        L.DomEvent.on(fpToolCopyBtn, 'click', L.DomEvent.stop)
+            .on(fpToolCopyBtn, 'mousedown', L.DomEvent.stop)
+            .on(fpToolCopyBtn, 'dblclick', L.DomEvent.stop)
+            .on(fpToolCopyBtn, 'click', function () {
+                if (isBusy()) return;
+                setMoveMode(false);
+                requestCopyFloorMarkup();
+            });
+
+        L.DomEvent.on(fpToolMoveBtn, 'click', L.DomEvent.stop)
+            .on(fpToolMoveBtn, 'mousedown', L.DomEvent.stop)
+            .on(fpToolMoveBtn, 'dblclick', L.DomEvent.stop)
+            .on(fpToolMoveBtn, 'click', function () {
+                if (isBusy()) return;
+                setMoveMode(!moveModeActive);
+            });
+    }
+
+    injectFpToolbarTools();
+
+    function parseAptArea(raw) {
+        if (raw == null || raw === '') return null;
+        var n = parseFloat(String(raw).replace(',', '.').replace(/[^\d.-]/g, ''));
+        return isFinite(n) ? n : null;
+    }
+
+    function areasMatch(a, b) {
+        var x = parseAptArea(a);
+        var y = parseAptArea(b);
+        if (x == null || y == null) return false;
+        return Math.abs(x - y) < 0.05;
+    }
+
+    function formatAptOption(apt) {
+        var label = '№' + apt.apartmentNum;
+        if (apt.rooms) label += ' — ' + apt.rooms;
+        if (apt.area) label += ', ' + apt.area + ' м²';
+        if (apt.marked) label += ' ✓';
+        return label;
+    }
+
+    function collectSourceMarkedRows() {
+        var rows = [];
+        currentApartments.forEach(function (apt) {
+            var layer = findLayerByApartment(apt.apartamentId);
+            if (!layer) return;
+            rows.push({
+                apt: apt,
+                layer: layer,
+                points: clonePoints(layerToPoints(layer)),
+                label: (layer.fpData && layer.fpData.label) || '',
+                color: (layer.fpData && layer.fpData.color) || STYLE_DEFAULT.color
+            });
+        });
+        return rows;
+    }
+
+    function requestCopyFloorMarkup() {
+        if (isBusy()) return;
+        if (!isDirty()) {
+            openCopyFloorMarkupDialog();
+            return;
+        }
+        var apt = getApartmentMeta(activeApartmentId);
+        showUnsavedChangesDialog(
+            'Есть несохранённые изменения (квартира №' + (apt ? apt.apartmentNum : activeApartmentId) + ').\n\n' +
+            '«Сохранить и перейти» — записать правки, затем открыть копирование.\n' +
+            '«Не сохранять» — отменить правки и открыть копирование.\n' +
+            '«Остаться» — не копировать.'
+        ).then(function (action) {
+            if (action === 'save') {
+                saveCurrentApartmentChanges().then(function (res) {
+                    if (res && res.ok) openCopyFloorMarkupDialog();
+                });
+            } else if (action === 'discard') {
+                revertCurrentApartmentChanges().then(function () {
+                    openCopyFloorMarkupDialog();
+                });
+            }
+        });
+    }
+
+    function openCopyFloorMarkupDialog() {
+        if (!hasImage) {
+            showMessage('Вначале загрузите файл плана этажа', 'info');
+            return;
+        }
+        var sourceRows = collectSourceMarkedRows();
+        if (!sourceRows.length) {
+            showMessage('На текущем этаже нет размеченных квартир для копирования', 'error');
+            return;
+        }
+
+        var max = getSectionMaxFloor(activeSection);
+        var targetFloors = [];
+        for (var f = 1; f <= max; f++) {
+            if (f !== activeFloor) targetFloors.push(f);
+        }
+        if (!targetFloors.length) {
+            showMessage('Нет другого этажа в секции для копирования', 'error');
+            return;
+        }
+
+        var defaultTarget = targetFloors.indexOf(activeFloor + 1) !== -1
+            ? (activeFloor + 1)
+            : targetFloors[0];
+
+        var overlay = document.createElement('div');
+        overlay.className = 'fp-editor__modal-overlay';
+
+        var box = document.createElement('div');
+        box.className = 'fp-editor__modal-box fp-editor__modal-box--wide';
+
+        var title = document.createElement('p');
+        title.className = 'fp-editor__modal-text';
+        title.textContent = 'Копировать разметку с этажа ' + activeFloor + ' на этаж:';
+        box.appendChild(title);
+
+        var floorField = document.createElement('label');
+        floorField.className = 'fp-editor__modal-field';
+        var floorSelect = document.createElement('select');
+        floorSelect.className = 'fp-editor__modal-select';
+        targetFloors.forEach(function (f) {
+            var opt = document.createElement('option');
+            opt.value = String(f);
+            opt.textContent = 'Этаж ' + f;
+            if (f === defaultTarget) opt.selected = true;
+            floorSelect.appendChild(opt);
+        });
+        floorField.appendChild(floorSelect);
+        box.appendChild(floorField);
+
+        var warn = document.createElement('p');
+        warn.className = 'fp-editor__modal-warn';
+        warn.textContent = 'Вся существующая разметка выбранного этажа будет очищена перед копированием.';
+        box.appendChild(warn);
+
+        var tableWrap = document.createElement('div');
+        tableWrap.className = 'fp-editor__copy-table-wrap';
+        var table = document.createElement('table');
+        table.className = 'fp-editor__copy-table';
+        table.innerHTML = '<thead><tr>' +
+            '<th title="Копировать">✓</th>' +
+            '<th>Квартира (этаж ' + activeFloor + ')</th>' +
+            '<th>Квартира на целевом этаже</th>' +
+            '</tr></thead>';
+        var tbody = document.createElement('tbody');
+        table.appendChild(tbody);
+        tableWrap.appendChild(table);
+        box.appendChild(tableWrap);
+
+        var status = document.createElement('p');
+        status.className = 'fp-editor__modal-status';
+        status.textContent = 'Загрузка квартир целевого этажа…';
+        box.appendChild(status);
+
+        var actions = document.createElement('div');
+        actions.className = 'fp-editor__modal-actions';
+        var cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'fp-editor__btn';
+        cancelBtn.textContent = 'Отмена';
+        var okBtn = document.createElement('button');
+        okBtn.type = 'button';
+        okBtn.className = 'fp-editor__btn fp-editor__btn--primary';
+        okBtn.textContent = 'Копировать';
+        okBtn.disabled = true;
+        actions.appendChild(cancelBtn);
+        actions.appendChild(okBtn);
+        box.appendChild(actions);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        var rowControls = [];
+        var targetApts = [];
+
+        function cleanup() {
+            document.removeEventListener('keydown', onKeyDown);
+            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        }
+
+        function onKeyDown(e) {
+            if (e.key === 'Escape') cleanup();
+        }
+        document.addEventListener('keydown', onKeyDown);
+        overlay.addEventListener('mousedown', function (e) {
+            if (e.target === overlay) cleanup();
+        });
+        cancelBtn.addEventListener('click', cleanup);
+
+        function syncCheckboxFromArea(ctrl) {
+            var tgtId = parseInt(ctrl.select.value, 10) || 0;
+            var tgt = null;
+            for (var i = 0; i < targetApts.length; i++) {
+                if (parseInt(targetApts[i].apartamentId, 10) === tgtId) {
+                    tgt = targetApts[i];
+                    break;
+                }
+            }
+            ctrl.checkbox.checked = !!(tgt && areasMatch(ctrl.source.apt.area, tgt.area));
+        }
+
+        function rebuildMappingRows() {
+            tbody.innerHTML = '';
+            rowControls = [];
+            sourceRows.forEach(function (src, idx) {
+                var tr = document.createElement('tr');
+
+                var tdCheck = document.createElement('td');
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                tdCheck.appendChild(cb);
+                tr.appendChild(tdCheck);
+
+                var tdSrc = document.createElement('td');
+                tdSrc.textContent = formatAptOption(src.apt);
+                tr.appendChild(tdSrc);
+
+                var tdSel = document.createElement('td');
+                var sel = document.createElement('select');
+                sel.className = 'fp-editor__modal-select';
+                if (!targetApts.length) {
+                    var empty = document.createElement('option');
+                    empty.value = '';
+                    empty.textContent = '— нет квартир —';
+                    sel.appendChild(empty);
+                    sel.disabled = true;
+                    cb.disabled = true;
+                } else {
+                    targetApts.forEach(function (apt) {
+                        var opt = document.createElement('option');
+                        opt.value = String(apt.apartamentId);
+                        opt.textContent = formatAptOption(apt);
+                        sel.appendChild(opt);
+                    });
+                    // авто по порядку шахматки слева направо (apartment_num ASC)
+                    var autoIdx = Math.min(idx, targetApts.length - 1);
+                    sel.value = String(targetApts[autoIdx].apartamentId);
+                }
+                tdSel.appendChild(sel);
+                tr.appendChild(tdSel);
+                tbody.appendChild(tr);
+
+                var ctrl = { checkbox: cb, select: sel, source: src };
+                rowControls.push(ctrl);
+                sel.addEventListener('change', function () { syncCheckboxFromArea(ctrl); });
+                syncCheckboxFromArea(ctrl);
+            });
+        }
+
+        function loadTargetFloorApts() {
+            var targetFloor = parseInt(floorSelect.value, 10);
+            okBtn.disabled = true;
+            status.textContent = 'Загрузка квартир этажа ' + targetFloor + '…';
+            return fetchFloorMeta(activeSection, targetFloor).then(function (meta) {
+                targetApts = (meta && meta.apartments) || [];
+                // порядок как в шахматках: уже apartment_num ASC с сервера
+                targetApts = targetApts.slice().sort(function (a, b) {
+                    return (parseInt(a.apartmentNum, 10) || 0) - (parseInt(b.apartmentNum, 10) || 0);
+                });
+                rebuildMappingRows();
+                if (!targetApts.length) {
+                    status.textContent = 'На этаже ' + targetFloor + ' нет квартир в БД.';
+                    okBtn.disabled = true;
+                } else {
+                    status.textContent = 'Галочка по умолчанию только если площадь совпадает. Можно изменить вручную.';
+                    okBtn.disabled = false;
+                }
+            });
+        }
+
+        floorSelect.addEventListener('change', loadTargetFloorApts);
+        loadTargetFloorApts();
+
+        okBtn.addEventListener('click', function () {
+            var targetFloor = parseInt(floorSelect.value, 10);
+            var mappings = [];
+            var usedTargets = {};
+            for (var i = 0; i < rowControls.length; i++) {
+                var ctrl = rowControls[i];
+                if (!ctrl.checkbox.checked) continue;
+                var tid = parseInt(ctrl.select.value, 10) || 0;
+                if (!tid) continue;
+                if (usedTargets[tid]) {
+                    showMessage('Две квартиры назначены на одну цель — исправьте сопоставление', 'error');
+                    return;
+                }
+                usedTargets[tid] = true;
+                var tgtApt = null;
+                for (var j = 0; j < targetApts.length; j++) {
+                    if (parseInt(targetApts[j].apartamentId, 10) === tid) {
+                        tgtApt = targetApts[j];
+                        break;
+                    }
+                }
+                if (!tgtApt) continue;
+                mappings.push({
+                    points: ctrl.source.points,
+                    label: ctrl.source.label,
+                    color: ctrl.source.color,
+                    targetApt: tgtApt
+                });
+            }
+            if (!mappings.length) {
+                showMessage('Отметьте хотя бы одну квартиру для копирования', 'error');
+                return;
+            }
+
+            var confirmed = window.confirm(
+                'Вся разметка этажа ' + targetFloor + ' будет очищена.\n' +
+                'Затем будет скопировано ' + mappings.length + ' полигон(ов) с этажа ' + activeFloor + '.\n\n' +
+                'Продолжить?'
+            );
+            if (!confirmed) return;
+
+            cleanup();
+            executeCopyFloorMarkup(targetFloor, mappings);
+        });
+    }
+
+    function savePolygonToApartment(section, floor, apartamentId, points, label, color) {
+        var body = new URLSearchParams({
+            home_id: String(cfg.homeId),
+            section: String(section),
+            floor: String(floor),
+            apartament_id: String(apartamentId),
+            floor_plan_polygon_id: '0',
+            label: label || '',
+            color: color || STYLE_DEFAULT.color,
+            points: JSON.stringify(points)
+        });
+        return fetch(cfg.ajaxBase + '&act=save_polygon', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (!res || !res.success) {
+                    return { ok: false, message: (res && res.message) || 'Ошибка сохранения' };
+                }
+                return { ok: true, id: res.id };
+            })
+            .catch(function () {
+                return { ok: false, message: 'Ошибка сети при сохранении' };
+            });
+    }
+
+    function clearFloorPolygonsApi(section, floor) {
+        var body = new URLSearchParams({
+            home_id: String(cfg.homeId),
+            section: String(section),
+            floor: String(floor)
+        });
+        return fetch(cfg.ajaxBase + '&act=clear_polygons', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString()
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (!res || !res.success) {
+                    return { ok: false, message: (res && res.message) || 'Ошибка очистки' };
+                }
+                return { ok: true, cleared: res.cleared || 0 };
+            })
+            .catch(function () {
+                return { ok: false, message: 'Ошибка сети при очистке' };
+            });
+    }
+
+    function executeCopyFloorMarkup(targetFloor, mappings) {
+        if (isBusy()) return;
+        clearingMarkup = true;
+        setControlsBusy(true);
+        showMessage('Копирование разметки на этаж ' + targetFloor + '…', 'info');
+
+        var firstAptId = mappings[0] && mappings[0].targetApt
+            ? mappings[0].targetApt.apartamentId
+            : 0;
+
+        function finishFail(msg) {
+            clearingMarkup = false;
+            setControlsBusy(false);
+            showMessage(msg || 'Ошибка копирования', 'error');
+        }
+
+        clearFloorPolygonsApi(activeSection, targetFloor).then(function (clr) {
+            if (!clr.ok) {
+                finishFail(clr.message);
+                return;
+            }
+
+            var chain = Promise.resolve({ ok: true });
+            var failMsg = '';
+            mappings.forEach(function (m) {
+                chain = chain.then(function (prev) {
+                    if (!prev || !prev.ok) return prev;
+                    return savePolygonToApartment(
+                        activeSection,
+                        targetFloor,
+                        m.targetApt.apartamentId,
+                        m.points,
+                        m.label,
+                        m.color
+                    ).then(function (res) {
+                        if (!res.ok) {
+                            failMsg = res.message || 'Ошибка сохранения полигона';
+                            return res;
+                        }
+                        return { ok: true };
+                    });
+                });
+            });
+
+            return chain.then(function (res) {
+                clearingMarkup = false;
+                setControlsBusy(false);
+                invalidateFloorMapsCache(activeSection);
+                if (!res || !res.ok) {
+                    showMessage(failMsg || (res && res.message) || 'Копирование прервано с ошибкой', 'error');
+                    loadFloor(activeSection, targetFloor, {
+                        autoDraw: false,
+                        initialApartmentId: firstAptId
+                    });
+                    return;
+                }
+                var okMsg = 'Скопировано ' + mappings.length + ' полигон(ов) на этаж ' + targetFloor;
+                return loadFloor(activeSection, targetFloor, {
+                    autoDraw: false,
+                    initialApartmentId: firstAptId,
+                    silent: true
+                }).then(function () {
+                    showMessage(okMsg, 'success');
+                });
+            });
+        }).catch(function () {
+            finishFail('Ошибка сети при копировании');
+        });
+    }
+
+    /**
      * Leaflet.Draw «резинка» — мелкие div в overlayPane, часто под ImageOverlay.
      * Дублируем пунктиром SVG в отдельном pane поверх картинки.
      */
@@ -895,6 +1472,7 @@
             applySelectedStyle(layer);
         }
         activeLayer = layer || null;
+        syncMoveModeOnLayers();
     }
 
     function layerToPoints(layer) {
@@ -911,7 +1489,7 @@
 
     function bindPolygonClick(layer) {
         layer.on('click', function (e) {
-            if (drawToolActive || deleteModeActive) return;
+            if (drawToolActive || deleteModeActive || moveModeActive) return;
             if (e.originalEvent) {
                 L.DomEvent.stopPropagation(e.originalEvent);
                 if (e.originalEvent.target && e.originalEvent.target.blur) {
@@ -1652,6 +2230,7 @@
 
         loadingFloor = true;
         setControlsBusy(true);
+        setMoveMode(false);
         stopLeafletEditHandlers();
         activeSection = section;
         activeFloor = floor;
@@ -1778,6 +2357,7 @@
 
         commitLeafletDeleteIfNeeded();
         stopLeafletEditHandlers();
+        setMoveMode(false);
 
         var chain;
         if (pendingDelete && pendingDeleteData) {
@@ -1788,15 +2368,49 @@
                 if (apt) apt.marked = false;
                 return { ok: true, deleted: true };
             });
-        } else if (activeLayer) {
-            var id = activeLayer.fpData.id && !activeLayer.fpData.isNew ? activeLayer.fpData.id : null;
-            chain = savePolygonApi(activeLayer, id, label).then(function (res) {
-                if (!res.ok) return res;
-                if (apt) apt.marked = true;
+        } else {
+            var dirtyLayers = [];
+            eachPolygon(function (layer) {
+                if (!layer.fpData) return;
+                if (layer.fpData.isNew || layer.edited) {
+                    dirtyLayers.push(layer);
+                    return;
+                }
+                var cur = layerToPoints(layer);
+                var saved = layer.fpData.savedPoints || [];
+                if (!pointsEqual(cur, saved)) dirtyLayers.push(layer);
+            });
+            if (!dirtyLayers.length && activeLayer) {
+                dirtyLayers = [activeLayer];
+            }
+
+            var okAll = true;
+            var failMsg = '';
+            chain = Promise.resolve({ ok: true });
+            dirtyLayers.forEach(function (layer) {
+                chain = chain.then(function (prev) {
+                    if (!prev || !prev.ok) return prev;
+                    var layerId = layer.fpData.id && !layer.fpData.isNew ? layer.fpData.id : null;
+                    var layerLabel = (layer === activeLayer)
+                        ? label
+                        : ((layer.fpData && layer.fpData.label) || '');
+                    return savePolygonApi(layer, layerId, layerLabel).then(function (res) {
+                        if (!res.ok) {
+                            okAll = false;
+                            failMsg = res.message || 'Ошибка сохранения';
+                            return res;
+                        }
+                        layer.edited = false;
+                        var meta = getApartmentMeta(layer.fpData.apartamentId);
+                        if (meta) meta.marked = true;
+                        return { ok: true };
+                    });
+                });
+            });
+            chain = chain.then(function (res) {
+                if (!okAll) return { ok: false, message: failMsg || (res && res.message) };
                 return { ok: true };
             });
-        } else {
-            chain = Promise.resolve({ ok: true });
         }
 
         return chain.then(function (res) {
@@ -1854,6 +2468,7 @@
     /* ------------------------------------------------- Events --------------------------------------------------- */
 
     map.on('draw:drawstart', function () {
+        setMoveMode(false);
         if (!canAddPolygon()) {
             var toolbars = drawControl && drawControl._toolbars;
             var modes = toolbars && toolbars.draw && toolbars.draw._modes;
@@ -1887,6 +2502,7 @@
     map.on('mouseup', restorePageTextSelection);
     map.on('dragend', restorePageTextSelection);
     map.on('draw:editstart', function () {
+        setMoveMode(false);
         drawToolActive = true;
         if (!activeLayer) {
             showMessage('Сначала выберите размеченную квартиру в списке', 'error');
@@ -1898,6 +2514,7 @@
         markGeometryDirty();
     });
     map.on('draw:deletestart', function () {
+        setMoveMode(false);
         drawToolActive = true;
         deleteModeActive = true;
         showMessage('Удаление: клик по полигону → галочка ✓. В БД — только после «Сохранить» в форме.', 'info');
@@ -2057,6 +2674,14 @@
             var file = uploadInput.files && uploadInput.files[0];
             uploadInput.value = '';
             if (file) uploadFloorImage(file);
+        });
+    }
+
+    if (copyFloorBtn) {
+        copyFloorBtn.addEventListener('click', function () {
+            if (isBusy()) return;
+            setMoveMode(false);
+            requestCopyFloorMarkup();
         });
     }
 

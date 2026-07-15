@@ -48,6 +48,7 @@ $max_upload_bytes = (int) ($data['max_upload_bytes'] ?? (20 * 1024 * 1024));
         <div id="fp_upload_panel" class="fp-editor__upload-panel">
             <input type="file" id="fp_upload_input" accept=".png,.jpg,.jpeg,.svg,.webp,image/*" hidden />
             <button type="button" id="fp_upload_btn" class="fp-editor__btn">Загрузить план этажа</button>
+            <button type="button" id="fp_copy_floor" class="fp-editor__btn">Копировать разметку этажа</button>
             <button type="button" id="fp_clear_apartment" class="fp-editor__btn fp-editor__btn--danger">Очистить квартиру</button>
             <button type="button" id="fp_clear_markup" class="fp-editor__btn fp-editor__btn--danger">Очистить разметку этажа</button>
             <button type="button" id="fp_clear_plan" class="fp-editor__btn fp-editor__btn--danger">Очистить весь план</button>
@@ -60,6 +61,7 @@ $max_upload_bytes = (int) ($data['max_upload_bytes'] ?? (20 * 1024 * 1024));
 
 <script src="/sahmatka/template/default/libs/leaflet/leaflet.js"></script>
 <script src="/sahmatka/template/default/libs/leaflet-draw/leaflet.draw.js"></script>
+<script src="/sahmatka/template/default/libs/leaflet-path-drag/L.Path.Drag.js"></script>
 <script>
 window.FLOOR_PLAN_CONFIG = {
     homeId: <?= $home_id ?>,
