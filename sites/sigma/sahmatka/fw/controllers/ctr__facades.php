@@ -81,6 +81,62 @@ class ctr__facades extends ctr__
         return $url;
     }
 
+    /** @return string абсолютный путь к каталогу fasades/sections/ */
+    function fasades_sections_dir()
+    {
+        return $this->fasades_dir() . DIRECTORY_SEPARATOR . 'sections';
+    }
+
+    /**
+     * Найти файл визуала секции шахматки: fasades/sections/{section_id}.jpg (также png/webp).
+     * @return array{ext:string, path:string}|null
+     */
+    function section_image_resolve($section_id)
+    {
+        $section_id = (int) $section_id;
+        if ($section_id < 1) {
+            return null;
+        }
+        $dir = $this->fasades_sections_dir();
+        foreach (self::FACADE_IMAGE_EXT_PRIORITY as $ext) {
+            $path = $dir . DIRECTORY_SEPARATOR . $section_id . '.' . $ext;
+            if (is_file($path)) {
+                return ['ext' => $ext, 'path' => $path];
+            }
+        }
+        return null;
+    }
+
+    function section_image_url($section_id)
+    {
+        $found = $this->section_image_resolve($section_id);
+        $ext = $found ? $found['ext'] : 'jpg';
+        return '/fasades/sections/' . (int) $section_id . '.' . $ext;
+    }
+
+    /** Абсолютный URL визуала секции для публичного виджета. */
+    function section_image_absolute_url($section_id)
+    {
+        $section_id = (int) $section_id;
+        $found = $this->section_image_resolve($section_id);
+        if (!$found) {
+            return '';
+        }
+        $rel = $this->section_image_url($section_id);
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        return $scheme . '://' . $host . $rel . '?v=' . (int) @filemtime($found['path']);
+    }
+
+    function chessboard_visual_url($home_id, $section_id)
+    {
+        $url = $this->section_image_absolute_url($section_id);
+        if ($url !== '') {
+            return $url;
+        }
+        return $this->facade_image_absolute_url($home_id);
+    }
+
     function assert_within_fasades($target_path)
     {
         $base = realpath($this->fasades_dir());
@@ -429,7 +485,7 @@ class ctr__facades extends ctr__
             'floors'       => $floors,
             'columns'      => $cols,
             'statusColors' => $status_colors,
-            'visualUrl'    => $this->facade_image_absolute_url($home_id),
+            'visualUrl'    => $this->chessboard_visual_url($home_id, $section),
             'rows'         => $rows,
             'unitLabels'   => $this->widget_unit_labels(),
         ], JSON_UNESCAPED_UNICODE);
@@ -775,6 +831,7 @@ class ctr__facades extends ctr__
         $homes = $mysql->get_arr('SELECT home_id, title, `floor` FROM homes WHERE 1=1 ORDER BY `order`, title');
         ?>
         <p>Файл фасада: загрузите в редакторе или положите вручную в <code>sites/sigma/fasades/{home_id}.jpg</code> (также png/webp).</p>
+        <p>Фото корпуса в шахматке: <code>sites/sigma/fasades/sections/{section_id}.jpg</code> (по одному файлу на секцию; при переключении «Корпус №1 / №2» подставляется свой).</p>
         <table border="0" class="dtable">
             <thead>
             <tr>

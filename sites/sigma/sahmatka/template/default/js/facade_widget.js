@@ -141,15 +141,8 @@
   }
 
   var TEMPLATE_BASE = detectTemplateBase();
-  var BOREL_DIR = TEMPLATE_BASE + 'fonts/borel/';
   var MONTSERRAT_DIR = TEMPLATE_BASE + 'fonts/';
-  var BOREL_STACK = '"Borel",cursive';
   var UI_STACK = 'Arial, Helvetica, sans-serif';
-  var BOREL_FACE =
-    '@font-face{font-family:"Borel";src:url("' + BOREL_DIR + 'Borel-Regular.woff2") format("woff2"),' +
-    'url("' + BOREL_DIR + 'Borel-Regular.woff") format("woff"),' +
-    'url("' + BOREL_DIR + 'Borel-Regular.ttf") format("truetype");' +
-    'font-weight:400;font-style:normal;font-display:swap;}';
   var MONTSERRAT_FACES = [
     '@font-face{font-family:"Montserrat";src:url("' + MONTSERRAT_DIR + 'MontserratRegular/MontserratRegular.woff2") format("woff2"),' +
     'url("' + MONTSERRAT_DIR + 'MontserratRegular/MontserratRegular.woff") format("woff"),' +
@@ -175,7 +168,7 @@
     if (document.getElementById('fw-widget-fonts')) return;
     var s = document.createElement('style');
     s.id = 'fw-widget-fonts';
-    s.textContent = BOREL_FACE + MONTSERRAT_FACES;
+    s.textContent = MONTSERRAT_FACES;
     document.head.appendChild(s);
   }
 
@@ -432,7 +425,6 @@
   var BORDER_SOFT = '#D1D5D8';
 
   var WIDGET_CSS = [
-    BOREL_FACE,
     MONTSERRAT_FACES,
     ':host { display: block; box-sizing: border-box; }',
     '*, *::before, *::after { box-sizing: border-box; }',
@@ -550,6 +542,7 @@
     '.fw-chess-sec-sep { font-weight: 400; color: ' + FACADE_UI + '; opacity: 1; user-select: none; text-transform: none; }',
     '.fw-chess-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 16px; font-size: 14px; color: ' + TEXT_MUTED + '; }',
     '.fw-chess-filter__label { margin-right: 2px; color: ' + TEXT_MAIN + '; }',
+    '@media (max-width: 899.98px) { .fw-chess-filter__label { flex: 0 0 100%; width: 100%; margin-right: 0; } }',
     '.fw-chess-chk { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; color: ' + TEXT_MAIN + '; }',
     '.fw-chess-chk input { margin: 0; width: 14px; height: 14px; }',
     '.fw-chess-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0; margin: 0; }',
@@ -762,7 +755,6 @@
   ].join('\n');
 
   var PRINT_DOC_CSS = [
-    BOREL_FACE,
     MONTSERRAT_FACES,
     '@page { margin: 10mm; size: auto; }',
     'html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; color: #1a1a1a; font-family: ' + UI_STACK + '; height: auto !important; min-height: 0 !important; overflow: visible !important; }',
@@ -3219,10 +3211,6 @@
     var panelLayout = document.createElement('div');
     panelLayout.className = 'fw-card-panel is-active';
     panelLayout.dataset.panel = 'layout';
-    var plnTop = document.createElement('div');
-    plnTop.className = 'fw-card-pln-label';
-    plnTop.textContent = data.sectionCaption || '';
-    panelLayout.appendChild(plnTop);
     if (data.imageLayoutUrl) {
       var plnImg = document.createElement('img');
       plnImg.className = 'fw-card-pln-img';
@@ -4095,7 +4083,7 @@
 
   var api = {
     mount: mount,
-    version: '1.3.28'
+    version: '1.3.31'
   };
 
   global.FacadeWidget = api;
