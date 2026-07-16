@@ -137,6 +137,8 @@ sites/*/thumbs/cache/*
 !sites/*/thumbs/cache/.gitkeep
 sites/*/fasades/*
 !sites/*/fasades/.gitkeep
+!sites/*/fasades/sections/
+!sites/*/fasades/sections/**
 
 # Tenant import & runtime data (contents only)
 sites/*/sahmatka/import/*

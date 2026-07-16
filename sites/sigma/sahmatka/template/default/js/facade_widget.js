@@ -1741,6 +1741,11 @@
         if (sec.id === self._chessSection) return;
         self._chessSection = sec.id;
         self._navContext.section = sec.id;
+        if (sec.visualUrl && els.visual) {
+          els.visual.src = sec.visualUrl;
+          els.visual.style.display = '';
+          if (els.visualWrap) els.visualWrap.style.display = '';
+        }
         self._loadChessboard(sec.id);
       });
       els.sections.appendChild(btn);
@@ -4083,7 +4088,7 @@
 
   var api = {
     mount: mount,
-    version: '1.3.31'
+    version: '1.3.32'
   };
 
   global.FacadeWidget = api;

@@ -5,6 +5,7 @@ $sections   = isset($data['sections']) && is_array($data['sections']) ? $data['s
     ['id' => 1, 'caption' => 'Секция 1', 'maxFloor' => 30],
 ];
 $max_upload_bytes = (int) ($data['max_upload_bytes'] ?? (20 * 1024 * 1024));
+$widget_demo_url = isset($data['widget_demo_url']) ? (string) $data['widget_demo_url'] : '';
 ?>
 <link rel="stylesheet" href="/sahmatka/template/default/libs/leaflet/leaflet.css" />
 <link rel="stylesheet" href="/sahmatka/template/default/libs/leaflet-draw/leaflet.draw.css" />
@@ -54,6 +55,15 @@ $max_upload_bytes = (int) ($data['max_upload_bytes'] ?? (20 * 1024 * 1024));
             <button type="button" id="fp_clear_plan" class="fp-editor__btn fp-editor__btn--danger">Очистить весь план</button>
         </div>
         <div id="fp_messages" class="fp-editor__messages" role="status" aria-live="polite"></div>
+        <?php if ($widget_demo_url !== ''): ?>
+        <p class="fp-editor__demo">
+            <a id="fp_widget_demo_link"
+               href="<?= htmlspecialchars($widget_demo_url, ENT_QUOTES, 'UTF-8') ?>"
+               target="_blank"
+               rel="noopener">Демо публичного виджета (этот план)</a>
+            <span class="fp-editor__demo-hint">откроется в новом окне с #fw=секция.этаж</span>
+        </p>
+        <?php endif; ?>
     </div>
 
     <div id="fp_map" class="fp-editor__map"></div>
@@ -68,7 +78,8 @@ window.FLOOR_PLAN_CONFIG = {
     sections: <?= json_encode(array_values($sections), JSON_UNESCAPED_UNICODE) ?>,
     ajaxBase: <?= json_encode($ajax_base) ?>,
     maxUploadBytes: <?= (int) $max_upload_bytes ?>,
-    unitLabelNomCap: <?= json_encode(function_exists('unit_label_cap') ? unit_label_cap('nom') : 'Квартира', JSON_UNESCAPED_UNICODE) ?>
+    unitLabelNomCap: <?= json_encode(function_exists('unit_label_cap') ? unit_label_cap('nom') : 'Квартира', JSON_UNESCAPED_UNICODE) ?>,
+    widgetDemoUrl: <?= json_encode($widget_demo_url, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>
 };
 </script>
 <script src="/sahmatka/template/default/js/floor_plan_editor.js"></script>

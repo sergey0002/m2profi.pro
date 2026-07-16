@@ -340,9 +340,11 @@ class ctr__facades extends ctr__
         $sections_raw = $this->get_home_sections($home);
         $sections = [];
         foreach ($sections_raw as $sec) {
+            $sid = (int) $sec['id'];
             $sections[] = [
-                'id'      => (int) $sec['id'],
-                'caption' => (string) $sec['caption'],
+                'id'        => $sid,
+                'caption'   => (string) $sec['caption'],
+                'visualUrl' => $this->chessboard_visual_url($home_id, $sid),
             ];
         }
 
@@ -877,7 +879,7 @@ class ctr__facades extends ctr__
         if (!check_access('admin')) {
             die('Ошибка доступа');
         }
-        global $mysql, $t;
+        global $mysql, $t, $r;
 
         $home_id = (int) $_REQUEST['home_id'];
         if (!$home_id) {
@@ -924,6 +926,7 @@ class ctr__facades extends ctr__
             'sections'         => $sections,
             'ajax_base'        => '/sahmatka/ajax_router.php?ctr=facades',
             'max_upload_bytes' => self::MAX_UPLOAD_BYTES,
+            'widget_demo_url'  => $r->acturl('facades', 'widget_demo', 'iframe_router.php') . '&home_id=' . $home_id,
         ];
         $this->tpl($tpl, 'facades', 'editor');
     }

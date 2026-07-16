@@ -1684,12 +1684,25 @@
             });
     }
 
+    function syncWidgetDemoLink() {
+        var link = document.getElementById('facade_widget_demo_link');
+        if (!link) return;
+        var base = String(link.getAttribute('href') || '').split('#')[0];
+        if (!base) return;
+        if (activeSection && activeFloor) {
+            link.setAttribute('href', base + '#fw=' + activeSection + '.' + activeFloor);
+        } else {
+            link.setAttribute('href', base);
+        }
+    }
+
     function applyFloorSelection(floor, autoDraw) {
         floor = parseInt(floor, 10);
         if (!floor) return;
 
         stopLeafletEditHandlers();
         activeFloor = floor;
+        syncWidgetDemoLink();
 
         var layers = findLayersBySectionFloor(activeSection, floor);
 

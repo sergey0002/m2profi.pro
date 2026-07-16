@@ -9,6 +9,7 @@ $max_upload_bytes = (int) ($data['max_upload_bytes'] ?? (20 * 1024 * 1024));
 $sections   = isset($data['sections']) && is_array($data['sections']) ? $data['sections'] : [
     ['id' => 1, 'caption' => 'Секция 1', 'maxFloor' => $max_floor ?: 30],
 ];
+$widget_demo_url = isset($data['widget_demo_url']) ? (string) $data['widget_demo_url'] : '';
 ?>
 <link rel="stylesheet" href="/sahmatka/template/default/libs/leaflet/leaflet.css" />
 <link rel="stylesheet" href="/sahmatka/template/default/libs/leaflet-draw/leaflet.draw.css" />
@@ -52,6 +53,15 @@ $sections   = isset($data['sections']) && is_array($data['sections']) ? $data['s
             <button type="button" id="facade_clear_all" class="facade-editor__btn facade-editor__btn--danger">Очистить весь фасад</button>
         </div>
         <div id="facade_messages" class="facade-editor__messages" role="status" aria-live="polite"></div>
+        <?php if ($widget_demo_url !== ''): ?>
+        <p class="facade-editor__demo">
+            <a id="facade_widget_demo_link"
+               href="<?= htmlspecialchars($widget_demo_url, ENT_QUOTES, 'UTF-8') ?>"
+               target="_blank"
+               rel="noopener">Демо публичного виджета</a>
+            <span class="facade-editor__demo-hint">новое окно · iframe_router · #fw=секция.этаж</span>
+        </p>
+        <?php endif; ?>
     </div>
 
     <div id="facade_map" class="facade-editor__map"></div>

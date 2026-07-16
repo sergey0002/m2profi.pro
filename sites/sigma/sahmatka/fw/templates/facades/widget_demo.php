@@ -69,7 +69,7 @@ if ($api_base === '' || $script_src === '') {
   <pre id="fw_demo_snippet_full"></pre>
 </section>
 
-<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=1.3.31"></script>
+<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=1.3.32"></script>
 <script>
 (function () {
   var SCRIPT_SRC = <?= json_encode($script_src, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;

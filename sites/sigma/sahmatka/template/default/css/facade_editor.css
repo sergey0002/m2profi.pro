@@ -216,6 +216,33 @@
     display: none;
 }
 
+.facade-editor__demo {
+    margin: 0;
+    padding: 8px 12px 10px;
+    font-size: 13px;
+    line-height: 1.4;
+    border-top: 1px solid #e2e2e2;
+    background: #f8f9fa;
+}
+
+.facade-editor__demo a {
+    color: #2f6f9f;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.facade-editor__demo a:hover,
+.facade-editor__demo a:focus-visible {
+    color: #1d4f73;
+}
+
+.facade-editor__demo-hint {
+    display: inline-block;
+    margin-left: 8px;
+    color: #888;
+    font-size: 12px;
+}
+
 .facade-editor__messages-icon {
     flex: 0 0 auto;
     display: inline-flex;

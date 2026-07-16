@@ -157,8 +157,22 @@
         return false;
     }
 
+    /** Ссылка на демо виджета с hash текущего плана: #fw={section}.{floor} */
+    function syncWidgetDemoLink() {
+        var link = document.getElementById('fp_widget_demo_link');
+        var base = cfg.widgetDemoUrl || (link && link.getAttribute('href')) || '';
+        if (!link || !base) return;
+        var clean = String(base).split('#')[0];
+        if (!activeSection || !activeFloor) {
+            link.setAttribute('href', clean);
+            return;
+        }
+        link.setAttribute('href', clean + '#fw=' + activeSection + '.' + activeFloor);
+    }
+
     /** Обновляет GET-параметры section/floor/apartment без перезагрузки страницы. */
     function syncUrlSelection() {
+        syncWidgetDemoLink();
         if (!window.history || typeof window.history.replaceState !== 'function') return;
         try {
             var url = new URL(window.location.href);

@@ -544,7 +544,7 @@ class ctr__floor_plans extends ctr__
         if (!check_access('admin')) {
             die('Ошибка доступа');
         }
-        global $mysql, $t;
+        global $mysql, $t, $r;
 
         $home_id = (int) $_REQUEST['home_id'];
         if (!$home_id) {
@@ -568,6 +568,7 @@ class ctr__floor_plans extends ctr__
             'sections'         => $sections,
             'ajax_base'        => '/sahmatka/ajax_router.php?ctr=floor_plans',
             'max_upload_bytes' => self::MAX_UPLOAD_BYTES,
+            'widget_demo_url'  => $r->acturl('facades', 'widget_demo', 'iframe_router.php') . '&home_id=' . $home_id,
         ];
         $this->tpl($tpl, 'floor_plans', 'editor');
     }
