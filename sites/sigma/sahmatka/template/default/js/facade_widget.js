@@ -129,6 +129,69 @@
     return 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
   }
 
+  /** База …/template/default/ для шрифтов и статики виджета. */
+  function detectTemplateBase() {
+    if (SCRIPT_SRC) {
+      try {
+        var u = new URL(SCRIPT_SRC);
+        return u.origin + u.pathname.replace(/\/js\/[^/]+$/, '/');
+      } catch (e) { /* fall through */ }
+    }
+    return '/sahmatka/template/default/';
+  }
+
+  var TEMPLATE_BASE = detectTemplateBase();
+  var BOREL_DIR = TEMPLATE_BASE + 'fonts/borel/';
+  var MONTSERRAT_DIR = TEMPLATE_BASE + 'fonts/';
+  var BOREL_STACK = '"Borel",cursive';
+  var UI_STACK = 'Arial, Helvetica, sans-serif';
+  var BOREL_FACE =
+    '@font-face{font-family:"Borel";src:url("' + BOREL_DIR + 'Borel-Regular.woff2") format("woff2"),' +
+    'url("' + BOREL_DIR + 'Borel-Regular.woff") format("woff"),' +
+    'url("' + BOREL_DIR + 'Borel-Regular.ttf") format("truetype");' +
+    'font-weight:400;font-style:normal;font-display:swap;}';
+  var MONTSERRAT_FACES = [
+    '@font-face{font-family:"Montserrat";src:url("' + MONTSERRAT_DIR + 'MontserratRegular/MontserratRegular.woff2") format("woff2"),' +
+    'url("' + MONTSERRAT_DIR + 'MontserratRegular/MontserratRegular.woff") format("woff"),' +
+    'url("' + MONTSERRAT_DIR + 'MontserratRegular/MontserratRegular.ttf") format("truetype");' +
+    'font-weight:400;font-style:normal;font-display:swap;}',
+    '@font-face{font-family:"Montserrat";src:url("' + MONTSERRAT_DIR + 'MontserratMedium/MontserratMedium.woff2") format("woff2"),' +
+    'url("' + MONTSERRAT_DIR + 'MontserratMedium/MontserratMedium.woff") format("woff"),' +
+    'url("' + MONTSERRAT_DIR + 'MontserratMedium/MontserratMedium.ttf") format("truetype");' +
+    'font-weight:500;font-style:normal;font-display:swap;}',
+    '@font-face{font-family:"Montserrat";src:url("' + MONTSERRAT_DIR + 'MontserratSemiBold/MontserratSemiBold.woff2") format("woff2"),' +
+    'url("' + MONTSERRAT_DIR + 'MontserratSemiBold/MontserratSemiBold.woff") format("woff"),' +
+    'url("' + MONTSERRAT_DIR + 'MontserratSemiBold/MontserratSemiBold.ttf") format("truetype");' +
+    'font-weight:600;font-style:normal;font-display:swap;}',
+    '@font-face{font-family:"Montserrat";src:url("' + MONTSERRAT_DIR + 'MontserratBold/MontserratBold.woff2") format("woff2"),' +
+    'url("' + MONTSERRAT_DIR + 'MontserratBold/MontserratBold.woff") format("woff"),' +
+    'url("' + MONTSERRAT_DIR + 'MontserratBold/MontserratBold.ttf") format("truetype");' +
+    'font-weight:700;font-style:normal;font-display:swap;}'
+  ].join('');
+
+  /** @font-face в document — иначе Shadow DOM часто не подхватывает веб-шрифт. */
+  function ensureWidgetFonts() {
+    if (typeof document === 'undefined' || !document.head) return;
+    if (document.getElementById('fw-widget-fonts')) return;
+    var s = document.createElement('style');
+    s.id = 'fw-widget-fonts';
+    s.textContent = BOREL_FACE + MONTSERRAT_FACES;
+    document.head.appendChild(s);
+  }
+
+  /** Разбить заголовок на слова (desktop: каждое с новой строки). */
+  function fillTitleWords(el, text, wordClass) {
+    if (!el) return;
+    el.textContent = '';
+    var cls = wordClass || 'fw-title-word';
+    String(text || '').split(/\s+/).filter(Boolean).forEach(function (w) {
+      var span = document.createElement('span');
+      span.className = cls;
+      span.textContent = w.toLocaleUpperCase('ru-RU');
+      el.appendChild(span);
+    });
+  }
+
   var _scriptLoadCache = {};
   function loadScriptOnce(src) {
     if (_scriptLoadCache[src]) return _scriptLoadCache[src];
@@ -351,19 +414,33 @@
   var ACCENT_SOFT = '#E4ECEF';
   /* подсветка этажа на фасаде — чуть синее и плотнее accent */
   var FACADE_HL = '#5B8FB8';
+  /* фасад UI — title + mode pills (макет: #303B47, gutter 267@1920) */
+  var FACADE_UI = '#303B47';
+  var FACADE_BTN_ACTIVE_BG = '#8EACC8';
+  var DESIGN_W = 1920;
+  var GUTTER_X_1920 = 267;
+  var HERO_TOP_1920 = 96;
+  var HERO_TITLE_W = 373;
   /* шахматка — цветопроба по макету (не green из wiget_home2) */
-  var CHESS_FREE = '#789FB1';
-  var CHESS_RESERVED = '#F2A95F';
-  var CHESS_SOLD = '#9A9A9A';
+  var CHESS_FREE = '#7095A3';
+  var CHESS_RESERVED = '#DAA152';
+  var CHESS_SOLD = '#D3D3D3';
+  var CHESS_SOLD_TIP = '#A39C9D';
   var CHESS_FILTERED = '#E6E6E6';
   var TEXT_MAIN = '#1A1A1A';
   var TEXT_MUTED = '#666666';
   var BORDER_SOFT = '#D1D5D8';
 
   var WIDGET_CSS = [
+    BOREL_FACE,
+    MONTSERRAT_FACES,
     ':host { display: block; box-sizing: border-box; }',
     '*, *::before, *::after { box-sizing: border-box; }',
-    '.fw-root { position: relative; width: 100%; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: ' + TEXT_MAIN + '; background: #f0f2f4; --fw-fade-ms: 280ms; }',
+    '.fw-root { position: relative; width: 100%; font-family: ' + UI_STACK + '; color: ' + TEXT_MAIN + '; background: #f0f2f4; --fw-fade-ms: 280ms; --fw-gutter-x: clamp(16px, calc(100% * ' + GUTTER_X_1920 + ' / ' + DESIGN_W + '), ' + GUTTER_X_1920 + 'px); }',
+    '.fw-root button, .fw-root input, .fw-root textarea, .fw-root select { font-family: inherit; }',
+    /* заголовок «Выбор резиденции»: Arial 400 / 48 / lh 100% / uppercase / #303B47 */
+    '.fw-facade-title, .fw-chess-title { font-family: ' + UI_STACK + '; font-weight: 400; font-style: normal; color: ' + FACADE_UI + '; text-transform: uppercase; letter-spacing: 0; line-height: 1; }',
+    '.fw-chess-side-title { font-family: ' + UI_STACK + '; font-weight: 400; color: ' + FACADE_UI + '; }',
     '.fw-viewport { position: relative; overflow: hidden; background: #f0f2f4; touch-action: manipulation; -webkit-user-select: none; user-select: none; }',
     '.fw-stage { position: relative; transform-origin: 0 0; will-change: transform; margin: 0; width: 100%; }',
     '.fw-stage img { display: block; width: 100%; height: auto; border: 0; max-width: none; pointer-events: none; -webkit-user-drag: none; vertical-align: top; }',
@@ -415,65 +492,86 @@
     /* переключатель Визуально / На плане — хост: фасад (под заголовком) или шахматка (справа сверху) */
     '.fw-mode-bar { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 0; margin: 0; background: transparent; pointer-events: auto; }',
     '.fw-root.is-view-floor .fw-mode-bar, .fw-root.is-view-card .fw-mode-bar { display: none; }',
-    '.fw-mode-btn { appearance: none; border: 1px solid ' + BORDER_SOFT + '; background: #fff; color: ' + TEXT_MAIN + '; font: inherit; font-size: 13px; font-weight: 600; padding: 8px 18px; cursor: pointer; line-height: 1.2; border-radius: 999px; margin: 0; }',
-    '.fw-mode-btn.is-active { background: ' + ACCENT + '; border-color: ' + ACCENT + '; color: #fff; }',
-    '.fw-mode-btn:focus-visible { outline: 2px solid ' + ACCENT + '; outline-offset: 2px; }',
-    /* оверлей фасада: title сверху, ссылки режимов НИЖЕ с зазором (не поверх текста) */
-    '.fw-facade-hero { position: absolute; left: 6%; top: 6%; z-index: 6; max-width: min(460px, 68%); padding: 0; pointer-events: none; display: flex; flex-direction: column; align-items: flex-start; }',
-    '@media (min-width: 900px) { .fw-facade-hero { left: 8%; top: 8%; } }',
-    '@media (min-width: 1200px) { .fw-facade-hero { left: 10%; top: 9%; } }',
-    '.fw-facade-title { margin: 0 0 20px; font-size: 28px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #5c5c5c; line-height: 1.22; text-shadow: 0 1px 0 rgba(255,255,255,0.4); }',
-    '@media (min-width: 900px) { .fw-facade-title { font-size: 34px; letter-spacing: 0.12em; margin-bottom: 22px; } }',
-    '.fw-facade-mode-host { display: block; pointer-events: auto; }',
-    '.fw-facade-hero .fw-mode-bar { gap: 12px; }',
-    '.fw-facade-hero .fw-mode-btn { background: transparent; border: 1px solid rgba(255,255,255,0.95); color: #fff; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }',
-    '.fw-facade-hero .fw-mode-btn.is-active { background: rgba(110,150,170,0.78); border-color: rgba(130,170,190,0.95); color: #fff; }',
-    /* шахматка — боковые отступы как у карточки на десктопе (24/32 + max-width 1140/1320) */
-    '.fw-chess { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px 12px 28px; background: #fff; color: ' + TEXT_MAIN + '; box-sizing: border-box; }',
+    /* pills «Визуально / На плане»: макет 99×24, r20, border 1, Arial 12/400 */
+    '.fw-mode-btn { appearance: none; box-sizing: border-box; width: 99px; height: 24px; min-height: 24px; padding: 0 8px; margin: 0; border: 1px solid ' + FACADE_UI + '; border-radius: 20px; background: #fff; color: ' + FACADE_UI + '; font-family: ' + UI_STACK + '; font-size: 12px; font-weight: 400; font-style: normal; line-height: 1; letter-spacing: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-align: center; white-space: nowrap; box-shadow: none; }',
+    '.fw-mode-btn.is-active { background: ' + FACADE_BTN_ACTIVE_BG + '; border-color: ' + FACADE_UI + '; color: #fff; }',
+    '.fw-mode-btn:not(.is-active):hover, .fw-mode-btn:not(.is-active):focus-visible { background: ' + FACADE_BTN_ACTIVE_BG + '; border-color: ' + FACADE_UI + '; color: #fff; outline: none; }',
+    '.fw-mode-btn:focus-visible { outline: 2px solid ' + FACADE_UI + '; outline-offset: 2px; }',
+    /* фасад: mobile — над картинкой; desktop — оверлей left/top = 267/136 @1920 */
+    '.fw-view--facade { position: relative; container-type: inline-size; container-name: fw-facade; }',
+    '.fw-root.is-explore .fw-facade-hero { display: none; }',
+    '.fw-facade-hero { position: relative; left: auto; top: auto; z-index: 6; width: 100%; max-width: none; margin: 0; padding: 16px 16px 12px; box-sizing: border-box; pointer-events: auto; display: flex; flex-direction: column; align-items: stretch; background: #fff; }',
+    '.fw-facade-title { margin: 0 0 12px; font-size: 28px; font-weight: 400; font-style: normal; letter-spacing: 0; text-transform: uppercase; color: ' + FACADE_UI + '; line-height: 1; text-shadow: none; display: flex; flex-wrap: wrap; gap: 0 0.35em; }',
+    '.fw-facade-title__word { display: inline; }',
+    '.fw-facade-mode-host { display: block; width: 100%; pointer-events: auto; }',
+    '.fw-facade-hero .fw-mode-bar { display: flex; width: 100%; gap: 8px; box-sizing: border-box; }',
+    '.fw-facade-hero .fw-mode-btn { flex: 1 1 0; width: auto; max-width: none; }',
     '@media (min-width: 900px) {',
-    '  .fw-root.is-view-chessboard .fw-view--chessboard { width: 100%; box-sizing: border-box; padding: 0 24px 28px; background: #fff; }',
-    '  .fw-chess { width: 100%; max-width: 1140px; margin: 0 auto; grid-template-columns: minmax(0, 1fr) minmax(200px, 260px); grid-template-rows: auto auto; column-gap: 28px; row-gap: 0; padding: 28px 0 36px; }',
-    '  .fw-chess-mode-host { grid-column: 2; grid-row: 1; margin: 0 0 14px; }',
-    '  .fw-chess-main { grid-column: 1; grid-row: 1 / span 2; }',
-    '  .fw-chess-side { grid-column: 2; grid-row: 2; }',
+    '  .fw-facade-hero { position: absolute; left: calc(100cqw * ' + GUTTER_X_1920 + ' / ' + DESIGN_W + '); top: calc(100cqw * ' + HERO_TOP_1920 + ' / ' + DESIGN_W + '); right: auto; bottom: auto; width: auto; max-width: min(' + HERO_TITLE_W + 'px, 46%); padding: 0; margin: 0; background: transparent; align-items: flex-start; pointer-events: none; }',
+    '  .fw-facade-hero .fw-facade-title, .fw-facade-hero .fw-facade-mode-host, .fw-facade-hero .fw-mode-bar, .fw-facade-hero .fw-mode-btn { pointer-events: auto; }',
+    '  .fw-facade-title { display: block; margin: 0 0 18px; font-size: 48px; font-weight: 400; font-style: normal; letter-spacing: 0; line-height: 1; color: ' + FACADE_UI + '; }',
+    '  .fw-facade-title__word { display: block; }',
+    '  .fw-facade-mode-host { width: auto; }',
+    '  .fw-facade-hero .fw-mode-bar { display: inline-flex; width: auto; flex-wrap: nowrap; gap: 8px; }',
+    '  .fw-facade-hero .fw-mode-btn { flex: 0 0 auto; width: 99px; height: 24px; background: transparent; }',
     '}',
     '@media (min-width: 1200px) {',
-    '  .fw-root.is-view-chessboard .fw-view--chessboard { padding: 0 32px 32px; }',
-    '  .fw-chess { max-width: 1320px; padding: 32px 0 40px; }',
+    '  .fw-facade-title { margin: 0 0 20px; }',
     '}',
-    '.fw-chess-mode-host { display: flex; justify-content: flex-end; width: 100%; margin: 0 0 8px; order: -1; }',
+    /* шахматка: gutters 267@1920; row1 = title | modes; row2 = main | side */
+    '.fw-chess { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px 12px 28px; background: #fff; color: ' + TEXT_MAIN + '; box-sizing: border-box; }',
+    '.fw-chess-title-host { min-width: 0; }',
+    '.fw-chess-title { margin: 0; font-size: 28px; font-weight: 400; font-style: normal; letter-spacing: 0; text-transform: uppercase; color: ' + FACADE_UI + '; line-height: 1; display: flex; flex-wrap: wrap; gap: 0 0.35em; }',
+    '.fw-chess-title__word { display: inline; }',
+    '.fw-chess-mode-host { display: flex; justify-content: flex-start; align-items: flex-start; width: 100%; margin: 0; padding: 0; order: -1; }',
     '.fw-chess-main { min-width: 0; }',
-    '.fw-chess-title { margin: 0 0 6px; font-size: 26px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2c2c2c; line-height: 1.15; }',
-    '.fw-chess-sections { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 10px; font-size: 14px; line-height: 1.35; }',
-    '.fw-chess-sec { appearance: none; border: 0; background: transparent; padding: 0; margin: 0; font: inherit; color: ' + TEXT_MUTED + '; cursor: pointer; text-decoration: none; }',
-    '.fw-chess-sec.is-active { color: ' + TEXT_MAIN + '; font-weight: 700; }',
+    '@media (min-width: 900px) {',
+    '  .fw-root.is-view-chessboard .fw-view--chessboard { width: 100%; box-sizing: border-box; padding: 0 var(--fw-gutter-x) 28px; background: #fff; }',
+    '  .fw-chess { width: 100%; max-width: none; margin: 0; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); grid-template-rows: auto auto; column-gap: 16px; row-gap: 0; padding: 32px 0 36px; align-items: start; }',
+    '  .fw-chess-title-host { grid-column: 1; grid-row: 1; align-self: start; padding: 0 0 28px; margin: 0; }',
+    '  .fw-chess-mode-host { grid-column: 2; grid-row: 1; order: 0; display: flex; justify-content: flex-end; align-items: flex-start; align-self: start; width: 100%; margin: 0; padding: 0 0 28px; }',
+    '  .fw-chess-main { grid-column: 1; grid-row: 2; min-width: 0; }',
+    '  .fw-chess-side { grid-column: 2; grid-row: 2; display: block; width: 100%; padding: 0; margin: 0; }',
+    '  .fw-chess-title { display: block; font-size: 48px; font-weight: 400; letter-spacing: 0; line-height: 1; }',
+    '  .fw-chess-title__word { display: block; }',
+    '  .fw-chess-mode-host .fw-mode-bar { display: inline-flex; width: auto; max-width: 100%; gap: 8px; }',
+    '  .fw-chess-mode-host .fw-mode-btn { flex: 0 0 auto; width: 99px; height: 24px; }',
+    '}',
+    '@media (min-width: 1200px) {',
+    '  .fw-root.is-view-chessboard .fw-view--chessboard { padding: 0 var(--fw-gutter-x) 32px; }',
+    '  .fw-chess { padding: 36px 0 40px; column-gap: 20px; grid-template-columns: minmax(0, 1fr) minmax(360px, 480px); }',
+    '  .fw-chess-title-host, .fw-chess-mode-host { padding-bottom: 52px; }',
+    '}',
+    /* табы секций: как заголовок (Arial uppercase), active 700 / inactive 400 */
+    '.fw-chess-sections { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; margin: 0 0 35px; font-family: ' + UI_STACK + '; font-size: 20px; font-weight: 400; font-style: normal; line-height: 1; letter-spacing: 0; text-transform: uppercase; color: ' + FACADE_UI + '; }',
+    '.fw-chess-sec { appearance: none; border: 0; background: transparent; padding: 0; margin: 0; font: inherit; font-weight: 400; color: ' + FACADE_UI + '; cursor: pointer; text-decoration: none; line-height: 1; letter-spacing: 0; text-transform: uppercase; }',
+    '.fw-chess-sec.is-active { font-weight: 700; color: ' + FACADE_UI + '; }',
     '.fw-chess-sec:hover, .fw-chess-sec:focus-visible { color: ' + ACCENT + '; outline: none; }',
-    '.fw-chess-sec-sep { opacity: 0.35; user-select: none; }',
-    '.fw-chess-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 12px; font-size: 14px; color: ' + TEXT_MUTED + '; }',
+    '.fw-chess-sec-sep { font-weight: 400; color: ' + FACADE_UI + '; opacity: 1; user-select: none; text-transform: none; }',
+    '.fw-chess-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 16px; font-size: 14px; color: ' + TEXT_MUTED + '; }',
     '.fw-chess-filter__label { margin-right: 2px; color: ' + TEXT_MAIN + '; }',
     '.fw-chess-chk { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; color: ' + TEXT_MAIN + '; }',
     '.fw-chess-chk input { margin: 0; width: 14px; height: 14px; }',
     '.fw-chess-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0; margin: 0; }',
-    '.fw-chess-table { border-collapse: separate; border-spacing: 3px; margin: 0; }',
+    '.fw-chess-table { border-collapse: separate; border-spacing: 6px; margin: 0; }',
     '.fw-chess-floor { width: 18px; min-width: 18px; text-align: right; font-size: 12px; font-weight: 500; color: ' + TEXT_MUTED + '; vertical-align: middle; padding: 0 6px 0 0; line-height: 1; }',
-    '.fw-chess-cell { width: 34px; height: 34px; border: 0; padding: 0; margin: 0; border-radius: 3px; font: inherit; font-size: 11px; font-weight: 600; color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; letter-spacing: 0.02em; }',
+    '.fw-chess-cell { width: 35px; height: 35px; border: 0; padding: 0; margin: 0; border-radius: 0; font-family: inherit; font-size: 16px; font-weight: 400; font-style: normal; line-height: 34px; letter-spacing: 0; color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-align: center; vertical-align: middle; }',
     '.fw-chess-cell.is-empty { visibility: hidden; pointer-events: none; cursor: default; }',
     '.fw-chess-cell.is-filtered-out { background: var(--fw-chess-filtered, ' + CHESS_FILTERED + ') !important; color: #b0b0b0; cursor: default; pointer-events: none; }',
     '.fw-chess-cell[data-status-key="free"] { background: var(--fw-chess-free, ' + CHESS_FREE + '); }',
     '.fw-chess-cell[data-status-key="reserved"] { background: var(--fw-chess-reserved, ' + CHESS_RESERVED + '); }',
-    '.fw-chess-cell[data-status-key="sold"] { background: var(--fw-chess-sold, ' + CHESS_SOLD + '); }',
+    '.fw-chess-cell[data-status-key="sold"] { background: var(--fw-chess-sold, ' + CHESS_SOLD + '); color: #fff !important; }',
     '.fw-chess-side { display: none; }',
     '@media (min-width: 900px) { .fw-chess-side { display: block; padding-top: 0; margin-top: 0; } }',
-    '.fw-chess-side-title { margin: 0 0 12px; width: 100%; font-size: 20px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2c2c2c; line-height: 1.2; text-align: left; }',
+    '.fw-chess-side-title { margin: 0 0 12px; width: 100%; font-size: 18px; font-weight: 400; letter-spacing: 0.06em; text-transform: uppercase; color: ' + FACADE_UI + '; line-height: 1.2; text-align: left; }',
+    '@media (min-width: 900px) { .fw-chess-side-title { font-size: 42px; } }',
     '.fw-chess-visual-wrap { position: relative; width: 100%; }',
     '.fw-chess-visual { display: block; width: 100%; height: auto; border: 0; border-radius: 0; background: #e8ecef; }',
-    '.fw-chess-pin { position: absolute; width: 22px; height: 28px; left: 38%; top: 42%; transform: translate(-50%, -100%); pointer-events: none; }',
-    '.fw-chess-pin svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25)); }',
     '.fw-chess-tip { position: absolute; z-index: 12; pointer-events: none; opacity: 0; transform: translate(-50%, calc(-100% - 10px)); transition: none; }',
     '.fw-chess-tip.is-visible { opacity: 1; }',
     '.fw-chess-tip.is-chip { padding: 8px 12px; font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,0.18); border-radius: 0; }',
-    '.fw-chess-tip.is-chip[data-status-key="reserved"] { background: var(--fw-chess-reserved, ' + CHESS_RESERVED + '); }',
-    '.fw-chess-tip.is-chip[data-status-key="sold"] { background: var(--fw-chess-sold, ' + CHESS_SOLD + '); }',
+    '.fw-chess-tip.is-chip[data-status-key="reserved"] { background: var(--fw-chess-reserved, ' + CHESS_RESERVED + '); color: #fff; }',
+    '.fw-chess-tip.is-chip[data-status-key="sold"] { background: var(--fw-chess-sold-tip, ' + CHESS_SOLD_TIP + '); color: #fff !important; }',
     '.fw-chess-tip.is-preview { min-width: 180px; max-width: 240px; padding: 12px 14px; background: rgba(255,255,255,0.92); color: ' + TEXT_MAIN + '; text-align: left; box-shadow: 0 4px 18px rgba(0,0,0,0.16); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }',
     '.fw-chess-tip__code { display: block; font-weight: 700; font-size: 16px; margin-bottom: 4px; }',
     '.fw-chess-tip__spec { display: block; font-size: 14px; color: ' + TEXT_MUTED + '; margin-bottom: 8px; }',
@@ -525,15 +623,15 @@
     '.fw-plan-back:hover, .fw-plan-back:focus-visible { background: ' + ACCENT + '; border-color: ' + ACCENT + '; outline: none; }',
     '.fw-plan-viewport { position: relative; flex: 0 0 auto; overflow: hidden; touch-action: none; min-height: 0; height: auto; background: #fff; padding: 0 8px 12px; }',
     '@media (min-width: 900px) {',
-    '  .fw-root.is-view-floor .fw-view--floor { width: 100%; box-sizing: border-box; padding: 0 24px; background: #fff; }',
-    '  .fw-root.is-view-floor .fw-plan-layer { width: 100%; max-width: 1140px; margin: 0 auto; padding: 28px 0; box-sizing: border-box; }',
+    '  .fw-root.is-view-floor .fw-view--floor { width: 100%; box-sizing: border-box; padding: 0 var(--fw-gutter-x); background: #fff; }',
+    '  .fw-root.is-view-floor .fw-plan-layer { width: 100%; max-width: none; margin: 0; padding: 28px 0; box-sizing: border-box; }',
     '  .fw-root.is-view-floor .fw-plan-head { padding: 0 0 24px; gap: 16px; }',
     '  .fw-root.is-view-floor .fw-plan-viewport { padding: 0; }',
     '  .fw-root.is-view-floor .fw-plan-back { padding: 8px 16px 8px 14px; font-size: 14px; background: #B8CDD4; border-color: transparent; }',
     '}',
     '@media (min-width: 1200px) {',
-    '  .fw-root.is-view-floor .fw-view--floor { padding: 0 32px; }',
-    '  .fw-root.is-view-floor .fw-plan-layer { max-width: 1320px; padding: 32px 0; }',
+    '  .fw-root.is-view-floor .fw-view--floor { padding: 0 var(--fw-gutter-x); }',
+    '  .fw-root.is-view-floor .fw-plan-layer { padding: 32px 0; }',
     '}',
     '.fw-plan-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }',
     '.fw-plan-stage.is-dragging { cursor: grabbing; }',
@@ -546,26 +644,37 @@
     '.fw-apt-poly.is-highlight { fill: var(--fw-apt-hl-color, ' + ACCENT + ') !important; stroke: var(--fw-apt-hl-color, ' + ACCENT + ') !important; fill-opacity: var(--fw-apt-hl-opacity, 0.28) !important; stroke-opacity: 0.95 !important; stroke-width: 2.5 !important; }',
     '.fw-plan-banner { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: min(92%, 520px); padding: 10px 16px; border-radius: 8px; background: rgba(20,20,20,0.85); color: #fff; font-size: 13px; text-align: center; line-height: 1.4; }',
     '.fw-plan-viewport .fw-msg { max-width: min(92%, 420px); text-align: center; }',
-    /* карточка — desktop макет / цветопроба */
+    /* карточка — desktop: side | visual; mobile: план сразу под заголовком */
     '.fw-card { display: grid; grid-template-columns: minmax(360px, 460px) minmax(0, 1fr); gap: 0; background: #fff; align-items: stretch; overflow: hidden; min-height: 0; }',
+    '.fw-card-side { padding: 24px 24px 28px; border-right: 1px solid #E8E8E8; display: flex; flex-direction: column; gap: 14px; background: #fff; }',
+    '@media (min-width: 900px) {',
+    '  .fw-card-side { padding: 24px 28px 32px; gap: 14px; }',
+    '}',
+    /* mobile / is-mobile-ui: contents + order — ПОСЛЕ базового display:flex, иначе план уезжает вниз */
     '@media (max-width: 899.98px) {',
     '  .fw-card { display: flex; flex-direction: column; grid-template-columns: none; }',
-    '  .fw-card-side { display: contents; border: 0; padding: 0; }',
+    '  .fw-card-side { display: contents; border: 0; padding: 0; gap: 0; }',
     '  .fw-card-head-row { order: 1; padding: 16px 16px 0; }',
     '  .fw-card-crumbs-host { order: 2; padding: 8px 16px 4px; margin: 0; display: block; }',
-    '  .fw-card-title { order: 2; padding: 4px 16px 0; }',
     '  .fw-card-visual { order: 3; }',
     '  .fw-card-spec { order: 4; padding: 12px 16px 0; }',
     '  .fw-card-meta { order: 5; padding: 0 16px; }',
     '  .fw-card-price { order: 6; padding: 0 16px; }',
     '  .fw-card-status { order: 7; margin: 8px 16px 0; }',
-    '  .fw-card-form { order: 8; padding: 8px 16px 16px; }',
+    '  .fw-card-title { order: 8; padding: 16px 16px 0; }',
+    '  .fw-card-form { order: 9; padding: 8px 16px 16px; }',
     '}',
-    '.fw-card-side { padding: 24px 24px 28px; border-right: 1px solid #E8E8E8; display: flex; flex-direction: column; gap: 14px; background: #fff; }',
-    '@media (min-width: 900px) {',
-    '  .fw-card-side { padding: 24px 28px 32px; gap: 14px; }',
-    '}',
-    '@media (max-width: 899.98px) { .fw-card-side { border-right: 0; } }',
+    '.fw-root.is-mobile-ui .fw-card { display: flex; flex-direction: column; grid-template-columns: none; }',
+    '.fw-root.is-mobile-ui .fw-card-side { display: contents; border: 0; padding: 0; gap: 0; }',
+    '.fw-root.is-mobile-ui .fw-card-head-row { order: 1; padding: 16px 16px 0; }',
+    '.fw-root.is-mobile-ui .fw-card-crumbs-host { order: 2; padding: 8px 16px 4px; margin: 0; display: block; }',
+    '.fw-root.is-mobile-ui .fw-card-visual { order: 3; }',
+    '.fw-root.is-mobile-ui .fw-card-spec { order: 4; padding: 12px 16px 0; }',
+    '.fw-root.is-mobile-ui .fw-card-meta { order: 5; padding: 0 16px; }',
+    '.fw-root.is-mobile-ui .fw-card-price { order: 6; padding: 0 16px; }',
+    '.fw-root.is-mobile-ui .fw-card-status { order: 7; margin: 8px 16px 0; }',
+    '.fw-root.is-mobile-ui .fw-card-title { order: 8; padding: 16px 16px 0; }',
+    '.fw-root.is-mobile-ui .fw-card-form { order: 9; padding: 8px 16px 16px; }',
     '.fw-card-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }',
     '.fw-card-back { appearance: none; border: 1px solid transparent; background: #A8BEC6; color: #fff; border-radius: 999px; padding: 0 16px 0 14px; height: 32px; font: inherit; font-size: 14px; font-weight: 600; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }',
     '.fw-card-back svg { display: block; flex: 0 0 auto; }',
@@ -626,12 +735,11 @@
     '.fw-card-layer-mobile { display: none; position: fixed; inset: 0; z-index: 2147483002; background: #fff; overflow: auto; -webkit-overflow-scrolling: touch; }',
     '.fw-root.is-view-card.is-mobile-ui .fw-card-layer-mobile { display: block; }',
     '@media (min-width: 900px) {',
-    '  .fw-root.is-view-card .fw-view--card { width: 100%; box-sizing: border-box; padding: 0 24px 28px; background: #fff; }',
-    '  .fw-root.is-view-card .fw-card { width: 100%; max-width: 1140px; margin: 0 auto; min-height: min(88vh, 920px); box-sizing: border-box; }',
+    '  .fw-root.is-view-card .fw-view--card { width: 100%; box-sizing: border-box; padding: 0 var(--fw-gutter-x) 28px; background: #fff; }',
+    '  .fw-root.is-view-card .fw-card { width: 100%; max-width: none; margin: 0; min-height: min(88vh, 920px); box-sizing: border-box; }',
     '}',
     '@media (min-width: 1200px) {',
-    '  .fw-root.is-view-card .fw-view--card { padding: 0 32px 32px; }',
-    '  .fw-root.is-view-card .fw-card { max-width: 1320px; }',
+    '  .fw-root.is-view-card .fw-view--card { padding: 0 var(--fw-gutter-x) 32px; }',
     '}',
     /* печать: только карточка, крупная планировка */
     '@media print {',
@@ -654,8 +762,10 @@
   ].join('\n');
 
   var PRINT_DOC_CSS = [
+    BOREL_FACE,
+    MONTSERRAT_FACES,
     '@page { margin: 10mm; size: auto; }',
-    'html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; color: #1a1a1a; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; height: auto !important; min-height: 0 !important; overflow: visible !important; }',
+    'html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; color: #1a1a1a; font-family: ' + UI_STACK + '; height: auto !important; min-height: 0 !important; overflow: visible !important; }',
     '*, *::before, *::after { box-sizing: border-box; }',
     /* колонка: текст + планировка на одной странице (картинка сжимается под остаток листа) */
     '.fw-print-sheet { width: 100%; max-width: 100%; margin: 0; padding: 0; background: #fff; }',
@@ -776,6 +886,7 @@
       free: CHESS_FREE,
       reserved: CHESS_RESERVED,
       sold: CHESS_SOLD,
+      soldTip: CHESS_SOLD_TIP,
       filteredOut: CHESS_FILTERED
     }, (options.chessboardStatusColors || (options.chessboard && options.chessboard.statusColors) || {}));
     this._defaultVisualMode = (options.defaultVisualMode === 'chessboard') ? 'chessboard' : 'facade';
@@ -810,6 +921,7 @@
     var self = this;
     this.host.innerHTML = '';
     this.shadow = this.host.attachShadow({ mode: 'open' });
+    ensureWidgetFonts();
 
     var style = document.createElement('style');
     style.textContent = WIDGET_CSS;
@@ -956,32 +1068,17 @@
     body.appendChild(facadeView);
     this._els.facadeView = facadeView;
 
-    var viewport = document.createElement('div');
-    viewport.className = 'fw-viewport';
-    facadeView.appendChild(viewport);
-    this._els.viewport = viewport;
-
-    var stage = this._buildStage(true);
-    viewport.appendChild(stage);
-    this._els.stage = stage;
-
-    var tooltip = document.createElement('div');
-    tooltip.className = 'fw-tooltip';
-    tooltip.setAttribute('aria-hidden', 'true');
-    viewport.appendChild(tooltip);
-    this._els.tooltip = tooltip;
-
     if (this._chessboardEnabled) {
       var facadeHero = document.createElement('div');
       facadeHero.className = 'fw-facade-hero';
       var facadeTitle = document.createElement('div');
       facadeTitle.className = 'fw-facade-title';
-      facadeTitle.textContent = this.locale.chooseResidence || 'Выбор резиденции';
+      fillTitleWords(facadeTitle, this.locale.chooseResidence || 'Выбор резиденции', 'fw-facade-title__word');
       facadeHero.appendChild(facadeTitle);
       var facadeModeHost = document.createElement('div');
       facadeModeHost.className = 'fw-facade-mode-host';
       facadeHero.appendChild(facadeModeHost);
-      viewport.appendChild(facadeHero);
+      facadeView.appendChild(facadeHero);
       this._els.facadeHero = facadeHero;
       this._els.facadeModeHost = facadeModeHost;
 
@@ -1017,6 +1114,21 @@
         else self._showFacadeMode();
       });
     }
+
+    var viewport = document.createElement('div');
+    viewport.className = 'fw-viewport';
+    facadeView.appendChild(viewport);
+    this._els.viewport = viewport;
+
+    var stage = this._buildStage(true);
+    viewport.appendChild(stage);
+    this._els.stage = stage;
+
+    var tooltip = document.createElement('div');
+    tooltip.className = 'fw-tooltip';
+    tooltip.setAttribute('aria-hidden', 'true');
+    viewport.appendChild(tooltip);
+    this._els.tooltip = tooltip;
 
     var chessView = document.createElement('div');
     chessView.className = 'fw-view fw-view--chessboard';
@@ -1444,17 +1556,20 @@
     var wrap = document.createElement('div');
     wrap.className = 'fw-chess';
 
+    var titleHost = document.createElement('div');
+    titleHost.className = 'fw-chess-title-host';
+    var title = document.createElement('h2');
+    title.className = 'fw-chess-title';
+    fillTitleWords(title, this.locale.chooseResidence || 'Выбор резиденции', 'fw-chess-title__word');
+    titleHost.appendChild(title);
+    wrap.appendChild(titleHost);
+
     var modeHost = document.createElement('div');
     modeHost.className = 'fw-chess-mode-host';
     wrap.appendChild(modeHost);
 
     var main = document.createElement('div');
     main.className = 'fw-chess-main';
-
-    var title = document.createElement('h2');
-    title.className = 'fw-chess-title';
-    title.textContent = this.locale.chooseResidence || 'Выбор резиденции';
-    main.appendChild(title);
 
     var sections = document.createElement('div');
     sections.className = 'fw-chess-sections';
@@ -1481,11 +1596,6 @@
     visual.className = 'fw-chess-visual';
     visual.alt = '';
     visualWrap.appendChild(visual);
-    var pin = document.createElement('div');
-    pin.className = 'fw-chess-pin';
-    pin.setAttribute('aria-hidden', 'true');
-    pin.innerHTML = '<svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg"><path fill="#F2A95F" d="M12 0C6.5 0 2 4.5 2 10c0 7.2 10 22 10 22s10-14.8 10-22C22 4.5 17.5 0 12 0zm0 14.5c-2.5 0-4.5-2-4.5-4.5S9.5 5.5 12 5.5s4.5 2 4.5 4.5-2 4.5-4.5 4.5z"/></svg>';
-    visualWrap.appendChild(pin);
     side.appendChild(visualWrap);
 
     wrap.appendChild(main);
@@ -1499,6 +1609,7 @@
     parent.appendChild(wrap);
     this._chessEls = {
       wrap: wrap,
+      titleHost: titleHost,
       modeHost: modeHost,
       main: main,
       title: title,
@@ -1509,7 +1620,6 @@
       sideTitle: sideTitle,
       visualWrap: visualWrap,
       visual: visual,
-      pin: pin,
       tip: tip
     };
   };
@@ -1611,17 +1721,15 @@
     if (!els) return;
 
     var caption = (data.section && data.section.caption) || '';
-    els.sideTitle.textContent = (this.locale.tower || 'Башня') + (caption ? ' «' + caption + '»' : '');
+    els.sideTitle.textContent = caption || String((data.section && data.section.id) || '');
     if (data.visualUrl) {
       els.visual.src = data.visualUrl;
       els.visual.style.display = '';
       if (els.visualWrap) els.visualWrap.style.display = '';
-      if (els.pin) els.pin.style.display = '';
     } else {
       els.visual.removeAttribute('src');
       els.visual.style.display = 'none';
       if (els.visualWrap) els.visualWrap.style.display = 'none';
-      if (els.pin) els.pin.style.display = 'none';
     }
 
     els.sections.innerHTML = '';
@@ -1636,7 +1744,7 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'fw-chess-sec' + ((sec.id === self._chessSection) ? ' is-active' : '');
-      btn.textContent = (self.locale.tower || 'Башня') + ' «' + (sec.caption || sec.id) + '»';
+      btn.textContent = sec.caption || String(sec.id);
       btn.addEventListener('click', function () {
         if (sec.id === self._chessSection) return;
         self._chessSection = sec.id;
@@ -1847,6 +1955,7 @@
     root.style.setProperty('--fw-chess-free', c.free || CHESS_FREE);
     root.style.setProperty('--fw-chess-reserved', c.reserved || CHESS_RESERVED);
     root.style.setProperty('--fw-chess-sold', c.sold || CHESS_SOLD);
+    root.style.setProperty('--fw-chess-sold-tip', c.soldTip || CHESS_SOLD_TIP);
     root.style.setProperty('--fw-chess-filtered', c.filteredOut || CHESS_FILTERED);
   };
 
@@ -3986,7 +4095,7 @@
 
   var api = {
     mount: mount,
-    version: '1.3.5'
+    version: '1.3.28'
   };
 
   global.FacadeWidget = api;

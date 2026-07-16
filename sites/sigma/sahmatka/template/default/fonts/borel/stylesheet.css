@@ -1,0 +1,13 @@
+@font-face {
+    font-family: 'Borel';
+    src: url('Borel-Regular.eot');
+    src: local('Borel Regular'), local('Borel-Regular'),
+        url('Borel-Regular.eot?#iefix') format('embedded-opentype'),
+        url('Borel-Regular.woff2') format('woff2'),
+        url('Borel-Regular.woff') format('woff'),
+        url('Borel-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+

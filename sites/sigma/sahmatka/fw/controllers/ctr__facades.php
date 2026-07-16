@@ -410,9 +410,10 @@ class ctr__facades extends ctr__
         }
 
         $status_colors = [
-            'free'     => '#789FB1',
-            'reserved' => '#F2A95F',
-            'sold'     => '#9A9A9A',
+            'free'        => '#7095A3',
+            'reserved'    => '#DAA152',
+            'sold'        => '#D3D3D3',
+            'soldTip'     => '#A39C9D',
             'filteredOut' => '#E6E6E6',
         ];
 
