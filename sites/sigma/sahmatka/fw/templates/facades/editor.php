@@ -58,8 +58,7 @@ $widget_demo_url = isset($data['widget_demo_url']) ? (string) $data['widget_demo
             <a id="facade_widget_demo_link"
                href="<?= htmlspecialchars($widget_demo_url, ENT_QUOTES, 'UTF-8') ?>"
                target="_blank"
-               rel="noopener">Демо публичного виджета</a>
-            <span class="facade-editor__demo-hint">новое окно · iframe_router · #fw=секция.этаж</span>
+               rel="noopener">Демо виджет</a>
         </p>
         <?php endif; ?>
     </div>

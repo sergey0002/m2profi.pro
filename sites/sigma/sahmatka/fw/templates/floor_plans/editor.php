@@ -60,8 +60,7 @@ $widget_demo_url = isset($data['widget_demo_url']) ? (string) $data['widget_demo
             <a id="fp_widget_demo_link"
                href="<?= htmlspecialchars($widget_demo_url, ENT_QUOTES, 'UTF-8') ?>"
                target="_blank"
-               rel="noopener">Демо публичного виджета (этот план)</a>
-            <span class="fp-editor__demo-hint">откроется в новом окне с #fw=секция.этаж</span>
+               rel="noopener">Демо виджет</a>
         </p>
         <?php endif; ?>
     </div>
