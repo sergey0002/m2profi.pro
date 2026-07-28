@@ -134,20 +134,26 @@ if ($visibleHomeIds) {
 											<b><?= (int)$service['total'] ?></b> / Свободно: <b><?= (int)$service['free'] ?></b><? if ($homeFreePercent > 0): ?> (<b><?= number_format($homeFreePercent, 2, ',', '') ?>%</b>)<? endif; ?> / Бронь: <b><?= (int)$service['booked'] ?></b><? if ($homeBookedPercent > 0): ?> (<b><?= number_format($homeBookedPercent, 2, ',', '') ?>%</b>)<? endif; ?>
 										</div>
 									</div>
-									<div style="padding:0 8px;" class="admin-home-rooms" data-home-id="<?= $homeId ?>">
+									<div style="padding:0 8px;" class="admin-home-rooms">
 										<? foreach ($service['rooms'] as $rooms => $roomStat) { ?>
 											<? $roomFreePercent = (float)$roomStat['percent']; ?>
 											<? $roomBookedPercent = (float)$roomStat['booked_percent']; ?>
 											<? $isZeroFree = ((int)$roomStat['free'] === 0); ?>
 											<? $isZeroBooked = ((int)$roomStat['booked'] === 0); ?>
 											<? $isManualRoom = !empty($roomStat['is_manual_mode']); ?>
-											<? $roomSource = (string)($roomStat['source'] ?? 'auto'); ?>
+											<?
+											$manualTooltip = 'Осталось менее '
+												. rtrim(rtrim(number_format($bgThreshold, 2, '.', ''), '0'), '.')
+												. '% свободных квартир данного типа в доме';
+											?>
 											<div class="admin-room-row<?= $isManualRoom ? ' admin-room-row--manual' : '' ?>"
-												data-rooms="<?= htmlspecialchars((string)$rooms, ENT_QUOTES, 'UTF-8') ?>"
-												data-manual="<?= $isManualRoom ? '1' : '0' ?>"
-												data-source="<?= htmlspecialchars($roomSource, ENT_QUOTES, 'UTF-8') ?>"
 												style="<?= $isManualRoom ? 'background:#f8d7da; border-radius:4px; padding:1px 4px; margin:1px 0;' : '' ?>">
-												<b><?= htmlspecialchars((string)$rooms, ENT_QUOTES, 'UTF-8') ?></b><? if ($isManualRoom): ?> <a href="#" class="js-booking-guard-toggle" title="Переключить ручной режим" style="color:#b33a3a; font-weight:700; text-decoration:underline;">ручное</a><? endif; ?><? if (!$isManualRoom): ?> <a href="#" class="js-booking-guard-toggle" title="Включить ручной режим" style="color:#888; font-size:9px; text-decoration:none;">авто</a><? endif; ?>: - <b><?= (int)$roomStat['total'] ?></b> /
+												<b><?= htmlspecialchars((string)$rooms, ENT_QUOTES, 'UTF-8') ?></b>
+												<? if ($isManualRoom): ?>
+													<span style="color:#b33a3a; font-weight:700; cursor:help;" title="<?= htmlspecialchars($manualTooltip, ENT_QUOTES, 'UTF-8') ?>">ручное</span>
+												<? else: ?>
+													<span style="color:#888;">авто</span>
+												<? endif; ?>: - <b><?= (int)$roomStat['total'] ?></b> /
 												<span style="<?= $isZeroFree ? 'color:#CCC;' : '' ?>">Свободно: <b><?= (int)$roomStat['free'] ?></b><? if ($roomFreePercent > 0): ?> (<b><?= number_format($roomFreePercent, 2, ',', '') ?>%</b>)<? endif; ?></span> /
 												<span style="<?= $isZeroBooked ? 'color:#CCC;' : '' ?>">Бронь: <b><?= (int)$roomStat['booked'] ?></b><? if ($roomBookedPercent > 0): ?> (<b><?= number_format($roomBookedPercent, 2, ',', '') ?>%</b>)<? endif; ?></span>
 											</div>
@@ -209,83 +215,10 @@ if ($visibleHomeIds) {
 		});
 		blocks.forEach(function(el) { el.style.minHeight = maxH + 'px'; });
 	}
-	function applyRoomRowUi(row, isManual) {
-		row.setAttribute('data-manual', isManual ? '1' : '0');
-		row.setAttribute('data-source', 'manual');
-		if (isManual) {
-			row.classList.add('admin-room-row--manual');
-			row.style.background = '#f8d7da';
-			row.style.borderRadius = '4px';
-			row.style.padding = '1px 4px';
-			row.style.margin = '1px 0';
-		} else {
-			row.classList.remove('admin-room-row--manual');
-			row.style.background = '';
-			row.style.borderRadius = '';
-			row.style.padding = '';
-			row.style.margin = '';
-		}
-		var link = row.querySelector('.js-booking-guard-toggle');
-		if (!link) return;
-		if (isManual) {
-			link.textContent = 'ручное';
-			link.title = 'Переключить ручной режим';
-			link.style.color = '#b33a3a';
-			link.style.fontWeight = '700';
-			link.style.textDecoration = 'underline';
-			link.style.fontSize = '';
-		} else {
-			link.textContent = 'авто';
-			link.title = 'Включить ручной режим';
-			link.style.color = '#888';
-			link.style.fontWeight = '';
-			link.style.textDecoration = 'none';
-			link.style.fontSize = '9px';
-		}
-	}
-	function bindBookingGuardToggle() {
-		document.addEventListener('click', function(e) {
-			var link = e.target.closest ? e.target.closest('.js-booking-guard-toggle') : null;
-			if (!link) return;
-			e.preventDefault();
-			var row = link.closest('.admin-room-row');
-			var wrap = link.closest('.admin-home-rooms');
-			if (!row || !wrap) return;
-			var homeId = wrap.getAttribute('data-home-id');
-			var rooms = row.getAttribute('data-rooms');
-			var cur = row.getAttribute('data-manual') === '1' ? 1 : 0;
-			var next = cur ? 0 : 1;
-			link.style.opacity = '0.5';
-			var body = 'home_id=' + encodeURIComponent(homeId)
-				+ '&rooms=' + encodeURIComponent(rooms)
-				+ '&enabled=' + next;
-			fetch('/sahmatka/ajax_router.php?ctr=booking_guard&act=toggle', {
-				method: 'POST',
-				headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
-				body: body,
-				credentials: 'same-origin'
-			}).then(function(r) { return r.json(); }).then(function(j) {
-				link.style.opacity = '';
-				if (!j || !j.ok) {
-					alert((j && j.error) ? j.error : 'Не удалось сохранить режим');
-					return;
-				}
-				applyRoomRowUi(row, !!j.is_manual_mode);
-				syncAdminStatsHeight();
-			}).catch(function() {
-				link.style.opacity = '';
-				alert('Ошибка сети');
-			});
-		});
-	}
-	function init() {
-		syncAdminStatsHeight();
-		bindBookingGuardToggle();
-	}
 	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', init);
+		document.addEventListener('DOMContentLoaded', syncAdminStatsHeight);
 	} else {
-		init();
+		syncAdminStatsHeight();
 	}
 	window.addEventListener('resize', syncAdminStatsHeight);
 })();
