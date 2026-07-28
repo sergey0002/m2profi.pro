@@ -69,7 +69,11 @@ input, select {
 		Количество комнат -  <b><?=$apartment['rooms'];?></b><br/>
 		Площадь - <b><?=$apartment['area'];?></b> м<sup>2</sup><br/>
 		Цена - <b ><?=number_format($data['apartment']['price'], 0, '.', ' ')?> руб.</b>  <br/> <br/>
-            <?php if ($curr_apart_status=="2" || !$curr_apart_status) { ?>
+            <?php if (!empty($data['is_manual_mode'])) { ?>
+                <div class="alert alert-warning" style="text-align:left; margin:10px 0; padding:12px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; color:#856404; font-size:15px; line-height:1.5;">
+                    <?= $data['manual_message_html'] ?? nl2br(htmlspecialchars($data['manual_message'] ?? 'Обратитесь в отдел продаж.', ENT_QUOTES, 'UTF-8')) ?>
+                </div>
+            <?php } elseif (($curr_apart_status=="2" || !$curr_apart_status) && ($data['show_form'] ?? true)) { ?>
                 <form action="?ctr=apartments&act=order&home_id=<?=$home_id?>&apartment_num=<?=$apartment_num?>&apartments=<?=$apartments?>" method="post" enctype="multipart/form-data">
                     <h2 style="font-size:16px;">Данные покупателя</h2>
                     Скан паспорта страницы с фото: <input type="file" name="passport_scan" accept="image/*;capture=camera"><br/><br/>

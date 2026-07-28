@@ -5,103 +5,23 @@ $sa = new sahmatka( $_SESSION , $connection );
 $h = $sa->get_homes_arr();
 // print_r($h);
 
-$bgCfg = isset($GLOBALS['booking_guard']) && is_array($GLOBALS['booking_guard']) ? $GLOBALS['booking_guard'] : [];
-$bgFreeStatuses = array_map('intval', (array)($bgCfg['free_statuses'] ?? [0, 2]));
-$bgFreeStatuses = array_values(array_unique($bgFreeStatuses));
-if (!$bgFreeStatuses) { $bgFreeStatuses = [0, 2]; }
-$bgIn = implode(',', $bgFreeStatuses);
-$bgThreshold = (float)($bgCfg['free_percent_threshold'] ?? 10.0);
-$bgEnabled = !empty($bgCfg['enabled']);
-$adminPanelEnabled = !empty($bgCfg['admin_service_panel_enabled']);
-$adminPanelLogins = (array)($bgCfg['admin_service_panel_logins'] ?? ['admin']);
-$showAdminServicePanel = $adminPanelEnabled && in_array((string)($_SESSION['sh_login'] ?? ''), $adminPanelLogins, true);
+require_once __DIR__ . '/../inc/booking_guard_helpers.php';
+$bgCfg = booking_guard_config();
+$bgThreshold = (float)$bgCfg['free_percent_threshold'];
+$showAdminServicePanel = booking_guard_can_manage_panel();
 $homeServiceStats = [];
-if ($showAdminServicePanel) {
-	$visibleHomeIds = [];
-	foreach ((array)$h as $homeRow) {
-		$hid = (int)($homeRow['home_id'] ?? 0);
-		if ($hid > 0) { $visibleHomeIds[] = $hid; }
-	}
-	$visibleHomeIds = array_values(array_unique($visibleHomeIds));
-	$homeIdsSql = implode(',', $visibleHomeIds);
-	if ($homeIdsSql !== '') {
-		$qStats = "
-			SELECT
-				r.home_id,
-				r.rooms_value,
-				r.total_count,
-				r.free_count,
-				r.booked_count,
-				ROUND((r.free_count / NULLIF(r.total_count, 0)) * 100, 2) AS room_free_percent,
-				ROUND((r.booked_count / NULLIF(r.total_count, 0)) * 100, 2) AS room_booked_percent,
-				t.home_total_count,
-				t.home_free_count,
-				t.home_booked_count,
-				t.home_sold_count,
-				ROUND((t.home_free_count / NULLIF(t.home_total_count, 0)) * 100, 2) AS home_free_percent,
-				ROUND((t.home_booked_count / NULLIF(t.home_total_count, 0)) * 100, 2) AS home_booked_percent,
-				ROUND((t.home_sold_count / NULLIF(t.home_total_count, 0)) * 100, 2) AS home_sold_percent,
-				t.is_blocked
-			FROM (
-				SELECT
-					home_id,
-					TRIM(rooms) AS rooms_value,
-					COUNT(*) AS total_count,
-					SUM(CASE WHEN (status2 IS NULL OR status2 IN ($bgIn)) THEN 1 ELSE 0 END) AS free_count,
-					SUM(CASE WHEN (status2 IS NOT NULL AND status2 NOT IN ($bgIn) AND status2 <> 3) THEN 1 ELSE 0 END) AS booked_count
-				FROM apartaments
-				WHERE home_id IN ($homeIdsSql)
-				GROUP BY home_id, TRIM(rooms)
-				HAVING rooms_value <> ''
-			) r
-			INNER JOIN (
-				SELECT
-					home_id,
-					COUNT(*) AS home_total_count,
-					SUM(CASE WHEN (status2 IS NULL OR status2 IN ($bgIn)) THEN 1 ELSE 0 END) AS home_free_count,
-					SUM(CASE WHEN (status2 IS NOT NULL AND status2 NOT IN ($bgIn) AND status2 <> 3) THEN 1 ELSE 0 END) AS home_booked_count,
-					SUM(CASE WHEN status2 = 3 THEN 1 ELSE 0 END) AS home_sold_count,
-					CASE
-						WHEN COUNT(*) > 0
-							AND ((SUM(CASE WHEN (status2 IS NULL OR status2 IN ($bgIn)) THEN 1 ELSE 0 END) / COUNT(*)) * 100) < {$bgThreshold}
-						THEN 1 ELSE 0
-					END AS is_blocked
-				FROM apartaments
-				WHERE home_id IN ($homeIdsSql)
-				GROUP BY home_id
-			) t ON t.home_id = r.home_id
-		";
-		$rows = $mysql->get_arr($qStats);
-		if (is_array($rows)) {
-			foreach ($rows as $row) {
-				$homeId = (int)($row['home_id'] ?? 0);
-				$rooms = trim((string)($row['rooms_value'] ?? ''));
-				if ($homeId <= 0 || $rooms === '') { continue; }
-				if (!isset($homeServiceStats[$homeId])) {
-					$homeServiceStats[$homeId] = ['rooms' => [], 'total' => 0, 'free' => 0, 'booked' => 0, 'sold' => 0, 'percent' => 0.0, 'booked_percent' => 0.0, 'sold_percent' => 0.0, 'is_blocked' => false];
-				}
-				$homeServiceStats[$homeId]['rooms'][$rooms] = [
-					'total' => (int)($row['total_count'] ?? 0),
-					'free' => (int)($row['free_count'] ?? 0),
-					'booked' => (int)($row['booked_count'] ?? 0),
-					'percent' => (float)($row['room_free_percent'] ?? 0),
-					'booked_percent' => (float)($row['room_booked_percent'] ?? 0),
-				];
-				$homeServiceStats[$homeId]['total'] = (int)($row['home_total_count'] ?? 0);
-				$homeServiceStats[$homeId]['free'] = (int)($row['home_free_count'] ?? 0);
-				$homeServiceStats[$homeId]['booked'] = (int)($row['home_booked_count'] ?? 0);
-				$homeServiceStats[$homeId]['sold'] = (int)($row['home_sold_count'] ?? 0);
-				$homeServiceStats[$homeId]['percent'] = (float)($row['home_free_percent'] ?? 0);
-				$homeServiceStats[$homeId]['booked_percent'] = (float)($row['home_booked_percent'] ?? 0);
-				$homeServiceStats[$homeId]['sold_percent'] = (float)($row['home_sold_percent'] ?? 0);
-				$homeServiceStats[$homeId]['is_blocked'] = !empty($row['is_blocked']);
-			}
-		}
-	}
-	foreach ($homeServiceStats as $homeId => $stat) {
-		if (!$bgEnabled) { $homeServiceStats[$homeId]['is_blocked'] = false; }
-		ksort($homeServiceStats[$homeId]['rooms'], SORT_NATURAL);
-	}
+
+$visibleHomeIds = [];
+foreach ((array)$h as $homeRow) {
+	$hid = (int)($homeRow['home_id'] ?? 0);
+	if ($hid > 0) { $visibleHomeIds[] = $hid; }
+}
+$visibleHomeIds = array_values(array_unique($visibleHomeIds));
+if ($visibleHomeIds) {
+	$homeServiceStats = booking_guard_calc_room_stats($visibleHomeIds);
+	booking_guard_sync_auto($homeServiceStats);
+	$modes = booking_guard_load_modes($visibleHomeIds);
+	booking_guard_apply_modes_to_stats($homeServiceStats, $modes);
 }
 
 
@@ -214,20 +134,23 @@ if ($showAdminServicePanel) {
 											<b><?= (int)$service['total'] ?></b> / Свободно: <b><?= (int)$service['free'] ?></b><? if ($homeFreePercent > 0): ?> (<b><?= number_format($homeFreePercent, 2, ',', '') ?>%</b>)<? endif; ?> / Бронь: <b><?= (int)$service['booked'] ?></b><? if ($homeBookedPercent > 0): ?> (<b><?= number_format($homeBookedPercent, 2, ',', '') ?>%</b>)<? endif; ?>
 										</div>
 									</div>
-									<div style="padding:0 8px;">
+									<div style="padding:0 8px;" class="admin-home-rooms" data-home-id="<?= $homeId ?>">
 										<? foreach ($service['rooms'] as $rooms => $roomStat) { ?>
 											<? $roomFreePercent = (float)$roomStat['percent']; ?>
 											<? $roomBookedPercent = (float)$roomStat['booked_percent']; ?>
 											<? $isZeroFree = ((int)$roomStat['free'] === 0); ?>
 											<? $isZeroBooked = ((int)$roomStat['booked'] === 0); ?>
-											<div>
-												<b><?= htmlspecialchars((string)$rooms, ENT_QUOTES, 'UTF-8') ?></b>: - <b><?= (int)$roomStat['total'] ?></b> /
+											<? $isManualRoom = !empty($roomStat['is_manual_mode']); ?>
+											<? $roomSource = (string)($roomStat['source'] ?? 'auto'); ?>
+											<div class="admin-room-row<?= $isManualRoom ? ' admin-room-row--manual' : '' ?>"
+												data-rooms="<?= htmlspecialchars((string)$rooms, ENT_QUOTES, 'UTF-8') ?>"
+												data-manual="<?= $isManualRoom ? '1' : '0' ?>"
+												data-source="<?= htmlspecialchars($roomSource, ENT_QUOTES, 'UTF-8') ?>"
+												style="<?= $isManualRoom ? 'background:#f8d7da; border-radius:4px; padding:1px 4px; margin:1px 0;' : '' ?>">
+												<b><?= htmlspecialchars((string)$rooms, ENT_QUOTES, 'UTF-8') ?></b><? if ($isManualRoom): ?> <a href="#" class="js-booking-guard-toggle" title="Переключить ручной режим" style="color:#b33a3a; font-weight:700; text-decoration:underline;">ручное</a><? endif; ?><? if (!$isManualRoom): ?> <a href="#" class="js-booking-guard-toggle" title="Включить ручной режим" style="color:#888; font-size:9px; text-decoration:none;">авто</a><? endif; ?>: - <b><?= (int)$roomStat['total'] ?></b> /
 												<span style="<?= $isZeroFree ? 'color:#CCC;' : '' ?>">Свободно: <b><?= (int)$roomStat['free'] ?></b><? if ($roomFreePercent > 0): ?> (<b><?= number_format($roomFreePercent, 2, ',', '') ?>%</b>)<? endif; ?></span> /
 												<span style="<?= $isZeroBooked ? 'color:#CCC;' : '' ?>">Бронь: <b><?= (int)$roomStat['booked'] ?></b><? if ($roomBookedPercent > 0): ?> (<b><?= number_format($roomBookedPercent, 2, ',', '') ?>%</b>)<? endif; ?></span>
 											</div>
-										<? } ?>
-										<? if (!empty($service['is_blocked'])) { ?>
-											<div style="margin-top:6px; font-weight:700; color:#b33a3a;">Ручное бронирование</div>
 										<? } ?>
 									</div>
 								</div>
@@ -286,10 +209,83 @@ if ($showAdminServicePanel) {
 		});
 		blocks.forEach(function(el) { el.style.minHeight = maxH + 'px'; });
 	}
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', syncAdminStatsHeight);
-	} else {
+	function applyRoomRowUi(row, isManual) {
+		row.setAttribute('data-manual', isManual ? '1' : '0');
+		row.setAttribute('data-source', 'manual');
+		if (isManual) {
+			row.classList.add('admin-room-row--manual');
+			row.style.background = '#f8d7da';
+			row.style.borderRadius = '4px';
+			row.style.padding = '1px 4px';
+			row.style.margin = '1px 0';
+		} else {
+			row.classList.remove('admin-room-row--manual');
+			row.style.background = '';
+			row.style.borderRadius = '';
+			row.style.padding = '';
+			row.style.margin = '';
+		}
+		var link = row.querySelector('.js-booking-guard-toggle');
+		if (!link) return;
+		if (isManual) {
+			link.textContent = 'ручное';
+			link.title = 'Переключить ручной режим';
+			link.style.color = '#b33a3a';
+			link.style.fontWeight = '700';
+			link.style.textDecoration = 'underline';
+			link.style.fontSize = '';
+		} else {
+			link.textContent = 'авто';
+			link.title = 'Включить ручной режим';
+			link.style.color = '#888';
+			link.style.fontWeight = '';
+			link.style.textDecoration = 'none';
+			link.style.fontSize = '9px';
+		}
+	}
+	function bindBookingGuardToggle() {
+		document.addEventListener('click', function(e) {
+			var link = e.target.closest ? e.target.closest('.js-booking-guard-toggle') : null;
+			if (!link) return;
+			e.preventDefault();
+			var row = link.closest('.admin-room-row');
+			var wrap = link.closest('.admin-home-rooms');
+			if (!row || !wrap) return;
+			var homeId = wrap.getAttribute('data-home-id');
+			var rooms = row.getAttribute('data-rooms');
+			var cur = row.getAttribute('data-manual') === '1' ? 1 : 0;
+			var next = cur ? 0 : 1;
+			link.style.opacity = '0.5';
+			var body = 'home_id=' + encodeURIComponent(homeId)
+				+ '&rooms=' + encodeURIComponent(rooms)
+				+ '&enabled=' + next;
+			fetch('/sahmatka/ajax_router.php?ctr=booking_guard&act=toggle', {
+				method: 'POST',
+				headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+				body: body,
+				credentials: 'same-origin'
+			}).then(function(r) { return r.json(); }).then(function(j) {
+				link.style.opacity = '';
+				if (!j || !j.ok) {
+					alert((j && j.error) ? j.error : 'Не удалось сохранить режим');
+					return;
+				}
+				applyRoomRowUi(row, !!j.is_manual_mode);
+				syncAdminStatsHeight();
+			}).catch(function() {
+				link.style.opacity = '';
+				alert('Ошибка сети');
+			});
+		});
+	}
+	function init() {
 		syncAdminStatsHeight();
+		bindBookingGuardToggle();
+	}
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', init);
+	} else {
+		init();
 	}
 	window.addEventListener('resize', syncAdminStatsHeight);
 })();

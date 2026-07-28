@@ -193,6 +193,13 @@
 						<li><a href="/sahmatka/ctrind.php?ctr=stat_econom">Сводная статистика</a></li>
 						<li><a href="/sahmatka/ctrind.php?ctr=stat_sales_dynamic">Статистика продаж (NEW)</a></li>
 					<li><a href="ctrind.php?ctr=op_broni_actual">Анализ броней</a></li>
+					<?
+					if ($_SESSION['sh_login'] == 'admin' || $_SESSION['sh_login'] == 'demo_admin') {
+					?>
+					<li><a href="ctrind.php?ctr=broni_clear&act=index">Снятие броней</a></li>
+					<?
+					}
+					?>
 						
 						
 						<?
