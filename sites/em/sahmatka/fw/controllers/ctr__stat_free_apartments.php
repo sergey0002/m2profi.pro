@@ -35,6 +35,7 @@ class ctr__stat_free_apartments extends ctr__
 			'filters' => $filters,
 			'homes' => $report['homes'],
 			'room_columns' => $report['room_columns'] ?? [],
+			'totals_by_type' => $report['totals_by_type'] ?? [],
 			'summary' => $report['summary'],
 		], 'stat_free_apartments', 'index');
 	}

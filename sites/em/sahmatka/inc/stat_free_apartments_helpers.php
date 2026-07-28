@@ -329,10 +329,26 @@ function stat_free_load_report(array $filters)
 	}
 	unset($h);
 
+	$totalsByType = [];
+	foreach ($roomColumns as $col) {
+		$totalsByType[$col] = ['total' => 0, 'free' => 0, 'sold' => 0];
+	}
+	foreach ($homesOut as $h) {
+		foreach ($h['rooms_by_type'] as $col => $rm) {
+			if (!isset($totalsByType[$col])) {
+				$totalsByType[$col] = ['total' => 0, 'free' => 0, 'sold' => 0];
+			}
+			$totalsByType[$col]['total'] += (int)$rm['total'];
+			$totalsByType[$col]['free'] += (int)$rm['free'];
+			$totalsByType[$col]['sold'] += (int)$rm['sold'];
+		}
+	}
+
 	return [
 		'homes' => $homesOut,
 		'room_columns' => $roomColumns,
 		'max_total_by_type' => $maxTotalByType,
+		'totals_by_type' => $totalsByType,
 		'summary' => [
 			'homes' => count($homesOut),
 			'apartments' => $sumApt,

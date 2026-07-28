@@ -2,6 +2,7 @@
 $filters = $data['filters'] ?? ['sdan' => 'all', 'sort' => 'delivery_asc'];
 $homes = $data['homes'] ?? [];
 $roomColumns = $data['room_columns'] ?? [];
+$totalsByType = $data['totals_by_type'] ?? [];
 $summary = $data['summary'] ?? ['homes' => 0, 'apartments' => 0, 'sold' => 0, 'free' => 0];
 $sdan = $filters['sdan'] ?? 'all';
 $sort = $filters['sort'] ?? 'delivery_asc';
@@ -119,6 +120,23 @@ $fmtPct = static function ($n) {
 .stat-free-table tbody tr:hover td.col-home,
 .stat-free-table tbody tr:hover td.col-date {
 	background: #e8f7f3;
+}
+.stat-free-table tfoot tr.stat-free-total {
+	background: #e8eef1;
+	border-top: 2px solid #000;
+}
+.stat-free-table tfoot td {
+	font-weight: 800; color: #2F4049; vertical-align: middle;
+	padding-top: 12px; padding-bottom: 12px;
+}
+.stat-free-table tfoot td.col-home,
+.stat-free-table tfoot td.col-date {
+	background: #e8eef1; position: sticky; z-index: 2;
+}
+.stat-free-table tfoot td.col-home { left: 0; }
+.stat-free-table tfoot td.col-date { left: 48px; }
+.stat-free-total-val {
+	display: block; text-align: center; font-size: 15px; line-height: 1.2;
 }
 .stat-free-home {
 	font-weight: 700; font-size: 13px; color: #2F4049; line-height: 1.2;
@@ -295,6 +313,18 @@ $fmtPct = static function ($n) {
 					</tr>
 				<?php endforeach; ?>
 				</tbody>
+				<tfoot>
+					<tr class="stat-free-total">
+						<td class="col-home">ИТОГО</td>
+						<td class="col-date"></td>
+						<?php foreach ($roomColumns as $rk): ?>
+							<?php $tot = (int)($totalsByType[$rk]['total'] ?? 0); ?>
+							<td class="col-room">
+								<span class="stat-free-total-val"><?= $tot ?></span>
+							</td>
+						<?php endforeach; ?>
+					</tr>
+				</tfoot>
 			</table>
 			</div>
 		<?php endif; ?>
