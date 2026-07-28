@@ -34,6 +34,7 @@ class ctr__stat_free_apartments extends ctr__
 		$this->tpl([
 			'filters' => $filters,
 			'homes' => $report['homes'],
+			'room_columns' => $report['room_columns'] ?? [],
 			'summary' => $report['summary'],
 		], 'stat_free_apartments', 'index');
 	}

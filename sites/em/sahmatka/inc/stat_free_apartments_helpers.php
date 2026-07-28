@@ -45,6 +45,75 @@ function stat_free_format_delivery_quarter($deliveryDate, $readyQuarter = null, 
 	return '—';
 }
 
+/**
+ * Базовый цвет типа квартир (тёмные тона на светлом фоне).
+ * [светлый, тёмный] — большой разброс, чтобы градиент был заметнее.
+ * @return array{0:array{0:int,1:int,2:int},1:array{0:int,1:int,2:int}}
+ */
+function stat_free_type_base_rgb($roomsKey)
+{
+	$n = (int)preg_replace('/\D+/', '', (string)$roomsKey);
+	$map = [
+		1 => [[102, 187, 106], [27, 94, 32]],     // зелёный
+		2 => [[255, 167, 38], [191, 54, 12]],      // оранжевый
+		3 => [[41, 182, 246], [1, 87, 155]],       // синий
+		4 => [[149, 117, 205], [69, 39, 160]],     // фиолетовый
+		5 => [[236, 64, 122], [136, 14, 79]],      // малиновый
+		6 => [[38, 166, 154], [0, 77, 64]],        // бирюзовый
+		7 => [[141, 110, 99], [62, 39, 35]],       // коричневый
+		8 => [[120, 144, 156], [38, 50, 56]],      // серо-синий
+	];
+	if (isset($map[$n])) {
+		return $map[$n];
+	}
+	return [[144, 164, 174], [55, 71, 79]];
+}
+
+/**
+ * Оттенок типа: чем больше свободных %, тем темнее.
+ * @return array{r:int,g:int,b:int,css:string}
+ */
+function stat_free_type_shade_rgb($roomsKey, $freePct)
+{
+	$pair = stat_free_type_base_rgb($roomsKey);
+	$light = $pair[0];
+	$dark = $pair[1];
+	$t = max(0.0, min(100.0, (float)$freePct)) / 100.0;
+	$r = (int)round($light[0] + ($dark[0] - $light[0]) * $t);
+	$g = (int)round($light[1] + ($dark[1] - $light[1]) * $t);
+	$b = (int)round($light[2] + ($dark[2] - $light[2]) * $t);
+	return [
+		'r' => $r,
+		'g' => $g,
+		'b' => $b,
+		'css' => 'rgb(' . $r . ',' . $g . ',' . $b . ')',
+	];
+}
+
+/**
+ * Градиент: от светлого (мало свободных) до оттенка реального free%.
+ * Конечная точка у каждой полоски своя — по факту свободных, не «на 100%».
+ */
+function stat_free_type_gradient_css($roomsKey, $freePct)
+{
+	$freePct = max(0.0, min(100.0, (float)$freePct));
+	$start = stat_free_type_shade_rgb($roomsKey, 0);
+	$end = stat_free_type_shade_rgb($roomsKey, $freePct);
+	return 'linear-gradient(90deg, ' . $start['css'] . ' 0%, ' . $end['css'] . ' 100%)';
+}
+
+/** @deprecated */
+function stat_free_heat_rgb($freePct)
+{
+	return stat_free_type_shade_rgb('1к', $freePct);
+}
+
+/** @deprecated */
+function stat_free_heat_gradient_css($freePct)
+{
+	return stat_free_type_gradient_css('1к', $freePct);
+}
+
 function stat_free_escape($s)
 {
 	global $connection;
@@ -112,6 +181,7 @@ function stat_free_load_report(array $filters)
 	if (!is_array($homeRows) || !$homeRows) {
 		return [
 			'homes' => [],
+			'room_columns' => [],
 			'summary' => ['homes' => 0, 'apartments' => 0, 'sold' => 0, 'free' => 0],
 		];
 	}
@@ -127,6 +197,7 @@ function stat_free_load_report(array $filters)
 	if (!$homeIds) {
 		return [
 			'homes' => [],
+			'room_columns' => [],
 			'summary' => ['homes' => 0, 'apartments' => 0, 'sold' => 0, 'free' => 0],
 		];
 	}
@@ -135,25 +206,27 @@ function stat_free_load_report(array $filters)
 	$sqlStats = "
 		SELECT
 			a.home_id,
-			TRIM(a.rooms) AS rooms,
+			CAST(TRIM(a.rooms) AS UNSIGNED) AS rooms_n,
 			COUNT(*) AS total_count,
 			SUM(CASE WHEN a.status2 = 3 THEN 1 ELSE 0 END) AS sold_count,
 			SUM(CASE WHEN (a.status2 IS NULL OR a.status2 IN (0, 2)) THEN 1 ELSE 0 END) AS free_count
 		FROM apartaments a
 		WHERE a.home_id IN ({$idsSql})
 		  AND TRIM(a.rooms) <> ''
-		GROUP BY a.home_id, TRIM(a.rooms)
+		  AND CAST(TRIM(a.rooms) AS UNSIGNED) > 0
+		GROUP BY a.home_id, CAST(TRIM(a.rooms) AS UNSIGNED)
 	";
 	$statRows = $mysql->get_arr($sqlStats);
 	$byHome = [];
 	if (is_array($statRows)) {
 		foreach ($statRows as $sr) {
 			$hid = (int)$sr['home_id'];
-			$rooms = trim((string)$sr['rooms']);
-			if ($hid <= 0 || $rooms === '') {
+			$roomsN = (int)($sr['rooms_n'] ?? 0);
+			if ($hid <= 0 || $roomsN <= 0) {
 				continue;
 			}
-			$byHome[$hid][$rooms] = [
+			$roomsKey = (string)$roomsN;
+			$byHome[$hid][$roomsKey] = [
 				'total' => (int)$sr['total_count'],
 				'sold' => (int)$sr['sold_count'],
 				'free' => (int)$sr['free_count'],
@@ -165,6 +238,7 @@ function stat_free_load_report(array $filters)
 	$sumApt = 0;
 	$sumSold = 0;
 	$sumFree = 0;
+	$roomKeys = [];
 
 	foreach ($homeRows as $hr) {
 		$hid = (int)$hr['home_id'];
@@ -174,7 +248,7 @@ function stat_free_load_report(array $filters)
 
 		$roomMap = $byHome[$hid] ?? [];
 		if ($roomMap) {
-			ksort($roomMap, SORT_NATURAL);
+			ksort($roomMap, SORT_NUMERIC);
 		}
 
 		$homeTotal = 0;
@@ -182,24 +256,31 @@ function stat_free_load_report(array $filters)
 			$homeTotal += (int)$rm['total'];
 		}
 
-		$roomsOut = [];
+		$roomsByType = [];
 		foreach ($roomMap as $rooms => $rm) {
 			$total = (int)$rm['total'];
 			$sold = (int)$rm['sold'];
 			$free = (int)$rm['free'];
 			$widthPct = $homeTotal > 0 ? round($total / $homeTotal * 100, 1) : 0.0;
 			$soldFillPct = $total > 0 ? round($sold / $total * 100, 1) : 0.0;
-			$soldLabelPct = $homeTotal > 0 ? round($sold / $homeTotal * 100, 1) : 0.0;
-			$roomsOut[] = [
-				'rooms' => $rooms,
+			$freeFillPct = $total > 0 ? round($free / $total * 100, 1) : 0.0;
+			// «Всего» — доля типа в доме; свободно/продано — от числа квартир этого типа
+			$soldLabelPct = $soldFillPct;
+			$freeLabelPct = $freeFillPct;
+			$col = (string)$rooms . 'к';
+			$roomsByType[$col] = [
+				'rooms' => $col,
 				'total' => $total,
 				'sold' => $sold,
 				'free' => $free,
 				'width_pct' => $widthPct,
 				'sold_fill_pct' => $soldFillPct,
+				'free_fill_pct' => $freeFillPct,
 				'label_type_pct' => $widthPct,
 				'label_sold_pct' => $soldLabelPct,
+				'label_free_pct' => $freeLabelPct,
 			];
+			$roomKeys[(int)$rooms] = true;
 			$sumSold += $sold;
 			$sumFree += $free;
 		}
@@ -217,12 +298,41 @@ function stat_free_load_report(array $filters)
 				$hr['built_year'] ?? null
 			),
 			'home_total' => $homeTotal,
-			'rooms' => $roomsOut,
+			'rooms_by_type' => $roomsByType,
 		];
 	}
 
+	$roomColumns = array_keys($roomKeys);
+	sort($roomColumns, SORT_NUMERIC);
+	$roomColumns = array_map(static function ($n) {
+		return (string)$n . 'к';
+	}, $roomColumns);
+
+	// Макс. всего квартир типа среди домов → 100% ширины столбца (серый трек)
+	$maxTotalByType = [];
+	foreach ($homesOut as $h) {
+		foreach ($h['rooms_by_type'] as $col => $rm) {
+			$t = (int)$rm['total'];
+			if (!isset($maxTotalByType[$col]) || $t > $maxTotalByType[$col]) {
+				$maxTotalByType[$col] = $t;
+			}
+		}
+	}
+	foreach ($homesOut as &$h) {
+		foreach ($h['rooms_by_type'] as $col => &$rm) {
+			$maxT = (int)($maxTotalByType[$col] ?? 0);
+			$rm['bar_scale_pct'] = ($maxT > 0)
+				? round(((int)$rm['total'] / $maxT) * 100, 1)
+				: 0.0;
+		}
+		unset($rm);
+	}
+	unset($h);
+
 	return [
 		'homes' => $homesOut,
+		'room_columns' => $roomColumns,
+		'max_total_by_type' => $maxTotalByType,
 		'summary' => [
 			'homes' => count($homesOut),
 			'apartments' => $sumApt,
