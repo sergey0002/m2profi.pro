@@ -176,7 +176,8 @@
 					<?
 					// РАскрытие меню
 					if( $_GET['action']=='stat_salen' || $_GET['action']=='stat_sale' || $_GET['action']=='agency_stat' || $_GET['action']=='object_stat' || $_GET['action']=='stat_salen2'   ||  $_GET['ctr']=='parking_stat'  
-					||  $_GET['ctr']=='stat_econom' ||  $_GET['ctr']=='stat_sales_dynamic' )
+					||  $_GET['ctr']=='stat_econom' ||  $_GET['ctr']=='stat_sales_dynamic'
+					||  $_GET['ctr']=='op_broni_actual' ||  $_GET['ctr']=='stat_free_apartments' )
 					{
 						$statm=1;
 					}
@@ -193,6 +194,7 @@
 						<li><a href="/sahmatka/ctrind.php?ctr=stat_econom">Сводная статистика</a></li>
 						<li><a href="/sahmatka/ctrind.php?ctr=stat_sales_dynamic">Статистика продаж (NEW)</a></li>
 					<li><a href="ctrind.php?ctr=op_broni_actual">Анализ броней</a></li>
+					<li><a href="ctrind.php?ctr=stat_free_apartments&act=index">Свободные квартиры</a></li>
 						
 						
 						<?
