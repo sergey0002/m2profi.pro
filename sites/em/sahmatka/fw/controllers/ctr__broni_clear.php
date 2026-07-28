@@ -239,7 +239,11 @@ class ctr__broni_clear extends ctr__
                 $skipped++;
                 continue;
             }
-            $sa->up_broni($broniId, 2, 'Массовое снятие админом (broni_clear)');
+            $sa->up_broni(
+                $broniId,
+                2,
+                'Снятие брони в связи с переходом на ручное бронирование'
+            );
             $cleared++;
             $hid = (int)$row['home_id'];
             if ($hid > 0) {

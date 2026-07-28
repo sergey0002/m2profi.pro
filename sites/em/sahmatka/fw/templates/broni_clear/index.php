@@ -197,7 +197,7 @@ $guardMode = $filters['guard_mode'] ?? 'all';
     window.confirmClearBroni = function() {
         var n = boxes().filter(function(cb) { return cb.checked; }).length;
         if (!n) return false;
-        return confirm('Снять выбранные брони (' + n + ' шт.)?\nКвартиры снова станут свободными.');
+        return confirm('Снять выбранные брони (' + n + ' шт.)?\nКвартиры снова станут свободными.\nВ истории будет указано: снятие в связи с переходом на ручное бронирование.');
     };
     refresh();
 })();
