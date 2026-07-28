@@ -161,6 +161,7 @@ function stat_free_load_report(array $filters)
 	$whereSql = implode(' AND ', $where);
 
 	$dir = ($filters['sort'] === 'delivery_desc') ? 'DESC' : 'ASC';
+	// Сортируем по фактическому сроку (как в подписи): delivery_date, иначе ready_quarter+built_year
 	$sqlHomes = "
 		SELECT
 			h.home_id,
@@ -169,12 +170,26 @@ function stat_free_load_report(array $filters)
 			h.complite,
 			h.delivery_date,
 			h.ready_quarter,
-			h.built_year
+			h.built_year,
+			CASE
+				WHEN h.delivery_date IS NOT NULL AND h.delivery_date <> '0000-00-00'
+					THEN h.delivery_date
+				WHEN h.built_year > 0 AND h.ready_quarter BETWEEN 1 AND 4
+					THEN STR_TO_DATE(
+						CONCAT(
+							h.built_year, '-',
+							((h.ready_quarter - 1) * 3 + 1),
+							'-01'
+						),
+						'%Y-%c-%d'
+					)
+				ELSE NULL
+			END AS sort_delivery
 		FROM homes h
 		WHERE {$whereSql}
 		ORDER BY
-			(h.delivery_date IS NULL OR h.delivery_date = '0000-00-00') ASC,
-			h.delivery_date {$dir},
+			(sort_delivery IS NULL) ASC,
+			sort_delivery {$dir},
 			h.title ASC
 	";
 	$homeRows = $mysql->get_arr($sqlHomes);
@@ -286,6 +301,19 @@ function stat_free_load_report(array $filters)
 		}
 		$sumApt += $homeTotal;
 
+		$sortDelivery = $hr['sort_delivery'] ?? null;
+		$sortTs = 0;
+		if ($sortDelivery && $sortDelivery !== '0000-00-00') {
+			$sortTs = (int)strtotime((string)$sortDelivery);
+		}
+		if ($sortTs <= 0) {
+			$rq = (int)($hr['ready_quarter'] ?? 0);
+			$by = (int)($hr['built_year'] ?? 0);
+			if ($by > 0 && $rq >= 1 && $rq <= 4) {
+				$sortTs = (int)strtotime(sprintf('%04d-%02d-01', $by, ($rq - 1) * 3 + 1));
+			}
+		}
+
 		$homesOut[] = [
 			'home_id' => $hid,
 			'caption' => $caption,
@@ -297,10 +325,29 @@ function stat_free_load_report(array $filters)
 				$hr['ready_quarter'] ?? null,
 				$hr['built_year'] ?? null
 			),
+			'sort_ts' => $sortTs,
 			'home_total' => $homeTotal,
 			'rooms_by_type' => $roomsByType,
 		];
 	}
+
+	$sortDesc = ($filters['sort'] === 'delivery_desc');
+	usort($homesOut, static function ($a, $b) use ($sortDesc) {
+		$ta = (int)($a['sort_ts'] ?? 0);
+		$tb = (int)($b['sort_ts'] ?? 0);
+		$aEmpty = ($ta <= 0);
+		$bEmpty = ($tb <= 0);
+		if ($aEmpty !== $bEmpty) {
+			return $aEmpty ? 1 : -1; // без даты — в конец
+		}
+		if ($ta !== $tb) {
+			if ($sortDesc) {
+				return ($tb <=> $ta);
+			}
+			return ($ta <=> $tb);
+		}
+		return strnatcasecmp((string)($a['caption'] ?? ''), (string)($b['caption'] ?? ''));
+	});
 
 	$roomColumns = array_keys($roomKeys);
 	sort($roomColumns, SORT_NUMERIC);
