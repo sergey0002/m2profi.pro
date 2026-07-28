@@ -11,6 +11,8 @@ class ctr__broni_clear extends ctr__
     var $ctr = 'broni_clear';
     var $title = 'Снятие броней';
     private $limit = 500;
+    /** Skip full-home sync (already done in act__clear). */
+    private $skip_guard_sync = false;
 
     private function assert_access()
     {
@@ -24,11 +26,11 @@ class ctr__broni_clear extends ctr__
     private function filters_from_request()
     {
         return [
-            'home_id' => (int)($_GET['home_id'] ?? 0),
-            'apartment_num' => trim((string)($_GET['apartment_num'] ?? '')),
-            'rooms' => trim((string)($_GET['rooms'] ?? '')),
-            'user_id' => (int)($_GET['user_id'] ?? 0),
-            'guard_mode' => (string)($_GET['guard_mode'] ?? 'all'),
+            'home_id' => (int)($_GET['home_id'] ?? $_POST['home_id'] ?? 0),
+            'apartment_num' => trim((string)($_GET['apartment_num'] ?? $_POST['apartment_num'] ?? '')),
+            'rooms' => trim((string)($_GET['rooms'] ?? $_POST['rooms'] ?? '')),
+            'user_id' => (int)($_GET['user_id'] ?? $_POST['user_id'] ?? 0),
+            'guard_mode' => (string)($_GET['guard_mode'] ?? $_POST['guard_mode'] ?? 'all'),
         ];
     }
 
@@ -176,10 +178,16 @@ class ctr__broni_clear extends ctr__
         }
         $t['h1'] = 'Снятие броней';
 
-        $this->sync_for_active_homes();
         $filters = $this->filters_from_request();
         if (!in_array($filters['guard_mode'], ['all', 'auto', 'manual'], true)) {
             $filters['guard_mode'] = 'all';
+        }
+
+        // Full sync only when filtering by mode (needs fresh cache).
+        // After mass clear we already synced touched homes — skip.
+        if (!$this->skip_guard_sync && $filters['guard_mode'] !== 'all') {
+            @set_time_limit(120);
+            $this->sync_for_active_homes();
         }
 
         $flash = '';
@@ -209,9 +217,11 @@ class ctr__broni_clear extends ctr__
             return;
         }
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            header('Location: /sahmatka/ctrind.php?ctr=broni_clear&act=index');
-            exit;
+            $this->act__index();
+            return;
         }
+
+        @set_time_limit(300);
 
         $ids = $_POST['broni_ids'] ?? [];
         if (!is_array($ids)) {
@@ -239,11 +249,15 @@ class ctr__broni_clear extends ctr__
                 $skipped++;
                 continue;
             }
-            $sa->up_broni(
+            $newId = $sa->up_broni(
                 $broniId,
                 2,
                 'Снятие брони в связи с переходом на ручное бронирование'
             );
+            if (!$newId) {
+                $skipped++;
+                continue;
+            }
             $cleared++;
             $hid = (int)$row['home_id'];
             if ($hid > 0) {
@@ -258,32 +272,16 @@ class ctr__broni_clear extends ctr__
 
         $_SESSION['broni_clear_flash'] = "Снято: {$cleared}. Пропущено: {$skipped}.";
 
-        $q = http_build_query([
-            'ctr' => 'broni_clear',
-            'act' => 'index',
-            'home_id' => (int)($_POST['home_id'] ?? 0) ?: null,
-            'apartment_num' => trim((string)($_POST['apartment_num'] ?? '')) ?: null,
-            'rooms' => trim((string)($_POST['rooms'] ?? '')) ?: null,
-            'user_id' => (int)($_POST['user_id'] ?? 0) ?: null,
-            'guard_mode' => (string)($_POST['guard_mode'] ?? 'all'),
-        ]);
-        // remove empty
-        $params = [
-            'ctr' => 'broni_clear',
-            'act' => 'index',
-        ];
+        // ctrind.php уже вывел шапку — header(Location) не работает и exit даёт белый экран.
+        // Рендерим список в том же запросе.
         foreach (['home_id', 'apartment_num', 'rooms', 'user_id', 'guard_mode'] as $k) {
-            $v = $_POST[$k] ?? '';
-            if ($v !== '' && $v !== null && $v !== '0' && $v !== 0) {
-                $params[$k] = $v;
-            } elseif ($k === 'guard_mode' && $v !== '') {
-                $params[$k] = $v;
+            if (isset($_POST[$k])) {
+                $_GET[$k] = $_POST[$k];
             }
         }
-        if (!isset($params['guard_mode'])) {
-            $params['guard_mode'] = 'all';
-        }
-        header('Location: /sahmatka/ctrind.php?' . http_build_query($params));
-        exit;
+        $_GET['ctr'] = 'broni_clear';
+        $_GET['act'] = 'index';
+        $this->skip_guard_sync = true;
+        $this->act__index();
     }
 }
