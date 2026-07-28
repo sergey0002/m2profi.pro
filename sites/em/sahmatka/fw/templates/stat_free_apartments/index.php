@@ -320,15 +320,15 @@ $fmtPct = static function ($n) {
 				<tfoot>
 					<tr class="stat-free-total">
 						<td class="col-home-span" colspan="2">Итого</td>
-						<?php
-						$allApt = (int)($summary['apartments'] ?? 0);
-						foreach ($roomColumns as $rk):
+						<?php foreach ($roomColumns as $rk):
 							$tot = (int)($totalsByType[$rk]['total'] ?? 0);
-							$pctOfAll = $allApt > 0 ? round($tot / $allApt * 100, 1) : 0.0;
+							$freeTot = (int)($totalsByType[$rk]['free'] ?? 0);
+							// % свободных от всех квартир этого типа в отображаемых домах
+							$freePctType = $tot > 0 ? round($freeTot / $tot * 100, 1) : 0.0;
 						?>
 							<td class="col-room">
-								<span class="stat-free-total-val">
-									<?= $tot ?> <span class="stat-free-total-pct">(<?= $fmtPct($pctOfAll) ?>%)</span>
+								<span class="stat-free-total-val" title="всего <?= $tot ?>, свободно <?= $freeTot ?> (<?= $fmtPct($freePctType) ?>%)">
+									<?= $tot ?> <span class="stat-free-total-pct">(<?= $fmtPct($freePctType) ?>%)</span>
 								</span>
 							</td>
 						<?php endforeach; ?>
