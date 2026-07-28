@@ -122,21 +122,25 @@ $fmtPct = static function ($n) {
 	background: #e8f7f3;
 }
 .stat-free-table tfoot tr.stat-free-total {
-	background: #e8eef1;
-	border-top: 2px solid #000;
+	background: #fafbfc;
+	border-top: 1px solid #000;
 }
 .stat-free-table tfoot td {
-	font-weight: 800; color: #2F4049; vertical-align: middle;
-	padding-top: 12px; padding-bottom: 12px;
+	font-weight: 400; color: #2F4049; vertical-align: middle;
+	padding-top: 10px; padding-bottom: 10px;
 }
-.stat-free-table tfoot td.col-home,
-.stat-free-table tfoot td.col-date {
-	background: #e8eef1; position: sticky; z-index: 2;
+.stat-free-table tfoot td.col-home-span {
+	background: #fafbfc; position: sticky; left: 0; z-index: 2;
+	font-size: 12px; font-weight: 400; text-align: left;
+	border-right: 1px solid #b0bec5 !important;
+	box-shadow: 4px 0 6px -4px rgba(47, 64, 73, .12);
+	white-space: nowrap;
 }
-.stat-free-table tfoot td.col-home { left: 0; }
-.stat-free-table tfoot td.col-date { left: 48px; }
 .stat-free-total-val {
-	display: block; text-align: center; font-size: 15px; line-height: 1.2;
+	display: block; text-align: center; font-size: 12px; font-weight: 400; line-height: 1.25;
+}
+.stat-free-total-pct {
+	color: #6a7a84; font-size: 11px;
 }
 .stat-free-home {
 	font-weight: 700; font-size: 13px; color: #2F4049; line-height: 1.2;
@@ -315,12 +319,17 @@ $fmtPct = static function ($n) {
 				</tbody>
 				<tfoot>
 					<tr class="stat-free-total">
-						<td class="col-home">ИТОГО</td>
-						<td class="col-date"></td>
-						<?php foreach ($roomColumns as $rk): ?>
-							<?php $tot = (int)($totalsByType[$rk]['total'] ?? 0); ?>
+						<td class="col-home-span" colspan="2">Итого</td>
+						<?php
+						$allApt = (int)($summary['apartments'] ?? 0);
+						foreach ($roomColumns as $rk):
+							$tot = (int)($totalsByType[$rk]['total'] ?? 0);
+							$pctOfAll = $allApt > 0 ? round($tot / $allApt * 100, 1) : 0.0;
+						?>
 							<td class="col-room">
-								<span class="stat-free-total-val"><?= $tot ?></span>
+								<span class="stat-free-total-val">
+									<?= $tot ?> <span class="stat-free-total-pct">(<?= $fmtPct($pctOfAll) ?>%)</span>
+								</span>
 							</td>
 						<?php endforeach; ?>
 					</tr>
