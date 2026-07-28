@@ -533,7 +533,11 @@ $GLOBALS['config']['mysql_password'] = 'root';
 $GLOBALS['config']['mysql_base'] = 'm2profi_em';
 $GLOBALS['config']['server'] = '127.0.0.1';
 
-// Панель статистики на user.php?action=objects (objects_index.php)
+// Панель статистики + кэш ручного бронирования по типу квартир (home_id + rooms).
+// Таблица: booking_guard_room (migrations/003_booking_guard_room.sql).
+// free_percent_threshold — порог % свободных ПО ТИПУ (не по дому); ниже порога → is_manual_mode=1 (source=auto).
+// admin_service_panel_logins — кто видит панель на objects и может toggle manual.
+// Страница массового снятия: ctr=broni_clear (только admin / demo_admin).
 $GLOBALS['booking_guard'] = [
 	'enabled' => true,
 	'free_statuses' => [0, 2],

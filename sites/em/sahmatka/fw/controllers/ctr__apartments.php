@@ -689,6 +689,8 @@ function act__order()
 		
     global $mysql, $homes, $filed, $sa;
 
+    require_once __DIR__ . '/../../inc/booking_guard_helpers.php';
+
     $home_id       = (int)$_GET['home_id'];
     $apartment_num = (int)$_GET['apartment_num'];
     $subact        = $_GET['subact'] ?? '';
@@ -703,6 +705,11 @@ function act__order()
         echo '<h2>Квартира не найдена</h2>';
         return;
     }
+
+    $roomsType = trim((string)($data['rooms'] ?? ''));
+    $isManualMode = booking_guard_is_manual_mode($home_id, $roomsType);
+    $manualMessage = booking_guard_message();
+    $manualMessageHtml = booking_guard_message_html();
 
     // --- compred: блок «Добавить к предложению» ---
     $compred_list = [];
@@ -864,7 +871,10 @@ function act__order()
 
         // 2. Пользователь-агент: только если квартира свободна
         elseif ($show_form && $_SESSION['sh_id']) {
-            if ($stat != '' && $stat != '2' && $stat != '5' && $stat != '0') {
+            if ($isManualMode) {
+                $err_m[] = $manualMessage;
+                $show_form = false;
+            } elseif ($stat != '' && $stat != '2' && $stat != '5' && $stat != '0') {
                 $err_m[] = 'Квартира уже забронирована другим пользователем';
             } else {
                 $need_files = ['passport_scan','passport_scan2','anket'];
@@ -916,6 +926,10 @@ function act__order()
     }
 
     // --- Вывод шаблона ---
+    if ($isManualMode && $is_user) {
+        $show_form = false;
+    }
+
     $tpl_data = [
         'data' => $data,
         'apartment' => $apartment,
@@ -933,6 +947,9 @@ function act__order()
         'compred_selected_id' => $compred_selected_id,
         'apartament_id' => $compred_apartament_id,
         'return_url' => $compred_return_url,
+        'is_manual_mode' => $isManualMode,
+        'manual_message' => $manualMessage,
+        'manual_message_html' => $manualMessageHtml,
     ];
 
     if ($show_done_template) {

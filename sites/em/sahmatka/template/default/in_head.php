@@ -370,7 +370,7 @@
 					<span></span>
 					<?
 					// РАскрытие меню
-					if( $_GET['ctr']=='homeseditor' || $_GET['ctr']=='homes_kvartal'  )
+					if( $_GET['ctr']=='homeseditor' || $_GET['ctr']=='homes_kvartal' || $_GET['ctr']=='broni_clear' )
 					{
 						$statm=1;
 					}
@@ -380,6 +380,7 @@
 					<ul class="sidenav-submenu <? if($statm){?>active<?} ?>" <? if($statm){?>style="display: block;"<?}	?>>
 						<li><a href="ctrind.php?ctr=homeseditor">Настройки объектов</a></li>
 						 <li><a href="ctrind.php?ctr=homes_kvartal">Настройки ЖК</a></li>
+						<li><a href="ctrind.php?ctr=broni_clear&act=index">Снятие броней</a></li>
 					</ul>
 				</li>
 				

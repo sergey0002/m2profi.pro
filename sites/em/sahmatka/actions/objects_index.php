@@ -5,103 +5,23 @@ $sa = new sahmatka( $_SESSION , $connection );
 $h = $sa->get_homes_arr();
 // print_r($h);
 
-$bgCfg = isset($GLOBALS['booking_guard']) && is_array($GLOBALS['booking_guard']) ? $GLOBALS['booking_guard'] : [];
-$bgFreeStatuses = array_map('intval', (array)($bgCfg['free_statuses'] ?? [0, 2]));
-$bgFreeStatuses = array_values(array_unique($bgFreeStatuses));
-if (!$bgFreeStatuses) { $bgFreeStatuses = [0, 2]; }
-$bgIn = implode(',', $bgFreeStatuses);
-$bgThreshold = (float)($bgCfg['free_percent_threshold'] ?? 10.0);
-$bgEnabled = !empty($bgCfg['enabled']);
-$adminPanelEnabled = !empty($bgCfg['admin_service_panel_enabled']);
-$adminPanelLogins = (array)($bgCfg['admin_service_panel_logins'] ?? ['admin']);
-$showAdminServicePanel = $adminPanelEnabled && in_array((string)($_SESSION['sh_login'] ?? ''), $adminPanelLogins, true);
+require_once __DIR__ . '/../inc/booking_guard_helpers.php';
+$bgCfg = booking_guard_config();
+$bgThreshold = (float)$bgCfg['free_percent_threshold'];
+$showAdminServicePanel = booking_guard_can_manage_panel();
 $homeServiceStats = [];
-if ($showAdminServicePanel) {
-	$visibleHomeIds = [];
-	foreach ((array)$h as $homeRow) {
-		$hid = (int)($homeRow['home_id'] ?? 0);
-		if ($hid > 0) { $visibleHomeIds[] = $hid; }
-	}
-	$visibleHomeIds = array_values(array_unique($visibleHomeIds));
-	$homeIdsSql = implode(',', $visibleHomeIds);
-	if ($homeIdsSql !== '') {
-		$qStats = "
-			SELECT
-				r.home_id,
-				r.rooms_value,
-				r.total_count,
-				r.free_count,
-				r.booked_count,
-				ROUND((r.free_count / NULLIF(r.total_count, 0)) * 100, 2) AS room_free_percent,
-				ROUND((r.booked_count / NULLIF(r.total_count, 0)) * 100, 2) AS room_booked_percent,
-				t.home_total_count,
-				t.home_free_count,
-				t.home_booked_count,
-				t.home_sold_count,
-				ROUND((t.home_free_count / NULLIF(t.home_total_count, 0)) * 100, 2) AS home_free_percent,
-				ROUND((t.home_booked_count / NULLIF(t.home_total_count, 0)) * 100, 2) AS home_booked_percent,
-				ROUND((t.home_sold_count / NULLIF(t.home_total_count, 0)) * 100, 2) AS home_sold_percent,
-				t.is_blocked
-			FROM (
-				SELECT
-					home_id,
-					TRIM(rooms) AS rooms_value,
-					COUNT(*) AS total_count,
-					SUM(CASE WHEN (status2 IS NULL OR status2 IN ($bgIn)) THEN 1 ELSE 0 END) AS free_count,
-					SUM(CASE WHEN (status2 IS NOT NULL AND status2 NOT IN ($bgIn) AND status2 <> 3) THEN 1 ELSE 0 END) AS booked_count
-				FROM apartaments
-				WHERE home_id IN ($homeIdsSql)
-				GROUP BY home_id, TRIM(rooms)
-				HAVING rooms_value <> ''
-			) r
-			INNER JOIN (
-				SELECT
-					home_id,
-					COUNT(*) AS home_total_count,
-					SUM(CASE WHEN (status2 IS NULL OR status2 IN ($bgIn)) THEN 1 ELSE 0 END) AS home_free_count,
-					SUM(CASE WHEN (status2 IS NOT NULL AND status2 NOT IN ($bgIn) AND status2 <> 3) THEN 1 ELSE 0 END) AS home_booked_count,
-					SUM(CASE WHEN status2 = 3 THEN 1 ELSE 0 END) AS home_sold_count,
-					CASE
-						WHEN COUNT(*) > 0
-							AND ((SUM(CASE WHEN (status2 IS NULL OR status2 IN ($bgIn)) THEN 1 ELSE 0 END) / COUNT(*)) * 100) < {$bgThreshold}
-						THEN 1 ELSE 0
-					END AS is_blocked
-				FROM apartaments
-				WHERE home_id IN ($homeIdsSql)
-				GROUP BY home_id
-			) t ON t.home_id = r.home_id
-		";
-		$rows = $mysql->get_arr($qStats);
-		if (is_array($rows)) {
-			foreach ($rows as $row) {
-				$homeId = (int)($row['home_id'] ?? 0);
-				$rooms = trim((string)($row['rooms_value'] ?? ''));
-				if ($homeId <= 0 || $rooms === '') { continue; }
-				if (!isset($homeServiceStats[$homeId])) {
-					$homeServiceStats[$homeId] = ['rooms' => [], 'total' => 0, 'free' => 0, 'booked' => 0, 'sold' => 0, 'percent' => 0.0, 'booked_percent' => 0.0, 'sold_percent' => 0.0, 'is_blocked' => false];
-				}
-				$homeServiceStats[$homeId]['rooms'][$rooms] = [
-					'total' => (int)($row['total_count'] ?? 0),
-					'free' => (int)($row['free_count'] ?? 0),
-					'booked' => (int)($row['booked_count'] ?? 0),
-					'percent' => (float)($row['room_free_percent'] ?? 0),
-					'booked_percent' => (float)($row['room_booked_percent'] ?? 0),
-				];
-				$homeServiceStats[$homeId]['total'] = (int)($row['home_total_count'] ?? 0);
-				$homeServiceStats[$homeId]['free'] = (int)($row['home_free_count'] ?? 0);
-				$homeServiceStats[$homeId]['booked'] = (int)($row['home_booked_count'] ?? 0);
-				$homeServiceStats[$homeId]['sold'] = (int)($row['home_sold_count'] ?? 0);
-				$homeServiceStats[$homeId]['percent'] = (float)($row['home_free_percent'] ?? 0);
-				$homeServiceStats[$homeId]['booked_percent'] = (float)($row['home_booked_percent'] ?? 0);
-				$homeServiceStats[$homeId]['sold_percent'] = (float)($row['home_sold_percent'] ?? 0);
-				$homeServiceStats[$homeId]['is_blocked'] = !empty($row['is_blocked']);
-			}
-		}
-	}
-	foreach ($homeServiceStats as $homeId => $stat) {
-		if (!$bgEnabled) { $homeServiceStats[$homeId]['is_blocked'] = false; }
-		ksort($homeServiceStats[$homeId]['rooms'], SORT_NATURAL);
-	}
+
+$visibleHomeIds = [];
+foreach ((array)$h as $homeRow) {
+	$hid = (int)($homeRow['home_id'] ?? 0);
+	if ($hid > 0) { $visibleHomeIds[] = $hid; }
+}
+$visibleHomeIds = array_values(array_unique($visibleHomeIds));
+if ($visibleHomeIds) {
+	$homeServiceStats = booking_guard_calc_room_stats($visibleHomeIds);
+	booking_guard_sync_auto($homeServiceStats);
+	$modes = booking_guard_load_modes($visibleHomeIds);
+	booking_guard_apply_modes_to_stats($homeServiceStats, $modes);
 }
 
 
@@ -214,20 +134,29 @@ if ($showAdminServicePanel) {
 											<b><?= (int)$service['total'] ?></b> / Свободно: <b><?= (int)$service['free'] ?></b><? if ($homeFreePercent > 0): ?> (<b><?= number_format($homeFreePercent, 2, ',', '') ?>%</b>)<? endif; ?> / Бронь: <b><?= (int)$service['booked'] ?></b><? if ($homeBookedPercent > 0): ?> (<b><?= number_format($homeBookedPercent, 2, ',', '') ?>%</b>)<? endif; ?>
 										</div>
 									</div>
-									<div style="padding:0 8px;">
+									<div style="padding:0 8px;" class="admin-home-rooms">
 										<? foreach ($service['rooms'] as $rooms => $roomStat) { ?>
 											<? $roomFreePercent = (float)$roomStat['percent']; ?>
 											<? $roomBookedPercent = (float)$roomStat['booked_percent']; ?>
 											<? $isZeroFree = ((int)$roomStat['free'] === 0); ?>
 											<? $isZeroBooked = ((int)$roomStat['booked'] === 0); ?>
-											<div>
-												<b><?= htmlspecialchars((string)$rooms, ENT_QUOTES, 'UTF-8') ?></b>: - <b><?= (int)$roomStat['total'] ?></b> /
+											<? $isManualRoom = !empty($roomStat['is_manual_mode']); ?>
+											<?
+											$manualTooltip = 'Осталось менее '
+												. rtrim(rtrim(number_format($bgThreshold, 2, '.', ''), '0'), '.')
+												. '% свободных квартир данного типа в доме';
+											?>
+											<div class="admin-room-row<?= $isManualRoom ? ' admin-room-row--manual' : '' ?>"
+												style="<?= $isManualRoom ? 'background:#f8d7da; border-radius:4px; padding:1px 4px; margin:1px 0;' : '' ?>">
+												<b><?= htmlspecialchars((string)$rooms, ENT_QUOTES, 'UTF-8') ?></b>
+												<? if ($isManualRoom): ?>
+													<span style="color:#b33a3a; font-weight:700; cursor:help;" title="<?= htmlspecialchars($manualTooltip, ENT_QUOTES, 'UTF-8') ?>">ручное</span>
+												<? else: ?>
+													<span style="color:#888;">авто</span>
+												<? endif; ?>: - <b><?= (int)$roomStat['total'] ?></b> /
 												<span style="<?= $isZeroFree ? 'color:#CCC;' : '' ?>">Свободно: <b><?= (int)$roomStat['free'] ?></b><? if ($roomFreePercent > 0): ?> (<b><?= number_format($roomFreePercent, 2, ',', '') ?>%</b>)<? endif; ?></span> /
 												<span style="<?= $isZeroBooked ? 'color:#CCC;' : '' ?>">Бронь: <b><?= (int)$roomStat['booked'] ?></b><? if ($roomBookedPercent > 0): ?> (<b><?= number_format($roomBookedPercent, 2, ',', '') ?>%</b>)<? endif; ?></span>
 											</div>
-										<? } ?>
-										<? if (!empty($service['is_blocked'])) { ?>
-											<div style="margin-top:6px; font-weight:700; color:#b33a3a;">Ручное бронирование</div>
 										<? } ?>
 									</div>
 								</div>
