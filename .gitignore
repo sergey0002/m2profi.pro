@@ -1,5 +1,5 @@
 # ============================================================
-# WHITELIST: track only core/, sites/em/, sites/sigma/
+# WHITELIST: track only core/, sites/em/, sites/sigma/, sites/doc/
 # Everything else is excluded from the repository.
 # ============================================================
 *
@@ -11,8 +11,10 @@
 !sites/em/**
 !sites/sigma/
 !sites/sigma/**
+!sites/doc/
+!sites/doc/**
 
-# Local developer docs (override whitelist !sites/em/** and !sites/sigma/**)
+# Local developer docs (override whitelist !sites/em/**, !sites/sigma/**, !sites/doc/**)
 sites/em/.doc/
 sites/em/.doc/**
 sites/em/**/.doc/
@@ -21,6 +23,10 @@ sites/sigma/.doc/
 sites/sigma/.doc/**
 sites/sigma/**/.doc/
 sites/sigma/**/.doc/**
+sites/doc/.doc/
+sites/doc/.doc/**
+sites/doc/**/.doc/
+sites/doc/**/.doc/**
 
 # Tenant oferta documents (server/local only)
 sites/*/oferta/
@@ -166,8 +172,13 @@ sites/panel/storage/framework/cache/
 sites/panel/storage/framework/sessions/
 sites/panel/storage/framework/views/
 
-# Doc site vendor
+# Doc site vendor & local junk
 sites/doc/core/vendor/
+sites/doc/.kilocode/
+sites/doc/test-results/
+sites/doc/1.txt
+sites/doc/error_screenshot.png
+sites/doc/sahmatka/fw — копия/
 
 # Generated logs
 orderlog.csv

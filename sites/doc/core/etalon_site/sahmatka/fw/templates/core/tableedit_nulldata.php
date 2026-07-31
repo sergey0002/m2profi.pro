@@ -1,0 +1,1 @@
+<tr><td colspan="10" style="text-align:center"> - нет данных -</td></tr>

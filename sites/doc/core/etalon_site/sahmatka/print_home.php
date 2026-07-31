@@ -1,0 +1,173 @@
+<?
+session_start();
+header("Expires: Mon, 26 Jul 1997 05:00:00 GMT");
+  header("Last-Modified: " . gmdate("D, d M Y H:i:s")." GMT");
+  header("Cache-Control: no-cache, must-revalidate");
+  header("Cache-Control: post-check=0,pre-check=0", false);
+  header("Cache-Control: max-age=0", false);
+  header("Pragma: no-cache");
+ 
+include('config.php');
+ 
+  
+
+if( $_SESSION['sh_login'] )
+{
+	
+	$login = $_SESSION['sh_login'];
+	$password = $_SESSION['sh_password']   ;
+	
+	  $query = mysqli_query($connection, "SELECT users.*,	agency.agency_id as agency_adm_id, agency.caption as adm_caption , user_agency.caption as ucaption  FROM `users` left join agency on agency.admin_user_id = users.id  left join agency as user_agency on user_agency.agency_id = users.agency_id WHERE `login` = '$login' AND `password` = '$password'"); // Формируем переменную с запросом к базе данных с проверкой пользователя
+	
+	$result = mysqli_fetch_array($query); // Формируем переменную с исполнением запроса к БД 
+
+ 
+	if($_SESSION['sh_id'] )
+	{
+	
+		$_SESSION['agency_id'] = $result['agency_id']; // Название агентства пользователя
+		$_SESSION['ucaption'] = $result['ucaption']; // Название агентства пользователя
+		$_SESSION['adm_caption'] = $result['adm_caption']; // администратор агентства название
+		
+		$_SESSION['sh_password'] = $password; // Заносим в сессию  пароль
+		$_SESSION['sh_login'] = $login; // Заносим в сессию  логин
+		$_SESSION['sh_id'] = $result['id']; // Заносим в сессию  id
+		$_SESSION['sh_name'] = $result['name']; // Заносим в сессию  id
+		$_SESSION['agency_adm_id'] = $result['agency_adm_id']; // Заносим в сессию  id агентства которого админ
+	}
+	else
+	{
+		
+		add_log('Выполнен выход из системы');
+		//unset($_SESSION);
+		// если вызвали переменную "exit"
+		unset($_SESSION['sh_password']); // Чистим сессию пароля
+		unset($_SESSION['sh_login']); // Чистим сессию логина
+		
+		unset($_SESSION['agency_id']); // Чистим  
+		
+		unset($_SESSION['sh_name']); // Чистим  
+		unset($_SESSION['sh_id']); // Чистим  
+		unset($_SESSION['adm_caption']); // Чистим  
+ 		exit;
+	}
+}
+
+$sa = new sahmatka( $_SESSION , $connection );
+$h = $sa->get_home_arr( $_GET['home'] );
+
+if(!$h){$h = $sa->get_home_arr( $_GET['home'] ,2);}
+ 
+?>
+<html>
+<head>
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Энергомонтаж</title>
+	 
+    <link rel="icon" href="/templates/jv-framework/favicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap -->
+ 
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+    <![endif]-->
+	<meta charset="utf-8">
+	<link href="https://fonts.googleapis.com/css?family=PT+Sans" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Exo+2" rel="stylesheet">
+
+	<link href="http://www.em-nsk.ru/fonts/ptsans/ptsans.css" rel="stylesheet">
+	<link href="http://www.em-nsk.ru/fonts/exo2/exotwo.css" rel="stylesheet">
+
+<style>
+	body{font-family:"Exo 2"; color:#000;}
+body {
+    font: 90.5%/1.3 normal Helvetica, sans-serif;
+    padding-top: 50px;
+    margin-top: 50px;
+	
+	    font: 90.5%/1.3 normal Helvetica, sans-serif;
+    padding-top: 50px;
+    margin-top: 50px;
+	
+}
+
+.actfix {
+    padding-left: 10px;
+    width: 100%;
+    display: inline-block;
+}
+ 
+.vcardem{margin-top:5px;margin-bottom:5px;}
+
+
+*,td,body{
+-webkit-print-color-adjust: exact;
+printer-friendly-colors:avoid;
+printer-color-adjust:avoid;
+printer-colors:exact;
+color-adjust:exact;
+conserve-ink:avoid;
+expensive-colors:exact;
+ 
+  }
+	</style>
+
+  </head>
+
+<body style="margin-top:0; padding-top:0">
+<div style="vertical-align:bottom;">
+<h1> № <?=$h['title']?></h1>
+<?
+ 
+
+
+ 
+
+if(1==1)
+{
+	 // Новый вывод 				 
+	 if($_GET['home'])
+		{
+			$_GET['home'] = (int) $_GET['home'];
+			$q= 'SELECT homes_sections.section_id FROM homes 
+			LEFT JOIN homes_sections on homes_sections.homes_id = homes.homes_id 
+			WHERE homes.home_id = "'.$_GET['home'].'" ';
+			$arrs = $mysql->get_arr( $q );
+		
+			foreach($arrs as $k=>$v)
+			{
+				
+				print '<div style="display:inline-block; margin-left:10px;">';
+				print '<table class="home_sh2" cellpadding="0" cellspacing="0" width="100%" border="1">';
+	 
+				// Запрос по секциям дома делаем 
+				$sa->disp_home_print( $_GET['home']  , $v['section_id']  ,1); 
+				
+				 print ' </table>';
+				 print ' </div>';
+			}
+		}
+}
+else
+{
+	foreach($homes[$_GET['home']] as $k=>$v)
+	{
+		if(is_array($v) )
+		{
+			diaplay_home_print( $homes , $_GET['home']  , $k , $data_broni,'' ); 
+		}
+	}
+	
+}
+?>
+</div>
+</body>
+</html>
+
+ 
