@@ -144,7 +144,7 @@ function umapx()
 				$.magnificPopup.open({
 				 closeMarkup:"<button title='%title%' style='top:-60px;' type='button' class='mfp-close myDisplayOverride'><img src='/sahmatka/images/x.png'></button>",
 				  items: {
-					  src: '<?=$GLOBALS['config']['domains']['gl']?>/sahmatka/iframe_router.php?ctr=landplots&act=order&polygon_id='+$(this).attr('data-id')+'&a=<?=$_SERVER['SCRIPT_NAME']?>'
+					  src: '<?=$GLOBALS['config']['base_url']?>/sahmatka/iframe_router.php?ctr=landplots&act=order&polygon_id='+$(this).attr('data-id')+'&a=<?=$_SERVER['SCRIPT_NAME']?>'
 					 
 				  },
 				   fixedContentPos: true,
@@ -229,7 +229,7 @@ function updatejsoon()
 
 
 	$.ajax({
-	url: '<?=$GLOBALS['config']['domains']['gl']?>/sahmatka/ajax_router.php?ctr=landplots&act=jsoondata',
+	url: '<?=$GLOBALS['config']['base_url']?>/sahmatka/ajax_router.php?ctr=landplots&act=jsoondata',
 		method: 'get',
 		dataType: 'json',
 		success: function(data){

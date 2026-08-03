@@ -261,7 +261,7 @@ function umapx(map_id,numbers=false)
 			// ФОрма брони / редактирования
 			$.magnificPopup.open({
 			  items: {
-				src: '<?=$GLOBALS['config']['domains']['msk']?>/sahmatka/iframe_router.php?ctr=landplots&act=order&polygon_id='+$(this).attr('data-id')+'&map_id='+map_id+'&lp_id='+$(this).attr('data-lp_id')+'&a=/sites/gl/sahmatka/ctrind.php'
+				src: '<?=$GLOBALS['config']['base_url']?>/sahmatka/iframe_router.php?ctr=landplots&act=order&polygon_id='+$(this).attr('data-id')+'&map_id='+map_id+'&lp_id='+$(this).attr('data-lp_id')+'&a=/sites/gl/sahmatka/ctrind.php'
 			  },
 			  
 		 
@@ -395,7 +395,7 @@ var uprice_area = new Array(); // массив уникальных цен за 
 
   $('#map__'+map_id+' .scheme text').hide();
 	$.ajax({
-		url: '<?=$GLOBALS['config']['domains']['msk']?>/sahmatka/ajax_router.php?ctr=landplots&act=jsoondata&map_id='+map_id,
+		url: '<?=$GLOBALS['config']['base_url']?>/sahmatka/ajax_router.php?ctr=landplots&act=jsoondata&map_id='+map_id,
 		method: 'get',
 		dataType: 'json',
 		success: function(data)

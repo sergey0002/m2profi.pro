@@ -113,7 +113,7 @@ function relate_ajax_select(th,select_id_list,formid='ajaxform')
 				  }
 			  }
 		};
-		sendAjaxForm( item , formid , '/sahmatka/ajax_router.php?ctr='+controller+'&act='+item , 1 , 'progressbar', predcallback , predcallback2 , postcallback ); // Грузим содержимое селек
+		sendAjaxForm( item , formid , (window.M2PROFI_CONFIG && window.M2PROFI_CONFIG.ajaxRouter ? window.M2PROFI_CONFIG.ajaxRouter : '/sahmatka/ajax_router.php') + '?ctr='+controller+'&act='+item , 1 , 'progressbar', predcallback , predcallback2 , postcallback ); // Грузим содержимое селек
 	});
 	//
 }
@@ -126,7 +126,7 @@ function relate_ajax_select(th,select_id_list,formid='ajaxform')
 
 // Начальная загрузка данных 
 //relate_ajax_select('','sel_home,sel_section,sel_apartment_num,sel_date');
-// sendAjaxForm( 'zapisdata' , 'filtrform' , 'https://em.m2profi.pro/sahmatka/ajax_actions.php?load=data&controller=zapiskeys',0); // Грузим содержимое селек
+// sendAjaxForm( 'zapisdata' , 'filtrform' , (window.M2PROFI_CONFIG && window.M2PROFI_CONFIG.ajaxActions ? window.M2PROFI_CONFIG.ajaxActions : '/sahmatka/ajax_actions.php') + '?load=data&controller=zapiskeys',0); // Грузим содержимое селек
 /*
 $('#ch_arhiv').change(function() {
  relate_ajax_select(this,'sel_home,sel_section,sel_apartment_num,sel_date');
@@ -134,7 +134,7 @@ $('#ch_arhiv').change(function() {
  
 // ЗАГРУЗКА ДАННЫХ ПРИЛЮБОЙ ОБРАБОТКЕ ФОРМЫ!
 $( "#filtrform input,#filtrform select" ).change(function() {
-  sendAjaxForm( 'zapisdata' , 'filtrform' , 'https://em.m2profi.pro/sahmatka/ajax_actions.php?load=data&controller=zapiskeys',0); // Грузим содержимое селек
+  sendAjaxForm( 'zapisdata' , 'filtrform' , (window.M2PROFI_CONFIG && window.M2PROFI_CONFIG.ajaxActions ? window.M2PROFI_CONFIG.ajaxActions : '/sahmatka/ajax_actions.php') + '?load=data&controller=zapiskeys',0); // Грузим содержимое селек
 });
 
 */
@@ -501,7 +501,7 @@ $(".fiprew_links_del").click(function()
 	$('input',fw_fileupload).attr('value','');
 	
 	$.ajax({
-		url: '/sahmatka/ajax_router.php?ctr=nodes&act=ajax_delimg',
+		url: (window.M2PROFI_CONFIG && window.M2PROFI_CONFIG.ajaxRouter ? window.M2PROFI_CONFIG.ajaxRouter : '/sahmatka/ajax_router.php') + '?ctr=nodes&act=ajax_delimg',
 		method: 'post',
 		dataType: 'html',
 		data: {'id': id, 'files2node_id':files2node_id},

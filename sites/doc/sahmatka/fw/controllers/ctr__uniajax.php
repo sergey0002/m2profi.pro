@@ -22,7 +22,7 @@ class ctr__uniajax extends ctr__
 	
  
 	
-	// view-source:<?=$GLOBALS['config']['domains']['em']?>/sahmatka/ajax_router.php?ctr=uniajax&act=selecthomes
+	// view-source: ajax_router.php?ctr=uniajax&act=selecthomes
 	// аякс селект ДОМА
 	function act__selecthomes( $data = ''  )
 	{
@@ -70,7 +70,7 @@ class ctr__uniajax extends ctr__
 	
 	
 	
-	// https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=uniajax&act=selectappat&home=28&section=1
+	// ajax_router.php?ctr=uniajax&act=selectappat&home=28&section=1
 	// аякс apppart Квартиры	
 	function act__selectappat( $data = ''  )
 	{
@@ -111,7 +111,7 @@ class ctr__uniajax extends ctr__
 	
 	
 	
-	// https://em.m2profi.pro/sahmatka/ajax_router.php?ctr=uniajax&act=managerop
+	// ajax_router.php?ctr=uniajax&act=managerop
 	
 	// Менеджеры отдела продаж	
 	function act__managerop( $data = ''  )

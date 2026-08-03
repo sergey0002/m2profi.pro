@@ -547,7 +547,7 @@ class ctr__catalog
 				 </div>
 				 <div class="m2catalog_item_order_frame">
 					<div class="m2catalog_item_price"><?=$result['price']?></div>
-					<a class="m2catalog_item_order iframe" href="<?=$GLOBALS['config']['domains']['em']?>/sahmatka/form_order.php?home_id=<?=$result['home_id']?>&apartment_num=<?=$result['apartment_num']?>&apartments=<?=$result['apartments']?>">Забронировать</a> 
+					<a class="m2catalog_item_order iframe" href="<?=$GLOBALS['config']['base_url']?>/sahmatka/form_order.php?home_id=<?=$result['home_id']?>&apartment_num=<?=$result['apartment_num']?>&apartments=<?=$result['apartments']?>">Забронировать</a> 
 				 </div>
 				 <div class="m2_catalog_both"></div>
 				 </div>			 	

@@ -851,7 +851,7 @@ function sendAjaxForm(resultto, formid, url,append=1,progressid='progressbar') {
 					},
 					close: function() {
 						// Перезагрузить отображение!
-						sendAjaxForm( 'zapisdata' , 'filtrform' , '<?=$GLOBALS['config']['domains']['em']?>/sahmatka/ajax_router.php?ctr=zapiskeys&act=ajax_data',0); // Грузим содержимое селек
+						sendAjaxForm( 'zapisdata' , 'filtrform' , '<?=$GLOBALS['config']['base_url']?>/sahmatka/ajax_router.php?ctr=zapiskeys&act=ajax_data',0); // Грузим содержимое селек
 					},
 					open: function() {
 						  location.href = location.href.split('#')[0] + "#pop";

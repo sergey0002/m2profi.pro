@@ -152,7 +152,7 @@
     vertical-align: top !important;
     position: relative;
     z-index: 2 !important; /* Текст выше фона */
-    background-image: url('/sahmatka/template/download.png') !important;
+    background-image: url('<?=$GLOBALS['config']['base_url']?>/sahmatka/template/download.png') !important;
     background-repeat: no-repeat !important;
     background-position: 10px 8px !important;
     background-size: 15px !important;

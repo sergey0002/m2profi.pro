@@ -1,4 +1,11 @@
 <?php
+require_once(__DIR__ . '/../../../core/helpers/domain_helper.php');
+
+// Client 'doc' — домен берётся из текущего HTTP_HOST (локально: doc.m2profi.pro.test)
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)) ? 'https://' : 'http://';
+$host = $_SERVER['HTTP_HOST'] ?? 'doc.m2profi.pro';
+putenv("APP_DOMAIN=$host");
+putenv("APP_URL=$protocol$host");
 
 if( isset($_GET['dev']) )
 {
@@ -182,24 +189,36 @@ function multi_attach_mail($to, $subject, $message, $senderEmail, $senderName, $
 include('../../../core/functions.php');	
 t('functions.php');
 
-$connection = mysqli_connect('localhost', 'root', 'root', 'm2profi_doc') or die(mysqli_error()); // Соединение с базой данных 
-$result = mysqli_query($connection, "SET NAMES utf8");
+$appUrl = rtrim(get_app_url(), '/');
 
-$GLOBALS['config']['domains']['doc'] = 'https://doc.m2profi.pro.test';
-$GLOBALS['config']['domains']['main'] = 'https://m2profi.pro';
-$GLOBALS['config']['domains']['em'] = 'https://doc.m2profi.pro.test';
-$GLOBALS['config']['domains']['gl'] = 'https://doc.m2profi.pro.test';
-$GLOBALS['config']['domains']['msk'] = 'https://doc.m2profi.pro.test';
+// Канон sigma (обязательные)
+$GLOBALS['config']['site_subdomain'] = 'doc';
+$GLOBALS['config']['client_site_url'] = 'https://m2profi.pro';
 
+// Стандарт .test / текущий хост
+$GLOBALS['config']['domain'] = get_app_domain();
+$GLOBALS['config']['base_url'] = $appUrl;
+
+// Legacy doc-only алиасы
+$GLOBALS['config']['domains']['main'] = $GLOBALS['config']['client_site_url'];
+$GLOBALS['config']['domains']['em_nsk'] = 'https://em-nsk.ru';
+$GLOBALS['config']['domains']['doc'] = $appUrl;
+$GLOBALS['config']['domains']['em'] = $appUrl;
+$GLOBALS['config']['domains']['gl'] = $appUrl;
+$GLOBALS['config']['domains']['msk'] = $appUrl;
 
 $GLOBALS['config']['mysql_login'] = 'root';
 $GLOBALS['config']['mysql_password'] = 'root';
 $GLOBALS['config']['mysql_base'] = 'm2profi_doc';
-$GLOBALS['config']['server'] = 'localhost';
+$GLOBALS['config']['server'] = '127.0.0.1';
+
+$connection = mysqli_connect($GLOBALS['config']['server'], $GLOBALS['config']['mysql_login'], $GLOBALS['config']['mysql_password'], $GLOBALS['config']['mysql_base']) or die(mysqli_error());
+$result = mysqli_query($connection, "SET NAMES utf8");
+
 $GLOBALS['config']['keys_base_dir'] = '/home/m2profi/web/m2profi.pro/public_html/sites/em/keysbase';
-$GLOBALS['config']['keys_base_url'] = 'https://' . $GLOBALS['config']['domain'] . '/'keysbase/';
+$GLOBALS['config']['keys_base_url'] = $appUrl . '/keysbase/';
 $GLOBALS['config']['upload_dir']=$basedir.'/upload/';
-$GLOBALS['config']['upload_base_url'] = $GLOBALS['config']['domains']['doc'].'/sahmatka/upload/';
+$GLOBALS['config']['upload_base_url'] = $GLOBALS['config']['base_url'].'/sahmatka/upload/';
 
 
 

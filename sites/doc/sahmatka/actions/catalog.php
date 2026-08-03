@@ -1,4 +1,4 @@
-﻿<?	
+<?	
  error_reporting(E_ALL);
 ob_start();
 ?>
@@ -31,8 +31,8 @@ $content = ob_get_clean();
 <script src="https://unpkg.com/multiple-select@1.5.2/dist/multiple-select.min.js!"></script>
 
 
-<link rel="stylesheet" href="<?=$GLOBALS['config']['domains']['em']?>/wiget_catalog.css">
-<script src="<?=$GLOBALS['config']['domains']['em']?>/wiget_catalog.js"></script>
+<link rel="stylesheet" href="<?=$GLOBALS['config']['base_url']?>/wiget_catalog.css">
+<script src="<?=$GLOBALS['config']['base_url']?>/wiget_catalog.js"></script>
 
 
 

@@ -1,3 +1,4 @@
+<?php include __DIR__ . '/m2_public_config.php'; ?>
 <header class="header-lk">
 	<div class="container">
 		<div class="header-lk-main">

@@ -51,7 +51,7 @@ if (isset($_POST['submit'])) // Отлавливаем нажатие кнопк
 			add_log('Выполнен вход в систему');
 			
 			// РЕДИРЕКТ ПОСЛЕ УСПЕШНОГО ВХОДА
-			header("Location: ".$GLOBALS['config']['domains']['doc']."/sahmatka/ctrind.php");
+			header("Location: ".$GLOBALS['config']['base_url']."/sahmatka/ctrind.php");
 			exit();
 		}     
 	}		
@@ -173,7 +173,7 @@ if( !$_SESSION['sh_login'] )
 							кабинет<i></i></button>
 					</form>
 					<div class="login-modal-form__login" style="display:none;">Еще не зарегистрированы в сервисе? <br>
-						<a href="<?=$GLOBALS['config']['domains']['main']?>">Регистрация</a>
+						<a href="<?=$GLOBALS['config']['client_site_url']?>">Регистрация</a>
 					</div>
 				</div>
 			</div>

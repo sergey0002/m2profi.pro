@@ -48,8 +48,8 @@
 	  .car_g{background-image:url('/sahmatka/parking/car_g.png'); }
 	  .car_r{background-image:url('/sahmatka/parking/car_r.png'); }
 	  .car_y{background-image:url('/sahmatka/parking/car_y.png'); }
-	  .car_f{background-image:url('<?=$GLOBALS['config']['domains']['em']?>/sahmatka/parking/car_f.png'); }
-	  .car_b{background-image:url('<?=$GLOBALS['config']['domains']['em']?>/sahmatka/parking/car_b.png'); }
+	  .car_f{background-image:url('<?=$GLOBALS['config']['base_url']?>/sahmatka/parking/car_f.png'); }
+	  .car_b{background-image:url('<?=$GLOBALS['config']['base_url']?>/sahmatka/parking/car_b.png'); }
 	  
  
 	  .ui-rotatable-handle{position:absolute; width:5px; height:5px;     bottom: -7px;     left: 0;}

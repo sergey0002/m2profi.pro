@@ -1,5 +1,9 @@
 <script>
 $(document).ready(function() {
+    var cfg = window.M2PROFI_CONFIG || {};
+    var siteBase = cfg.baseUrl || '';
+    var ajaxRouter = cfg.ajaxRouter || (siteBase + '/sahmatka/ajax_router.php');
+    var iframeRouter = cfg.iframeRouter || (siteBase + '/sahmatka/iframe_router.php');
     var tree = $('#doc_tree');
     var searchInput = $('#doc-search-input');
     var searchClear = $('#doc-search-clear');
@@ -82,7 +86,7 @@ $(document).ready(function() {
             params += '&date_to=' + encodeURIComponent(dateToVal);
         }
         
-        return '/sahmatka/ajax_router.php?' + params;
+        return ajaxRouter + '?' + params;
     }
 
     function addNodeElements() {
@@ -130,7 +134,38 @@ $(document).ready(function() {
                 },
                 'dataType': 'json'
             },
-            'check_callback': true,
+            'check_callback': function (operation, node, parent, position, more) {
+                if (operation !== 'move_node' && operation !== 'copy_node') {
+                    return true;
+                }
+                // Программные перестановки (нормализация папки→файлы) не ограничиваем
+                if (more && (more.core || more.origin === false || more.dnd === false)) {
+                    return true;
+                }
+
+                var parentNode = this.get_node(parent);
+                if (!parentNode) {
+                    return false;
+                }
+
+                var movingId = node.id;
+                var folderCount = 0;
+                (parentNode.children || []).forEach(function (cid) {
+                    if (cid === movingId) {
+                        return;
+                    }
+                    var child = this.get_node(cid);
+                    if (child && child.type === 'folder') {
+                        folderCount++;
+                    }
+                }.bind(this));
+
+                // Папки только среди папок, файлы только среди файлов
+                if (node.type === 'folder') {
+                    return position <= folderCount;
+                }
+                return position >= folderCount;
+            },
             'themes': {
                 'name': 'default',
                 'responsive': true,
@@ -148,7 +183,7 @@ $(document).ready(function() {
         },
         'search': {
             'ajax': {
-                'url': '/sahmatka/ajax_router.php?ctr=doc&act=search_tree',
+                'url': ajaxRouter + '?ctr=doc&act=search_tree',
                 'dataType': 'json',
                 'data': function (str) {
                     return { 'search_query': str };
@@ -158,13 +193,35 @@ $(document).ready(function() {
             'search_leaves_only': true
         }
     }).on('move_node.jstree', function (e, data) {
+        var inst = data.instance;
+        var parentNode = inst.get_node(data.parent);
+        var dirs = [];
+        var files = [];
+
+        (parentNode.children || []).forEach(function (cid) {
+            var child = inst.get_node(cid);
+            if (child && child.type === 'folder') {
+                dirs.push(cid);
+            } else {
+                files.push(cid);
+            }
+        });
+
+        var children = dirs.concat(files);
+
+        // Если DnD смешал типы — выравниваем: сначала папки, потом файлы
+        if ((parentNode.children || []).join(',') !== children.join(',')) {
+            parentNode.children = children;
+            inst.redraw(true);
+        }
+
         $.ajax({
             type: 'POST',
-            url: '/sahmatka/ajax_router.php?ctr=doc&act=move_node',
+            url: ajaxRouter + '?ctr=doc&act=move_node',
             data: {
                 'id': data.node.id,
                 'parent': data.parent,
-                'position': data.position
+                'children': children
             },
             success: function(response) {
                  highlightNode(data.node.id);
@@ -190,7 +247,7 @@ $(document).ready(function() {
             var fileId = data.node.id.replace('file_', '');
             $.magnificPopup.open({
                 items: {
-                    src: '/sahmatka/iframe_router.php?ctr=doc&act=card&id=' + fileId
+                    src: iframeRouter + '?ctr=doc&act=card&id=' + fileId
                 },
                 type: 'iframe'
             });
@@ -223,7 +280,7 @@ $(document).ready(function() {
         if (folderName) {
             $.ajax({
                 type: 'POST',
-                url: '/sahmatka/ajax_router.php?ctr=doc&act=create_folder',
+                url: ajaxRouter + '?ctr=doc&act=create_folder',
                 data: { 'parent_id': node.id, 'title': folderName },
                 success: function(response) {
                     if (response.status === 'success') {
@@ -242,7 +299,7 @@ $(document).ready(function() {
         var nodeId = $(this).closest('.jstree-node').attr('id');
         var dirId = nodeId.replace('dir_', '');
         $.magnificPopup.open({
-            items: { src: '/sahmatka/iframe_router.php?ctr=doc&act=edit&dir_id=' + dirId },
+            items: { src: iframeRouter + '?ctr=doc&act=edit&dir_id=' + dirId },
             type: 'iframe',
             callbacks: { close: function() { tree.jstree(true).refresh(); } }
         });
@@ -258,7 +315,7 @@ $(document).ready(function() {
             var fileId = nodeId.replace('file_', '');
             $.magnificPopup.open({
                 items: { 
-                    src: '/sahmatka/iframe_router.php?ctr=doc&act=edit&id=' + fileId 
+                    src: iframeRouter + '?ctr=doc&act=edit&id=' + fileId 
                 },
                 type: 'iframe',
                 callbacks: { 
@@ -275,7 +332,7 @@ $(document).ready(function() {
             if (newName && newName !== currentName) {
                 $.ajax({
                     type: 'POST',
-                    url: '/sahmatka/ajax_router.php?ctr=doc&act=rename_node',
+                    url: ajaxRouter + '?ctr=doc&act=rename_node',
                     data: { 'id': node.id, 'title': newName },
                     success: function(response) {
                         if (response.status === 'success') {
@@ -297,7 +354,7 @@ $(document).ready(function() {
             nodeEl.fadeOut(500, function() {
                 $.ajax({
                     type: 'POST',
-                    url: '/sahmatka/ajax_router.php?ctr=doc&act=delete_node',
+                    url: ajaxRouter + '?ctr=doc&act=delete_node',
                     data: { 'id': node.id },
                     success: function(response) {
                         if (response.status === 'success') {
@@ -318,7 +375,7 @@ $(document).ready(function() {
         if (confirm("Восстановить этот элемент?")) {
             $.ajax({
                 type: 'POST',
-                url: '/sahmatka/ajax_router.php?ctr=doc&act=restore_node',
+                url: ajaxRouter + '?ctr=doc&act=restore_node',
                 data: { 'id': nodeId },
                 success: function(response) {
                     if (response.status === 'success') {

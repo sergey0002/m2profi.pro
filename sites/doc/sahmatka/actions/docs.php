@@ -118,13 +118,13 @@ else{ $com_st = 'helink helink-a'; $ncom_st = 'helink helink-a';  }
 						<div class="col-md-4">
 							<div class="stat-docs-item" style="  width:auto; min-width: 250px;">
 								<div class="stat-docs-item__icon"><img src="template/default/images/doc.png" alt="" /></div> 
-								<a class="stat-docs-item__title iframe_r" href="<?=$GLOBALS['config']['domains']['gl']?>/doc/reglament.php?q=/doc/dogovor.docx?x=1">Субагентский <br>договор</a>
+								<a class="stat-docs-item__title iframe_r" href="<?=$GLOBALS['config']['base_url']?>/doc/reglament.php?q=/doc/dogovor.docx?x=1">Субагентский <br>договор</a>
 							</div>
 						</div>
 						<div class="col-md-4" style="display:none;">
 							<div class="stat-docs-item" style="  width:auto; min-width: 250px;">
 								<div class="stat-docs-item__icon"><img src="template/default/images/doc.png" alt="" /></div> 
-								<a class="stat-docs-item__title iframe_r" href="<?=$GLOBALS['config']['domains']['gl']?>/doc/reglament.php?q=/doc/dog_reg.docx">Договор на подготовку документов <br/>к государственной регистрации</a> 
+								<a class="stat-docs-item__title iframe_r" href="<?=$GLOBALS['config']['base_url']?>/doc/reglament.php?q=/doc/dog_reg.docx">Договор на подготовку документов <br/>к государственной регистрации</a> 
 								</div>
 						</div>
 					</div>
@@ -133,19 +133,19 @@ else{ $com_st = 'helink helink-a'; $ncom_st = 'helink helink-a';  }
 						<div class="col-md-4">
 							<div class="stat-docs-item">
 								<div class="stat-docs-item__icon"><img src="template/default/images/doc.png" alt="" /></div> 
-								<a href="<?=$GLOBALS['config']['domains']['gl']?>/doc/reglament.php?q=/doc/bron.docx" class="stat-docs-item__title iframe_r">Форма брони</a> 
+								<a href="<?=$GLOBALS['config']['base_url']?>/doc/reglament.php?q=/doc/bron.docx" class="stat-docs-item__title iframe_r">Форма брони</a> 
 							</div>
 						</div>
 						<div class="col-md-4">
 							<div class="stat-docs-item">
 								<div class="stat-docs-item__icon"><img src="template/default/images/doc.png" alt="" /></div> 
-								<a href="<?=$GLOBALS['config']['domains']['gl']?>/doc/reglament.php?q=/doc/uvedomlenie.docx?x=1" class="stat-docs-item__title iframe_r">Форма уведомления</a> 
+								<a href="<?=$GLOBALS['config']['base_url']?>/doc/reglament.php?q=/doc/uvedomlenie.docx?x=1" class="stat-docs-item__title iframe_r">Форма уведомления</a> 
 							</div>
 						</div>
 						<div class="col-md-4">
 							<div class="stat-docs-item">
 								<div class="stat-docs-item__icon"><img src="template/default/images/doc.png" alt="" /></div> 
-								<a href="<?=$GLOBALS['config']['domains']['gl']?>/doc/reglament.php?q=/doc/anket.xlsx" class="stat-docs-item__title iframe_r">Анкета </a> </div>
+								<a href="<?=$GLOBALS['config']['base_url']?>/doc/reglament.php?q=/doc/anket.xlsx" class="stat-docs-item__title iframe_r">Анкета </a> </div>
 						</div>
 			 
 					</div>

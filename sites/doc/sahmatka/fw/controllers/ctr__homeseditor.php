@@ -137,7 +137,7 @@ class ctr__homeseditor extends ctr__
 			{
 				/// $data['delivery_date'] = date('d.m.Y' , strtotime( $data['delivery_date'] ) );
 			}
-			if(!$data['img'] ||1==1){ $data['img'] = $GLOBALS['config']['domains']['em'].'/render/'.$data['home_id'].'.jpg'; }
+			if(!$data['img'] ||1==1){ $data['img'] = $GLOBALS['config']['base_url'].'/render/'.$data['home_id'].'.jpg'; }
 			
 			//print '<h2>Редактирование '.$this->title_act2.'</h2>';
 			
@@ -225,7 +225,7 @@ class ctr__homeseditor extends ctr__
 				<h2>Домклик</h2>
 				<?=$filed->text('complex_domclick','complex (Домлик)',$data['complex_domclick']);?><br/>
 				<?=$filed->text('corpus_code_domclick','corpus_code (Домлик)',$data['corpus_code_domclick']);?><br/>
-				<b>Фид домклик:</b>  <?=$GLOBALS['config']['domains']['em']?>/sahmatka/domclick-<?=$data['home_id']?>.xml
+				<b>Фид домклик:</b>  <?=$GLOBALS['config']['base_url']?>/sahmatka/domclick-<?=$data['home_id']?>.xml
 			</form>
 			
 		<?

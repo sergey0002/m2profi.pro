@@ -872,9 +872,9 @@ class ctr__zapisx extends ctr__
 					$this->card($insid,'','Ваша заявка принята'); //  card($id='',$data='', $title='')
 					print $con = ob_get_clean();
 					
-					multi_attach_mail('89236470002@mail.ru', 'Запись на выдачу ключей - дом:'.$this->homes_arr[$data['home_id']]['title'].' кв.:'.$data['apartment_num'].' дата:'.$_POST['date'].' время:'.$data['time'], $con, 'admin@<?=$GLOBALS['config']['domains']['main']?>', 'em-nsk.ru');
-					multi_attach_mail($data['email'], 'Запись на выдачу ключей - дом:'.$this->homes_arr[$data['home_id']]['title'].' кв.:'.$data['apartment_num'].' дата:'.$_POST['date'].' время:'.$data['time'], $con, 'admin@<?=$GLOBALS['config']['domains']['main']?>', 'em-nsk.ru');
-					multi_attach_mail('op15@em-nsk.group', 'Запись на выдачу ключей - дом:'.$this->homes_arr[$data['home_id']]['title'].' кв.:'.$data['apartment_num'].' дата:'.$_POST['date'].' время:'.$data['time'], $con, 'admin@<?=$GLOBALS['config']['domains']['main']?>', 'em-nsk.ru');
+					multi_attach_mail('89236470002@mail.ru', 'Запись на выдачу ключей - дом:'.$this->homes_arr[$data['home_id']]['title'].' кв.:'.$data['apartment_num'].' дата:'.$_POST['date'].' время:'.$data['time'], $con, 'admin@<?=$GLOBALS['config']['client_site_url']?>', 'em-nsk.ru');
+					multi_attach_mail($data['email'], 'Запись на выдачу ключей - дом:'.$this->homes_arr[$data['home_id']]['title'].' кв.:'.$data['apartment_num'].' дата:'.$_POST['date'].' время:'.$data['time'], $con, 'admin@<?=$GLOBALS['config']['client_site_url']?>', 'em-nsk.ru');
+					multi_attach_mail('op15@em-nsk.group', 'Запись на выдачу ключей - дом:'.$this->homes_arr[$data['home_id']]['title'].' кв.:'.$data['apartment_num'].' дата:'.$_POST['date'].' время:'.$data['time'], $con, 'admin@<?=$GLOBALS['config']['client_site_url']?>', 'em-nsk.ru');
 			 
 					/// ОТПРАВКА НА ПОЧТУ	
 				}
@@ -961,8 +961,8 @@ class ctr__zapisx extends ctr__
     font-size: 20px;
 	}
  </style>
-		 <form method="post" action="<?=$GLOBALS['config']['domains']['em']?>/sahmatka/ajax_router.php?ctr=zapiskeys&act=zapisformx" id="zapisform">
-		 <div id="form_progressbar">Загрузка...<br/><img src="<?=$GLOBALS['config']['domains']['em']?>/sahmatka/loader.gif"></div>
+		 <form method="post" action="<?=$GLOBALS['config']['base_url']?>/sahmatka/ajax_router.php?ctr=zapiskeys&act=zapisformx" id="zapisform">
+		 <div id="form_progressbar">Загрузка...<br/><img src="<?=$GLOBALS['config']['base_url']?>/sahmatka/loader.gif"></div>
 
 			<?=$filed->checkbox('admin_mode','<b>ЛЮБЫЕ ДОМА И ВРЕМЯ</b>',$_GET['admin_mode'] ,' data-bl="-1" ' , 'admin_mode');?><br/>
 		

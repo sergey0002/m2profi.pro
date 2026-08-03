@@ -6,7 +6,7 @@ include('config.php');
  
 if( $_GET['url'] )
 { 
-	$_GET['url'] = 'Location: '.$GLOBALS['config']['domains']['doc'].'/'.$_GET['url'];
+	$_GET['url'] = 'Location: '.$GLOBALS['config']['base_url'].'/'.$_GET['url'];
 	header($_GET['url']);
 	exit();
 }
@@ -19,12 +19,12 @@ include('incudes_/header.php');
 ?>
 <script>
 $(document).ready(function(){
-    window.location.href = '<?=$GLOBALS['config']['domains']['doc']?>/sahmatka/ctrind.php';
+    window.location.href = '<?=$GLOBALS['config']['base_url']?>/sahmatka/ctrind.php';
 });
 </script>
 
 <?
-header("Location: ".$GLOBALS['config']['domains']['doc']."/sahmatka/ctrind.php");
+header("Location: ".$GLOBALS['config']['base_url']."/sahmatka/ctrind.php");
 exit( );
 
 
@@ -511,7 +511,7 @@ elseif($_GET['action']=='broni_history') //
  elseif($_GET['action']=='objects') // 
  {
 	?>
-	<script>window.location.href = "<?=$GLOBALS['config']['domains']['doc']?>/sahmatka/ctrind.php"</script>
+	<script>window.location.href = "<?=$GLOBALS['config']['base_url']?>/sahmatka/ctrind.php"</script>
 	<?
  }
  elseif($_GET['action']=='docs') {	 include('actions/docs.php'); }
@@ -625,7 +625,7 @@ elseif($_GET['action']=='contact')
  }// пользователи
  elseif($_SESSION['sh_login'] != 'admin'  && $_SESSION['sh_login'] != 'fd' && $_GET['action']=='objects') // Обьекты (НЕ администратор)
  {
-	?> <script>window.location.href = "<?=$GLOBALS['config']['domains']['doc']?>/sahmatka/ctrind.php"</script><?
+	?> <script>window.location.href = "<?=$GLOBALS['config']['base_url']?>/sahmatka/ctrind.php"</script><?
  }
 elseif($_GET['action']=='broni') // Агентства (администратор)
 {
@@ -729,7 +729,7 @@ elseif($_GET['action']=='show_broni') //
 elseif($_GET['action']=='objects') // Агентства (администратор)
 {
  ?>
-	<script>window.location.href = "<?=$GLOBALS['config']['domains']['doc']?>/sahmatka/ctrind.php"</script>
+	<script>window.location.href = "<?=$GLOBALS['config']['base_url']?>/sahmatka/ctrind.php"</script>
 	<?
 }
  elseif($_GET['action']=='docs') {	 include('actions/docs.php'); }

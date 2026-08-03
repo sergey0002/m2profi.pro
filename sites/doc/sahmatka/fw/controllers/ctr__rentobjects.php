@@ -748,7 +748,7 @@ $("#"+resultto).fadeIn(600);
 // СНятие чекбокса дома
 $('#h_adress').on('change', function() {
 	$('#rent_home_id').attr('value',''); // Очистка дома
-    sendAjaxForm( 'rent_search_result' , 'rentsearch' , '<?=$GLOBALS['config']['domains']['em']?>/sahmatka/ajax_router.php?ctr=rentobjects&act=display_ag_ajax&sale=<?=$_GET['sale']?>',0); // Грузим содержимое селек
+    sendAjaxForm( 'rent_search_result' , 'rentsearch' , '<?=$GLOBALS['config']['base_url']?>/sahmatka/ajax_router.php?ctr=rentobjects&act=display_ag_ajax&sale=<?=$_GET['sale']?>',0); // Грузим содержимое селек
 });
  
     	},
@@ -764,14 +764,14 @@ $('#h_adress').on('change', function() {
 	 
  
 // Начальная загрузка данных 
-sendAjaxForm( 'rent_search_result' , 'rentsearch' , '<?=$GLOBALS['config']['domains']['em']?>/sahmatka/ajax_router.php?ctr=rentobjects&act=display_ag_ajax&sale=<?=$_GET['sale']?>',0); // Грузим содержимое селек
+sendAjaxForm( 'rent_search_result' , 'rentsearch' , '<?=$GLOBALS['config']['base_url']?>/sahmatka/ajax_router.php?ctr=rentobjects&act=display_ag_ajax&sale=<?=$_GET['sale']?>',0); // Грузим содержимое селек
 // Улицы
-sendAjaxForm( 'street' , 'rentsearch' , '<?=$GLOBALS['config']['domains']['em']?>/sahmatka/ajax_router.php?ctr=rentobjects&act=sel_street',0); // Грузим содержимое селек
+sendAjaxForm( 'street' , 'rentsearch' , '<?=$GLOBALS['config']['base_url']?>/sahmatka/ajax_router.php?ctr=rentobjects&act=sel_street',0); // Грузим содержимое селек
  
 // ЗАГРУЗКА ДАННЫХ ПРИЛЮБОЙ ОБРАБОТКЕ ФОРМЫ!
 $( "#rentsearch_ag input,#rentsearch_ag select" ).change(function() {
 	   $('#rent_home_id').attr('value',''); // Очистка дома
-	 sendAjaxForm( 'rent_search_result' , 'rentsearch_ag' , '<?=$GLOBALS['config']['domains']['em']?>/sahmatka/ajax_router.php?ctr=rentobjects&act=display_ag_ajax&sale=<?=$_GET['sale']?>',0,'progressbar','',function postload() {}); // Грузим содержимое селек
+	 sendAjaxForm( 'rent_search_result' , 'rentsearch_ag' , '<?=$GLOBALS['config']['base_url']?>/sahmatka/ajax_router.php?ctr=rentobjects&act=display_ag_ajax&sale=<?=$_GET['sale']?>',0,'progressbar','',function postload() {}); // Грузим содержимое селек
    // $('#maprentobjects').hide();
 });
 
@@ -855,7 +855,7 @@ $('body').on('click', '#hidemap', function(){
 	  if($c)
 	  {
 		?>
-        <div class="rent_h2_a"><img src="<?=$GLOBALS['config']['domains']['em']?>/m2rent/images/map.svg" alt=""> &nbsp;  
+        <div class="rent_h2_a"><img src="<?=$GLOBALS['config']['base_url']?>/m2rent/images/map.svg" alt=""> &nbsp;  
 		<a href="#" class="rent_a " id="showmap">Показать помещения на карте</a>
 		<a href="#" class="rent_a " id="hidemap">Скрыть карту</a>
 		</div>
@@ -1078,7 +1078,7 @@ foreach($data as $k=>$v)
 		global $mysql;
 		if(!$href_perfix){$href_perfix='';}
 		
-		$href_perfix=$GLOBALS['config']['domains']['em'].'/sahmatka/iframe_router.php?ctr=rentobjects&act=card&id=';
+		$href_perfix=$GLOBALS['config']['base_url'].'/sahmatka/iframe_router.php?ctr=rentobjects&act=card&id=';
 		
 		 
 		//Получаем все обекты
@@ -1137,7 +1137,7 @@ foreach($data as $k=>$v)
 			
 			// $baloon_content=' <img src=\''.$src.'\' style=\'max-width:100%; max-height:100px;\' /> <div style=\'color:#445C79; font-size:16px; font-weight:bold; padding-bottom:5px; padding-bottom:5px;\'>'.$area.'</div> <div style=\'max-width:200px;\'>'.$text.'</div> <div><a href=\''.$href_perfix.$v['rent_home_id'].''.'\' style=\'color:#56A4ED;\'>'.$show_text.' '.$oc.'</a></div>';
 			 
-			$baloon_content = $cx.'<a href=\''.$GLOBALS['config']['domains']['em'].'/m2rent/?rent_home_id='.$v['rent_home_id'].''.'\' style=\'color:#56A4ED;\'>'.$show_text.' '.$oc.'</a>';
+			$baloon_content = $cx.'<a href=\''.$GLOBALS['config']['base_url'].'/m2rent/?rent_home_id='.$v['rent_home_id'].''.'\' style=\'color:#56A4ED;\'>'.$show_text.' '.$oc.'</a>';
 			 
 			$items_text.='{center: ['.$v['lat'].', '.$v['lon'].'], name: "'.$name.'",htmlcontent: "'.$baloon_content.'"}';
 			if($i<count($data)){$items_text.=',';}

@@ -76,7 +76,7 @@ $('#submitform').hide();
 
 // Начальная загрузка данных 
 relate_ajax_select('','sel_home,sel_section,sel_apartment_num,sel_date');
-sendAjaxForm( 'zapisdata' , 'filtrform' , 'https://em.m2profi.pro/sahmatka/ajax_actions.php?load=data&controller=zapiskeys',0); // Грузим содержимое селек
+sendAjaxForm( 'zapisdata' , 'filtrform' , (window.M2PROFI_CONFIG && window.M2PROFI_CONFIG.ajaxActions ? window.M2PROFI_CONFIG.ajaxActions : '/sahmatka/ajax_actions.php') + '?load=data&controller=zapiskeys',0); // Грузим содержимое селек
 
 
 $('#ch_arhiv').change(function() {
@@ -106,7 +106,7 @@ $('#sel_apartment_num').on('change', function() {
  
 // ЗАГРУЗКА ДАННЫХ ПРИЛЮБОЙ ОБРАБОТКЕ ФОРМЫ!
 $( "#filtrform input,#filtrform select" ).change(function() {
-  sendAjaxForm( 'zapisdata' , 'filtrform' , 'https://em.m2profi.pro/sahmatka/ajax_actions.php?load=data&controller=zapiskeys',0); // Грузим содержимое селек
+  sendAjaxForm( 'zapisdata' , 'filtrform' , (window.M2PROFI_CONFIG && window.M2PROFI_CONFIG.ajaxActions ? window.M2PROFI_CONFIG.ajaxActions : '/sahmatka/ajax_actions.php') + '?load=data&controller=zapiskeys',0); // Грузим содержимое селек
 });
 
 */

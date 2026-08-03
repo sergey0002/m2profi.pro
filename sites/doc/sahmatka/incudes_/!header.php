@@ -115,7 +115,7 @@ $_SESSION['agency_adm_id'] = $result['agency_adm_id']; // Заносим в се
 $_SESSION['users_group_id'] = $result['users_group_id'];
 // print_r($_SESSION);
 add_log('Выполнен вход в систему');
-header("Location: ".$GLOBALS['config']['domains']['doc']."/sahmatka/ctrind.php?ctr=doc&act=index");
+header("Location: ".$GLOBALS['config']['base_url']."/sahmatka/ctrind.php?ctr=doc&act=index");
 exit();
 }     
 }		
@@ -178,7 +178,7 @@ if( !$_SESSION['sh_login'] )
 							кабинет<i></i></button>
 					</form>
 					<div class="login-modal-form__login" style="display:none;">Еще не зарегистрированы в сервисе? <br>
-						<a href="<?=$GLOBALS['config']['domains']['main']?>">Регистрация</a>
+						<a href="<?=$GLOBALS['config']['client_site_url']?>">Регистрация</a>
 					</div>
 				</div>
 			</div>

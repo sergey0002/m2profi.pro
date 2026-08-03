@@ -310,7 +310,7 @@ class ctr__doc extends ctr__
 			 $post_data['name']=$_POST['file_caption'];
 			 $post_data['caption']=$_POST['file_caption'];
 			 
-			 $post_data['link'] = $GLOBALS['config']['domains']['doc'].'/'.$_POST['filex'];
+			 $post_data['link'] = $GLOBALS['config']['base_url'].'/'.$_POST['filex'];
 			 $post_data['puth'] = str_replace('/sahmatka/upload/', '', $_POST['filex']);
 			 $post_data['uptime'] = time();
 			 $post_data['comment'] = $_POST['comment'];
@@ -336,6 +336,14 @@ class ctr__doc extends ctr__
 			 }
 			 else
 			 {
+				 $dir_id_for_order = isset($post_data['node_id']) ? (int)$post_data['node_id'] : 0;
+				 $max_row = $mysql->get_arr(
+					 'SELECT MAX(`order`) AS max_order FROM files2node WHERE node_id = "' . $dir_id_for_order . '" AND node_type = "doc_dir" AND del = 0',
+					 true
+				 );
+				 $post_data['order'] = isset($max_row['max_order']) && $max_row['max_order'] !== null
+					 ? ((int)$max_row['max_order'] + 1)
+					 : 0;
 				 $mysql->insert('files2node',$post_data);
 			 }
 			   
@@ -830,16 +838,19 @@ function show_tree()
 			];
 		}
 
-        // Сортировка: сначала по order (ASC), затем по дате/id (DESC)
+        // Папки всегда выше файлов; внутри типа — по order ASC, затем id ASC
         usort($tree_data, function($a, $b) {
-            if ($a['data']['order'] != $b['data']['order']) {
+            $type_a = ($a['type'] === 'folder') ? 0 : 1;
+            $type_b = ($b['type'] === 'folder') ? 0 : 1;
+            if ($type_a !== $type_b) {
+                return $type_a - $type_b;
+            }
+            if ($a['data']['order'] !== $b['data']['order']) {
                 return $a['data']['order'] - $b['data']['order'];
             }
-            
-             $id_a = (int)filter_var($a['id'], FILTER_SANITIZE_NUMBER_INT);
-             $id_b = (int)filter_var($b['id'], FILTER_SANITIZE_NUMBER_INT);
-             
-             return $id_b - $id_a; // DESC
+            $id_a = (int)filter_var($a['id'], FILTER_SANITIZE_NUMBER_INT);
+            $id_b = (int)filter_var($b['id'], FILTER_SANITIZE_NUMBER_INT);
+            return $id_a - $id_b;
         });
 
 		// 5. Вывести результат в JSON
@@ -853,14 +864,18 @@ function show_tree()
         global $mysql;
         header('Content-Type: application/json');
 
-        if (!isset($_POST['id']) || !isset($_POST['parent']) || !isset($_POST['position'])) {
+        if (!isset($_POST['id']) || !isset($_POST['parent']) || !isset($_POST['children'])) {
             echo json_encode(['status' => 'error', 'message' => 'Отсутствуют необходимые параметры.']);
             exit();
         }
 
         $id = $_POST['id'];
         $parent = $_POST['parent'];
-        $position = (int)$_POST['position'];
+        $children = $_POST['children'];
+        if (!is_array($children)) {
+            echo json_encode(['status' => 'error', 'message' => 'Некорректный список children.']);
+            exit();
+        }
 
         list($type, $numeric_id) = explode('_', $id);
         $numeric_id = (int)$numeric_id;
@@ -872,53 +887,40 @@ function show_tree()
             $parent_id = (int)$parent_id;
         }
 
-        // 1. Обновляем родителя перемещаемого узла
         if ($type === 'file') {
             $mysql->update_for_key('files2node', 'files2node_id', $numeric_id, ['node_id' => $parent_id]);
         } elseif ($type === 'dir') {
             $mysql->update_for_key('dir', 'dir_id', $numeric_id, ['parent_dir_id' => $parent_id]);
-        }
-
-        // 2. Получаем всех детей нового родителя (папки и файлы) для сортировки
-        
-        $dirs_sql = "SELECT dir_id as id, 'dir' as type, `order` FROM dir WHERE parent_dir_id = '$parent_id' AND del = 0 ORDER BY `order` ASC";
-        $dirs = $mysql->get_arr($dirs_sql);
-
-        $files_sql = "SELECT files2node_id as id, 'file' as type, `order` FROM files2node WHERE node_id = '$parent_id' AND node_type = 'doc_dir' AND del = 0 ORDER BY `order` ASC";
-        $files = $mysql->get_arr($files_sql);
-        
-        $siblings = [];
-        foreach ($dirs as $d) {
-            if ($type === 'dir' && (int)$d['id'] === $numeric_id) continue;
-            $siblings[] = $d;
-        }
-        foreach ($files as $f) {
-            if ($type === 'file' && (int)$f['id'] === $numeric_id) continue;
-            $siblings[] = $f;
-        }
-
-        // Сортируем siblings по текущему order (на всякий случай)
-        usort($siblings, function($a, $b) {
-            return $a['order'] - $b['order'];
-        });
-
-        // 3. Вставляем перемещаемый узел в новую позицию
-        $moved_node = ['id' => $numeric_id, 'type' => $type];
-        
-        if ($position >= count($siblings)) {
-            $siblings[] = $moved_node;
         } else {
-            array_splice($siblings, $position, 0, [$moved_node]);
+            echo json_encode(['status' => 'error', 'message' => 'Неизвестный тип узла']);
+            exit();
         }
 
-        // 4. Обновляем order для всех узлов
-        foreach ($siblings as $index => $node) {
-            $new_order = $index;
-            if ($node['type'] === 'dir') {
-                $mysql->update_for_key('dir', 'dir_id', $node['id'], ['order' => $new_order]);
-            } elseif ($node['type'] === 'file') {
-                $mysql->update_for_key('files2node', 'files2node_id', $node['id'], ['order' => $new_order]);
+        // Порядок внутри типа берём из фактического списка детей после DnD;
+        // папки и файлы нумеруются отдельно (на экране всегда: папки, потом файлы)
+        $dir_ids = [];
+        $file_ids = [];
+        foreach ($children as $child_id) {
+            if (!is_string($child_id) || strpos($child_id, '_') === false) {
+                continue;
             }
+            list($child_type, $child_numeric_id) = explode('_', $child_id, 2);
+            $child_numeric_id = (int)$child_numeric_id;
+            if ($child_numeric_id <= 0) {
+                continue;
+            }
+            if ($child_type === 'dir') {
+                $dir_ids[] = $child_numeric_id;
+            } elseif ($child_type === 'file') {
+                $file_ids[] = $child_numeric_id;
+            }
+        }
+
+        foreach ($dir_ids as $index => $dir_id) {
+            $mysql->update_for_key('dir', 'dir_id', $dir_id, ['order' => $index]);
+        }
+        foreach ($file_ids as $index => $file_id) {
+            $mysql->update_for_key('files2node', 'files2node_id', $file_id, ['order' => $index]);
         }
 
         echo json_encode(['status' => 'success']);
@@ -938,11 +940,19 @@ function show_tree()
              $parent_id = (int)$parent_id;
         }
 
+        $max_row = $mysql->get_arr(
+            'SELECT MAX(`order`) AS max_order FROM dir WHERE parent_dir_id = "' . (int)$parent_id . '" AND del = 0',
+            true
+        );
+        $next_order = isset($max_row['max_order']) && $max_row['max_order'] !== null
+            ? ((int)$max_row['max_order'] + 1)
+            : 0;
+
         $data = [
             'parent_dir_id' => $parent_id,
             'dir_title' => $title,
             'del' => 0,
-            'order' => 0 // Можно добавить логику для порядка
+            'order' => $next_order
         ];
 
         $new_id = $mysql->insert('dir', $data);

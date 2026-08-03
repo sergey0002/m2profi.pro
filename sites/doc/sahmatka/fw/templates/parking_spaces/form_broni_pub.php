@@ -355,7 +355,7 @@
   <div class="row">
 
     <div class="col-md-6 col-xs-12" style="text-align:center; position:relative;">
-      <img src="<?=$GLOBALS['config']['domains']['em']?>/sahmatka//images/parkingcar.png" style="max-height:600px; max-width:100%">
+      <img src="<?=$GLOBALS['config']['base_url']?>/sahmatka//images/parkingcar.png" style="max-height:600px; max-width:100%">
 	  <div style="position:absolute; top:240px; text-align:center; width:100%; font-size:54px; font-weight:bold; right:5px;"> <?=$result['num'];?>  </div>
     </div>
     <div class="col-md-6 col-xs-12" style="text-align:left; font-size:24px; position:relative;">

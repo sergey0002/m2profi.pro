@@ -53,6 +53,7 @@ if( $_SESSION['sh_login'] || 1==1 )
 <script src="/sahmatka/template/default/libs/formstyler/jquery.formstyler.min.js"></script>
 
 
+<?php include __DIR__ . '/template/default/m2_public_config.php'; ?>
 <script src="/sahmatka/template/default/js/myfw_iframe.js"></script>
 
 

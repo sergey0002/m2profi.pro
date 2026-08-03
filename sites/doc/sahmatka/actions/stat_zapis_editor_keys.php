@@ -1,4 +1,4 @@
-﻿<?	
+<?	
 		if(!$_GET['month']){	$_GET['month'] = date('m');	}
 		$tm = $_GET['month'];	
 ?>
@@ -113,7 +113,7 @@
 			if($m==$tm && $y==$ty){$st=' style="font-weight:bold; font-size: 16px;" ';}
 			else{$st='';}
 			if(strlen($m)<2){$m = '0'.$m;} 
-			print ' / <a href="<?=$GLOBALS['config']['domains']['em']?>/sahmatka/user.php?action=zapis_editor_keys&month='.$m.'" '.$st.'>'.$m.'</a>  ';
+			print ' / <a href="<?=$GLOBALS['config']['base_url']?>/sahmatka/user.php?action=zapis_editor_keys&month='.$m.'" '.$st.'>'.$m.'</a>  ';
 		}
 		
 		$m='01';
@@ -122,7 +122,7 @@
 		if($m==$tm && $y==$ty){$st=' style="font-weight:bold; font-size: 16px;" ';  }
 		else{$st='';}
 		
-		print ' / <a href="<?=$GLOBALS['config']['domains']['em']?>/sahmatka/user.php?action=zapis_editor_keys&month=01&year='.$y.'" '.$st.'>01-'.$y.'</a>  ';
+		print ' / <a href="<?=$GLOBALS['config']['base_url']?>/sahmatka/user.php?action=zapis_editor_keys&month=01&year='.$y.'" '.$st.'>01-'.$y.'</a>  ';
 		
 		
 		print '<br/><br/>';
@@ -193,7 +193,7 @@
 			}
 			
 			 ?>
-			 <form action="<?=$GLOBALS['config']['domains']['em']?>/sahmatka/user.php?action=zapis_editor_keys&month=<?=$_GET['month']?>&year=<?=$_GET['year']?>" method="POST" id="ajax_form">
+			 <form action="<?=$GLOBALS['config']['base_url']?>/sahmatka/user.php?action=zapis_editor_keys&month=<?=$_GET['month']?>&year=<?=$_GET['year']?>" method="POST" id="ajax_form">
 			 <?
 			$x->show($data_broni,$data_str);
 			
