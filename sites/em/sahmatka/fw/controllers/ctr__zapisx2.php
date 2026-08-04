@@ -463,7 +463,8 @@ class ctr__zapisx2 extends ctr__
 		// section_id: 1
 		// pom: 0
 		if($_REQUEST['pom']){$pom=2;}else{$pom=1;}
-		$this->get_graficx(1,$pom);
+		if($_REQUEST['dkp']){$dkp=2;}else{$dkp=1;}
+		$this->get_graficx(1,$pom,$dkp);
 		//print_r($this->graficx_i_za_gr_free[$_GET['home_id']]);
 		
 		print '<option value="">Выбрать дату</option>';
