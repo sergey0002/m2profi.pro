@@ -986,7 +986,7 @@
 
   /**
    * До раскрытия: измерить карточку и выбрать сторону (вверх/вниз) по свободному месту.
-   * Заголовок остаётся на якоре — анимируется только тело.
+   * Заголовок остаётся на якоре; ширина растёт вправо, буквы chip не уезжают.
    */
   GenplanWidgetInstance.prototype._prepareExpandPlacement = function (el, viewport) {
     if (!el || !viewport) return;
@@ -994,6 +994,11 @@
     var bodyWrap = el.querySelector('.gw-label__body-wrap');
     var body = el.querySelector('.gw-label__body');
     var head = el.querySelector('.gw-label__head');
+    var boxRect = el.querySelector('.gw-label__box');
+
+    // ширина idle-chip до expand — закрепляем левый край (буквы на месте)
+    this._applyLabelPlacement(el, viewport);
+    var idleW = (boxRect && boxRect.getBoundingClientRect().width) || 40;
 
     el.classList.add('is-expanded');
     el.style.visibility = 'hidden';
@@ -1015,7 +1020,6 @@
     this._applyLabelPlacement(el, viewport);
 
     var headH = (head && head.offsetHeight) ? head.offsetHeight : 28;
-    var boxRect = el.querySelector('.gw-label__box');
     var full = boxRect ? boxRect.getBoundingClientRect() : el.getBoundingClientRect();
     var bodyH = Math.max(0, (full.height || 0) - headH);
     var w = full.width || 0;
@@ -1045,13 +1049,14 @@
     w = full.width || w;
     var h = full.height || 0;
 
-    // по умолчанию строго по вертикали от заголовка (dx=0, dy=0);
+    // левый край idle-chip фиксируем → буквы заголовка на месте, ширина растёт вправо;
     // сдвиг только если карточка не влезает в viewport
-    var left = anchorX - w / 2;
-    var right = anchorX + w / 2;
-    var dx = 0;
-    if (right > vw - margin) dx = (vw - margin) - right;
-    if (left + dx < margin) dx = margin - left;
+    var dx = Math.max(0, (w - idleW) / 2);
+    var left = anchorX + dx - w / 2;
+    var right = anchorX + dx + w / 2;
+    if (right > vw - margin) dx += (vw - margin) - right;
+    left = anchorX + dx - w / 2;
+    if (left < margin) dx += margin - left;
 
     var dy = 0;
     if (below) {
