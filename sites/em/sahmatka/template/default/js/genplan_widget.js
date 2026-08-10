@@ -260,7 +260,7 @@
     '.gw-label.is-expanded .gw-label__box { background: rgba(255,255,255,0.9); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
     '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; }',
     '.gw-label.is-compact .gw-label__head { padding: 4px 6px; }',
-    '.gw-label.is-expanded .gw-label__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 12px 12px 8px; white-space: normal; width: 100%; max-width: none; box-sizing: border-box; border-bottom: 1px solid rgba(0,0,0,0.08); }',
+    '.gw-label.is-expanded .gw-label__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 12px 12px 8px; white-space: normal; width: 100%; max-width: none; box-sizing: border-box; border-bottom: 1px solid #000; }',
     '.gw-label__tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid #9aa0a6; flex: 0 0 auto; }',
     '.gw-label__text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }',
     '.gw-label.is-expanded .gw-label__text { overflow: visible; text-overflow: unset; white-space: normal; flex: 1 1 auto; min-width: 0; }',
@@ -274,7 +274,7 @@
     '.gw-label__content { margin-bottom: 6px; }',
     '.gw-label__meta-line { display: block; color: #555; margin-bottom: 4px; }',
     '.gw-label__badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }',
-    '.gw-label__badge { display: inline-block; padding: 4px 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 11px; color: #444; background: rgba(255,255,255,0.6); }',
+    '.gw-label__badge { display: inline-block; padding: 4px 8px; border: 1px solid #e53935; border-radius: 6px; font-size: 11px; color: #444; background: rgba(255,255,255,0.6); }',
     '.gw-label__apts { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }',
     '.gw-label__apts a { color: #056bf5; text-decoration: none; font-size: 12px; }',
     '.gw-label__apts a:hover { text-decoration: underline; }',
@@ -1744,6 +1744,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.3.3'
+    version: '2.3.4'
   };
 })(typeof window !== 'undefined' ? window : this);
