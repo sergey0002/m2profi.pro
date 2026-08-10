@@ -23,9 +23,9 @@
 
 | Stage | Содержание | Статус |
 |-------|------------|--------|
-| 1 | Треки road + машины + облака + widget playback | pending |
-| 2 | walk/dog + люди/собаки | pending |
-| 3 | птицы random + density/polish | pending |
+| 1 | Машина/Человек open-polyline; cars+people+clouds; mount-флаги; light day/evening | pending |
+| 2 | Собаки; birds диагональ + toggle | pending |
+| 3 | Light pulse + density/polish | pending |
 
 ---
 

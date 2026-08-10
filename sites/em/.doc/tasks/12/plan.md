@@ -23,13 +23,16 @@
 |------|--------|
 | Цель | Максимум «живости» при мин. трудозатратах админа и без ущерба навигации |
 | Графика | Встроенные SVG-спрайты (`car_a/b/c`, `person_a/b`, `dog_a/b`, `bird_a`, `cloud_a/b`) |
-| Треки | Polyline в CRS плана (как points полигонов: y=0 у низа) |
-| Агенты на треке | car / person / dog → обязательный `track_id`, speed, period, sprite |
-| Птицы | Random, без трека |
-| Облака | Медленный drift, без трека (1–2 экземпляра на квартал) |
-| Клики | Life: `pointer-events: none` всегда |
-| Motion | `prefers-reduced-motion: reduce` → life off |
-| Explore | Life играет в компакте и explore; позиция в системе координат stage (масштабируется с pan/zoom) |
+| Рисование путей | **Как полигон** (последовательные клики по вершинам), но **без требования замыкания** — open polyline ≥2 точек |
+| Спец-инструменты | **«Машина»** → путь `road`; **«Человек»** → путь `walk` (не общий «полигон домов») |
+| Агенты на треке | car / person (/ dog Stage 2) → `track_id`, speed, period, sprite |
+| Птицы | Random **диагональные** пролёты; **отключаемые** (mount + админ) |
+| Облака | Медленный drift; отключаемые |
+| Свет | Лёгкий overlay (§6); отключаемый из mount |
+| Клики | Life + light: `pointer-events: none` всегда |
+| Motion | `prefers-reduced-motion: reduce` → life + light pulse off |
+| Explore | Life/light в системе координат stage (с pan/zoom) |
+| Mount | Раздельные флаги: `life`, `lifeCars`, `lifePeople`, `lifeBirds`, `lifeClouds`, `lifeLight` |
 
 ---
 
@@ -39,37 +42,46 @@
 flowchart TB
   subgraph admin [Редактор genplans]
     Mode[Режим Жизнь]
-    TrackTool[Инструмент Трек road/walk/dog]
-    AgentTool[Инструмент Агент car/person/dog]
-    Ambient[Птицы / Облака — панельные пресеты]
-    Mode --> TrackTool
-    Mode --> AgentTool
+    CarTool[Инструмент Машина open-polyline]
+    PersonTool[Инструмент Человек open-polyline]
+    Ambient[Птицы / Облака / Свет — панель]
+    Mode --> CarTool
+    Mode --> PersonTool
     Mode --> Ambient
   end
 
   subgraph db [m2profi_em]
     T[genplan_life_tracks]
     A[genplan_life_agents]
+    S[kvartal life settings optional]
   end
 
   subgraph pub [GenplanWidget]
     Stage[gw-stage transform]
-    Life[gw-life-layer SVG/HTML]
+    Light[gw-light-overlay]
+    Life[gw-life-layer]
     Homes[gw-poly + gw-labels]
+    Stage --> Light
     Stage --> Life
     Stage --> Homes
     Life -.->|pointer-events none| Homes
+    Light -.->|pointer-events none| Homes
   end
 
-  TrackTool --> T
-  AgentTool --> A
+  CarTool --> T
+  PersonTool --> T
+  CarTool --> A
+  PersonTool --> A
   Ambient --> A
+  Ambient --> S
   T --> WD[widget_data + life]
   A --> WD
+  S --> WD
   WD --> Life
+  WD --> Light
 ```
 
-**Z-order в stage (снизу вверх):** фон img → life layer → SVG polys → labels overlay.
+**Z-order в stage (снизу вверх):** фон img → **light overlay** → life layer → SVG polys → labels overlay.
 
 ---
 
@@ -87,8 +99,8 @@ CREATE TABLE IF NOT EXISTS `genplan_life_tracks` (
   `role`         ENUM('road','walk','dog') NOT NULL DEFAULT 'road'
                    COMMENT 'road=машины, walk=люди, dog=собаки',
   `title`        VARCHAR(128) NULL DEFAULT NULL COMMENT 'подпись в админке',
-  `points`       TEXT NOT NULL COMMENT 'JSON [[x,y],…] CRS.Simple y=0 у низа; >=2 точек',
-  `closed`       TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1=петля (замкнуть путь)',
+  `points`       TEXT NOT NULL COMMENT 'JSON [[x,y],…] CRS.Simple y=0 у низа; >=2 точек; OPEN polyline',
+  `closed`       TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Stage1 всегда 0 для car/person; петля — backlog',
   `sort_order`   INT NOT NULL DEFAULT 0,
   `created_at`   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -127,15 +139,31 @@ CREATE TABLE IF NOT EXISTS `genplan_life_agents` (
 |---------|------------|--------------|--------------|------------------|
 | `car` | обязателен | `road` | 55 | 10000 |
 | `person` | обязателен | `walk` | 18 | 12000 |
-| `dog` | обязателен | `dog` (или `walk`) | 28 | 14000 |
+| `dog` | обязателен | `dog` или `walk` | 28 | 14000 |
 | `bird` | NULL | — | 70 | 15000 (редко) |
 | `cloud` | NULL | — | 4 | 60000 |
 
-- На одном треке — **N агентов** (разные sprite / phase через `params_json.phase` 0…1).  
-- Soft-delete как у полигонов (`del=1`).  
-- Валидация: car нельзя повесить на `walk`; person/dog — не на `road` (dog допускается на `walk` **или** `dog`).
+- Инструмент **Машина** рисует open polyline → track `road` + сразу 1 car-agent (редактируемые speed/period/sprite).  
+- Инструмент **Человек** → track `walk` + 1 person-agent.  
+- На одном треке можно добавить ещё агентов того же вида (Stage 1.1).  
+- **Замыкание запрещено** в UI Stage 1 (`closed=0` всегда).  
+- car нельзя на `walk`; person не на `road`.  
 
-### 2.3. `params_json` (контракт)
+### 2.3. Настройки ambient на квартал (опционально)
+
+Либо отдельные agents bird/cloud в БД, либо компактная строка в `widget_data.life.settings`:
+
+```json
+"settings": {
+  "birds": true,
+  "clouds": true,
+  "light": "day"
+}
+```
+
+Админ-переключатели в панели «Жизнь»; **виджет-mount может переопределить** (см. §5.4).
+
+### 2.4. `params_json` (контракт)
 
 ```json
 {
@@ -154,7 +182,7 @@ CREATE TABLE IF NOT EXISTS `genplan_life_agents` (
 | `phase` | Сдвиг старта по длине трека / по времени (0…1) |
 | `direction` | `1` вперёд по points, `-1` назад |
 | `scale` | Множитель размера спрайта |
-| `bird.*` | Полоса высоты и время жизни одного пролёта |
+| `bird.*` | Диагональ: `diagonal: "↘"|"↙"|"↗"|"↖"|"random"`, lifespan, altitude |
 | `cloud.*` | Относительная высота полосы и ширина |
 
 ---
@@ -186,6 +214,13 @@ CREATE TABLE IF NOT EXISTS `genplan_life_agents` (
 {
   "life": {
     "enabled": true,
+    "settings": {
+      "cars": true,
+      "people": true,
+      "birds": true,
+      "clouds": true,
+      "light": "day"
+    },
     "tracks": [
       { "id": 1, "role": "road", "closed": false, "points": [[x,y], ...] }
     ],
@@ -199,21 +234,18 @@ CREATE TABLE IF NOT EXISTS `genplan_life_agents` (
         "periodMs": 10000,
         "params": { "phase": 0.2, "direction": 1, "scale": 1 }
       }
-    ],
-    "sprites": {
-      "car_a": { "viewBox": "0 0 40 20", "svg": "<path…/>" }
-    }
+    ]
   }
 }
 ```
 
 **Вариант спрайтов:**  
-- **A (предпочтительно):** SVG inline в `genplan_widget.js` / `genplan_life_sprites.js` — `widget_data` отдаёт только `spriteKey`.  
+- **A (предпочтительно):** SVG inline в `genplan_life_sprites.js` — `widget_data` отдаёт только `spriteKey`.  
 - **B:** сервер кладёт `sprites` map (дублирование).  
 
 Канон плана: **A** — спрайты только в JS бандле виджета; ключи стабильны.
 
-Если tracks/agents пусто → `life.enabled=false` или пустые массивы (виджет no-op).
+Если tracks/agents пусто и ambient выкл → виджет no-op.
 
 ### 3.3. Лимиты (сервер + клиент)
 
@@ -238,19 +270,26 @@ CREATE TABLE IF NOT EXISTS `genplan_life_agents` (
 
 При уходе из «Жизнь» — сброс недорисованного polyline (как у полигонов).
 
-### 4.2. Подрежим «Жизнь»
+### 4.2. Подрежим «Жизнь» — спец-инструменты
+
+Рисование пути = **тот же UX, что полигон домов** (клик → вершина → клик…), но:
+
+- используется Leaflet.Draw **polyline** (не polygon);
+- **замыкания нет** (нет требования вернуть в первую точку);
+- finish: double-click / Enter / кнопка «Готово» при ≥2 точках.
 
 | Кнопка | Действие |
 |--------|----------|
-| Трек · дорога | Leaflet.Draw polyline → `role=road` |
-| Трек · тропа | polyline → `walk` |
-| Трек · собаки | polyline → `dog` |
-| Машина | выбрать трек `road` (клик по линии) → форма speed/period/sprite → save agent |
-| Человек | то же для `walk` |
-| Собака | для `dog` или `walk` |
-| Птицы | панель: добавить 1 bird-agent (без трека), period/speed/sprite |
-| Облака | панель: 1–2 cloud-agent |
-| Редактировать | Path.Drag / edit vertices трека; select агента в списке |
+| **Машина** | Open-polyline → save track `role=road` + дефолтный car-agent → панель speed/period/sprite |
+| **Человек** | Open-polyline → track `role=walk` + person-agent → панель |
+| Собака (Stage 2) | То же → `role=dog` |
+| Птицы | Toggle + period/density (без линии); пролёты **по диагонали** |
+| Облака | Toggle + 1–2 экземпляра |
+| Свет | Select: off / day / evening / soft-pulse |
+| Редактировать | Edit vertices open-line; список агентов на выбранном пути |
+| Удалить | Soft-delete track (+ его агенты) |
+
+**Не делать** отдельный «нарисуй трек, потом привяжи машину» как обязательный двухшаговый поток Stage 1 — инструмент сразу создаёт путь+агент.
 
 ### 4.3. Панель свойств агента
 
@@ -295,164 +334,118 @@ CREATE TABLE IF NOT EXISTS `genplan_life_agents` (
 
 ### 5.2. Рендер
 
-1. После `_buildMapStage` — `div.gw-life-layer` **внутри stage** (наследует transform pan/zoom).  
-2. Для каждого агента — SVG symbol instance / `<g>` / `<img>` data-URI.  
+1. После `_buildMapStage` — `div.gw-light-overlay` + `div.gw-life-layer` **внутри stage**.  
+2. Агенты — SVG instances.  
 3. `requestAnimationFrame` loop:
-   - car/person/dog: `distance = (t * speed + phase * length) % length` → точка на polyline + угол касательной  
-   - closed track: loop; else: ping-pong **Stage 1 default** для open tracks  
-   - bird: каждые `periodMs` спавн с random x, дуга Безье, remove через lifespan  
-   - cloud: медленный x drift в bandY, wrap  
-4. Pause loop если: destroyed, reduced-motion, tab hidden (`document.hidden`), `life.agents.length===0`.
+   - car/person: open polyline → **ping-pong** по умолчанию  
+   - bird: каждые `periodMs` спавн; траектория **диагональ** (↘↙↗↖), lifespan → remove  
+   - cloud: медленный drift + лёгкий wobble  
+4. Pause: destroyed / reduced-motion / `document.hidden` / все категории выкл флагами mount.
+
+Фильтр: `lifeCars` / `lifePeople` / `lifeBirds` / `lifeClouds` / `lifeDogs`.
 
 ### 5.3. CSS (Shadow)
 
 ```
+.gw-light-overlay { position:absolute; inset:0; pointer-events:none; z-index:1; mix-blend-mode: multiply; }
 .gw-life-layer { position:absolute; inset:0; pointer-events:none; z-index:2; overflow:visible; }
 .gw-life-agent { position:absolute; will-change:transform; transform-origin:center center; }
-.gw-root.is-coarse:not(.is-explore) .gw-life-layer { opacity: 0.85; } /* чуть тише в компакте */
+.gw-root.is-coarse:not(.is-explore) .gw-life-layer { opacity: 0.85; }
 @media (prefers-reduced-motion: reduce) {
   .gw-life-layer { display: none !important; }
+  .gw-light-overlay.is-pulse { animation: none !important; }
 }
 ```
 
-Labels z-index 5+; polys выше life.
+### 5.4. Опции `GenplanWidget.mount` (канон)
 
-### 5.4. Опция mount (опционально)
+Mount **перекрывает** `life.settings` с сервера. Defaults = `true`.
 
 ```js
 GenplanWidget.mount({
   // …
-  life: true,              // default true; false — не запрашивать/не играть
-  lifeDensity: 'auto'      // 'low'|'auto'|'high' — множитель лимитов видимости
+  life: true,           // master; false = нет слоя
+  lifeCars: true,
+  lifePeople: true,
+  lifeDogs: true,       // Stage 2
+  lifeBirds: true,      // диагональ; false = выкл
+  lifeClouds: true,
+  lifeLight: true,
+  lifeLightMode: 'day', // 'off'|'day'|'evening'|'pulse'
+  lifeDensity: 'auto'
 });
 ```
 
 ---
 
-## 6. Спрайты (без графики заказчика)
+## 6. Свет (ambient)
 
-Рисовать **минималистичные силуэты сверху/¾**, цвет приглушённый, читаемость на рендере:
+Тонкий overlay (не day/night-движок):
 
-| key | Описание |
-|-----|----------|
-| `car_a` `car_b` `car_c` | 3 цвета кузова, ~36×18 px viewBox |
-| `person_a` `person_b` | 2 позы/одежды, ~14×24 |
-| `dog_a` `dog_b` | 2 силуэта, ~22×14 |
-| `bird_a` | V-крыло / точка с крыльями, ~16×10 |
-| `cloud_a` `cloud_b` | мягкие blob, opacity 0.35–0.5, ~120×40 |
+| Режим | Визуал |
+|-------|--------|
+| `day` | vignette opacity ≤0.08 |
+| `evening` | тёплый градиент сверху |
+| `pulse` | медленный fade 8–12s |
+| `off` | нет |
 
-Хранить как строки SVG в JS. Превью в редакторе — те же ключи.
+`pointer-events: none`; не портить читаемость chips; reduced-motion отключает только pulse.  
+Админ: `settings.light`. Точечные «окна» — backlog, не MVP.
 
 ---
 
-## 7. Стейджи поставки
+## 7. Спрайты
 
-### Stage 1 — MVP (максимум эффекта)
+`car_a/b/c`, `person_a/b`, `dog_a/b`, `bird_a`, `cloud_a/b` — SVG в JS, без файлов заказчика.
 
-1. Миграция `007`.  
-2. CRUD tracks + agents (car only на road).  
-3. Режим «Жизнь» в редакторе: draw road track, add car agents.  
-4. `widget_data.life` + playback cars + 1–2 clouds.  
-5. pointer-events none, reduced-motion, лимиты.  
+---
 
-**Критерий приёмки Stage 1:** на демо kvartal_id машины едут по размеченной дороге, облака ползут, клики по домам работают.
+## 8. Стейджи
 
-### Stage 2 — люди и собаки
+### Stage 1 — MVP
+Инструменты **Машина** / **Человек** (open-polyline **без замыкания**); cars+people+clouds; mount-флаги; light day/evening.
 
-1. Tracks `walk` / `dog`.  
-2. Agents person/dog + спрайты.  
-3. Ping-pong / direction UI.  
+### Stage 2
+Собаки; birds **по диагонали** + отключение; direction UI.
 
-### Stage 3 — птицы + полировка
-
-1. Bird random ambient.  
-2. `lifeDensity`, меньше агентов в compact mobile.  
-3. Список агентов в панели, duplicate agent.  
-4. Docs delivery + QA.
+### Stage 3
+Light pulse; density; QA/docs.
 
 ### Вне scope
-
-- Загрузка своих PNG спрайтов  
-- Физика столкновений / светофоры  
-- Звук  
-- Анимация деревьев на JPG фона  
-- WebGL / video background  
-- Правки Sigma  
+PNG заказчика; звук; **обязательное замыкание** путей; анимация JPG-деревьев; WebGL; Sigma.
 
 ---
 
-## 8. Файловый манифест
+## 9. Файловый манифест
 
-| Путь | Действие |
-|------|----------|
-| `migrations/007_genplan_life.sql` | create |
-| `fw/controllers/ctr__genplans.php` | acts life_* + блок в widget_data |
-| `fw/templates/genplans/editor.php` | кнопки режима Жизнь / панель |
-| `template/default/js/genplan_editor.js` | UI life |
-| `template/default/css/genplan_editor.css` | стили треков/панели |
-| `template/default/js/genplan_life_sprites.js` | create SVG map |
-| `template/default/js/genplan_life.js` | runtime playback |
-| `template/default/js/genplan_widget.js` | integrate layer + option `life` |
-| `fw/templates/genplans/widget_demo.php` | cache-bust version |
-| `.doc/tasks/12/*` | эта документация |
-
-Версия виджета: bump минорно при поставке (например `2.5.0` при Stage 1).
+`007_genplan_life.sql`, life_* acts, editor (Машина/Человек), `genplan_life.js` + sprites, widget mount flags, demo.  
+Версия Stage 1: **2.5.0**.
 
 ---
 
-## 9. Алгоритм движения по треку (виджет)
+## 10. Алгоритмы
 
-```
-function pointAlong(points, dist):
-  // накопить длины сегментов; найти сегмент; lerp; вернуть {x,y,angle}
-
-each frame:
-  len = pathLength(track.points, closed)
-  if open && pingpong:
-    cycle = periodMs based OR (len/speed)*2
-    u = triangleWave(t, cycle)  // 0→1→0
-  else:
-    u = fract(t * speed / len + phase)
-  p = pointAlong(points, u * len)
-  el.style.transform = `translate(px) rotate(angle)`
-  // учесть flipY как у полигонов при переводе CRS → SVG/CSS layer
-```
-
-**Координаты:** хранение как у #10 (`label_y` / points, y=0 снизу). В life-layer внутри stage с размером `imageWidth×imageHeight` — те же преобразования, что SVG viewBox.
+**Open track:** ping-pong `triangleWave` вдоль polyline + rotate по касательной.  
+**Birds:** periodMs → диагональ {SE,SW,NE,NW} off-canvas→off-canvas + wobble.  
+Координаты как #10 (y=0 снизу).
 
 ---
 
-## 10. QA checklist (черновик)
+## 11. QA
 
-### Stage 1
-- [ ] Миграция 007 на стенде  
-- [ ] Draw road → save track → reload editor  
-- [ ] Add 2 cars different sprites/phase → видны в demo  
-- [ ] Pan/zoom/explore: машины остаются на дороге  
-- [ ] Hover/tap дома: тултипы работают, life не перехватывает  
-- [ ] reduced-motion: life скрыт  
-- [ ] Пустой life: виджет без ошибок  
-
-### Stage 2–3
-- [ ] walk/dog треки + agents  
-- [ ] birds появляются редко и исчезают  
-- [ ] clouds не перекрывают читаемость chips  
+- [ ] Машина/Человек: ≥2 точки, **без** замыкания  
+- [ ] Движение в demo  
+- [ ] `lifeCars/People/Birds/Clouds/Light: false`  
+- [ ] Тултипы домов ок; birds диагональ; reduced-motion  
 
 ---
 
-## 11. Оценка порядка работ
+## 12. Оценка
 
-| Этап | Оценка |
-|------|--------|
-| Stage 1 | 2–3 дня |
-| Stage 2 | 1 день |
-| Stage 3 | 0.5–1 день |
+Stage1 2–3д · Stage2 1д · Stage3 0.5–1д
 
 ---
 
-## 12. Связь с задачей 10
+## 13. Связь с #10
 
-В [../10/doc.md](../10/doc.md) добавить строку:  
-«Следующая задача: [#12 Жизнь на плане](../12/doc.md)».
-
-Не ломать API `objects[]` виджета — только additive поле `life`.
+Только additive `life` + light. `objects[]` не ломать.
