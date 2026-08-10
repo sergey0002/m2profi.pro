@@ -95,7 +95,7 @@
 
   function normalizeMaxHeight(v) {
     if (typeof v === 'number' && isFinite(v) && v > 0) return v;
-    return Math.round((typeof window !== 'undefined' ? window.innerWidth : 1200) * 2);
+    return 600;
   }
 
   function normalizeZoomMult(v, fallback) {
@@ -1930,6 +1930,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.3.9'
+    version: '2.4.0'
   };
 })(typeof window !== 'undefined' ? window : this);

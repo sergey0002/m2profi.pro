@@ -66,13 +66,13 @@ if ($api_base === '' || $script_src === '') {
   <pre id="gw_demo_snippet_full"></pre>
 </section>
 
-<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=1.0.9"></script>
+<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=2.4.0"></script>
 <script>
 (function () {
   var SCRIPT_SRC = <?= json_encode($script_src, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var API_BASE = <?= json_encode($api_base, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var KVARTAL_ID = <?= (int) $kvartal_id ?>;
-  var VER = (window.GenplanWidget && GenplanWidget.version) || '1.0.9';
+  var VER = (window.GenplanWidget && GenplanWidget.version) || '2.4.0';
 
   var qs = new URLSearchParams(window.location.search || '');
   var maxHParam = parseInt(qs.get('maxHeight') || '', 10);
@@ -81,16 +81,17 @@ if ($api_base === '' || $script_src === '') {
   var offsetYParam = parseFloat(qs.get('offsetY') || '');
   var offsetBottomParam = parseFloat(qs.get('offsetBottom') || '');
 
+  // width/maxHeight — дефолты GenplanWidget: '100%' / 600 (можно переопределить ?width=&maxHeight=)
   var mountOpts = {
     el: '#genplan_demo_mount',
     kvartalId: KVARTAL_ID,
     apiBase: API_BASE,
-    width: (isFinite(widthParam) && widthParam > 0) ? widthParam : '100%',
-    maxHeight: (isFinite(maxHParam) && maxHParam > 0) ? maxHParam : 600,
     offsetBottom: (isFinite(offsetBottomParam)) ? offsetBottomParam : 100,
     minZoom: 1,
     maxZoom: 4
   };
+  if (isFinite(widthParam) && widthParam > 0) mountOpts.width = widthParam;
+  if (isFinite(maxHParam) && maxHParam > 0) mountOpts.maxHeight = maxHParam;
   if (isFinite(offsetXParam)) mountOpts.offsetX = offsetXParam;
   if (isFinite(offsetYParam)) mountOpts.offsetY = offsetYParam;
 
