@@ -25,7 +25,7 @@ if ($api_base === '' || $script_src === '') {
     border-bottom: 1px solid #c5ccd3;
     box-shadow: 0 1px 0 rgba(0,0,0,0.06);
   }
-  #genplan_demo_mount { width: 700px; max-width: 100%; margin: 0 auto; background: #f0f2f4; }
+  #genplan_demo_mount { width: 100%; margin: 0 auto; background: #f0f2f4; }
   .gw-embed {
     max-width: 960px;
     margin: 0 auto;
@@ -85,8 +85,8 @@ if ($api_base === '' || $script_src === '') {
     el: '#genplan_demo_mount',
     kvartalId: KVARTAL_ID,
     apiBase: API_BASE,
-    width: (isFinite(widthParam) && widthParam > 0) ? widthParam : 700,
-    maxHeight: (isFinite(maxHParam) && maxHParam > 0) ? maxHParam : 400,
+    width: (isFinite(widthParam) && widthParam > 0) ? widthParam : '100%',
+    maxHeight: (isFinite(maxHParam) && maxHParam > 0) ? maxHParam : 600,
     offsetBottom: (isFinite(offsetBottomParam)) ? offsetBottomParam : 100,
     minZoom: 1,
     maxZoom: 4
@@ -106,8 +106,8 @@ if ($api_base === '' || $script_src === '') {
     '<span class="tok-punct">GenplanWidget.mount({</span>',
     '  <span class="tok-key">el</span><span class="tok-punct">:</span> <span class="tok-str">\'#genplan\'</span><span class="tok-punct">,</span>',
     '  <span class="tok-key">kvartalId</span><span class="tok-punct">:</span> <span class="tok-num">' + KVARTAL_ID + '</span><span class="tok-punct">,</span>',
-    '  <span class="tok-key">width</span><span class="tok-punct">:</span> <span class="tok-num">700</span><span class="tok-punct">,</span>',
-    '  <span class="tok-key">maxHeight</span><span class="tok-punct">:</span> <span class="tok-num">400</span><span class="tok-punct">,</span>',
+    '  <span class="tok-key">width</span><span class="tok-punct">:</span> <span class="tok-str">\'100%\'</span><span class="tok-punct">,</span>',
+    '  <span class="tok-key">maxHeight</span><span class="tok-punct">:</span> <span class="tok-num">600</span><span class="tok-punct">,</span>',
     '  <span class="tok-key">offsetBottom</span><span class="tok-punct">:</span> <span class="tok-num">100</span>',
     '<span class="tok-punct">});</span>',
     '<span class="tok-tag">&lt;/script&gt;</span>'
@@ -120,8 +120,8 @@ if ($api_base === '' || $script_src === '') {
     '  <span class="tok-key">kvartalId</span><span class="tok-punct">:</span> <span class="tok-num">' + KVARTAL_ID + '</span><span class="tok-punct">,</span>',
     '  <span class="tok-key">apiBase</span><span class="tok-punct">:</span> <span class="tok-str">\'' + API_BASE + '\'</span><span class="tok-punct">,</span>',
     '',
-    '  <span class="tok-key">width</span><span class="tok-punct">:</span> <span class="tok-num">700</span><span class="tok-punct">,</span>                         <span class="tok-comment">// px или \'100%\'</span>',
-    '  <span class="tok-key">maxHeight</span><span class="tok-punct">:</span> <span class="tok-num">400</span><span class="tok-punct">,</span>                     <span class="tok-comment">// высота viewport</span>',
+    '  <span class="tok-key">width</span><span class="tok-punct">:</span> <span class="tok-str">\'100%\'</span><span class="tok-punct">,</span>                       <span class="tok-comment">// px или \'100%\'</span>',
+    '  <span class="tok-key">maxHeight</span><span class="tok-punct">:</span> <span class="tok-num">600</span><span class="tok-punct">,</span>                     <span class="tok-comment">// высота viewport</span>',
     '  <span class="tok-key">offsetBottom</span><span class="tok-punct">:</span> <span class="tok-num">100</span><span class="tok-punct">,</span>                  <span class="tok-comment">// стартовый сдвиг от низа, px</span>',
     '  <span class="tok-key">offsetX</span><span class="tok-punct">:</span> <span class="tok-num">0</span><span class="tok-punct">,</span>                          <span class="tok-comment">// 0…1 по горизонтали</span>',
     '  <span class="tok-key">offsetY</span><span class="tok-punct">:</span> <span class="tok-num">0</span><span class="tok-punct">,</span>                          <span class="tok-comment">// 0…1 (если нет offsetBottom)</span>',
