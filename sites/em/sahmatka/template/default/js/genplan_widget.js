@@ -250,8 +250,9 @@
     /* pointer-events:all — иначе при idle fill-opacity:0 клик «пролетает» сквозь polygon (SVG visiblePainted) */
     '.gw-poly { fill: var(--gw-hl-color, ' + HL + '); fill-opacity: var(--gw-idle-opacity, 0); stroke: var(--gw-hl-color, ' + HL + '); stroke-width: 2; stroke-opacity: 0; cursor: pointer; pointer-events: all; transition: fill-opacity 0.18s ease, stroke-opacity 0.18s ease, stroke-width 0.18s ease; outline: none; }',
     '.gw-poly.is-hover, .gw-poly.is-active, .gw-poly.is-showcase, .gw-poly:focus-visible { fill: var(--gw-hl-color, ' + HL + ') !important; stroke: var(--gw-hl-color, ' + HL + ') !important; fill-opacity: var(--gw-hl-opacity, 0.58); stroke-opacity: var(--gw-stroke-opacity, 0.4); stroke-width: 2; }',
-    /* открытый tooltip: чужие полигоны не перехватывают путь курсора к карточке */
-    '.gw-root.has-label-expanded .gw-poly:not(.is-hover):not(.is-active) { pointer-events: none !important; }',
+    /* открытый tooltip: на desktop чужие полигоны не перехватывают путь к карточке;
+       на mobile/coarse оставляем hit у всех домов — иначе тап по соседнему дому «пролетает» */
+    '.gw-root.has-label-expanded:not(.is-coarse) .gw-poly:not(.is-hover):not(.is-active) { pointer-events: none !important; }',
     '@media (prefers-reduced-motion: reduce) { .gw-poly { transition: none; } }',
     '.gw-labels-overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; overflow: visible; }',
     /* якорь = точка дома; chip/заголовок остаётся у якоря, тело растёт в свободную сторону */
@@ -350,6 +351,7 @@
     this._imgH = 0;
     this._inlinePannable = false;
     this._inlineReady = false;
+    this._inlineSnap = null;
     this._labelsBaseScale = 0;
     this._pointerInside = false;
     this._showcaseTimer = null;
@@ -1127,11 +1129,10 @@
     // (чтобы курсор мог дойти до карточки). Для hit-test временно снимаем —
     // иначе быстрый переход A→B не видит дом B, clear схлопывает tooltip,
     // а без нового pointermove он больше не открывается.
+    // Важно: трогаем overlay активного viewport (не первый в shadow — там ещё inline).
     var rootEl = this._els && this._els.root;
-    var overlay = null;
-    try {
-      overlay = root.querySelector('.gw-labels-overlay.has-expanded');
-    } catch (e0) { overlay = null; }
+    var vp = this._viewportEl();
+    var overlay = vp ? vp.querySelector('.gw-labels-overlay') : null;
     var hadRootBlock = !!(rootEl && rootEl.classList.contains('has-label-expanded'));
     var hadOverlayBlock = !!(overlay && overlay.classList.contains('has-expanded'));
     if (hadRootBlock) rootEl.classList.remove('has-label-expanded');
@@ -1151,6 +1152,7 @@
       if (hadOverlayBlock) overlay.classList.add('has-expanded');
     }
 
+    var activeVp = vp;
     var expandedLabelId = null;
     var polyId = null;
     var chipId = null;
@@ -1158,6 +1160,8 @@
     for (var i = 0; i < stack.length; i++) {
       var n = stack[i];
       if (!n || !n.classList) continue;
+      // игнор подписей/полигонов скрытого inline-слоя, пока открыт explore
+      if (activeVp && typeof activeVp.contains === 'function' && !activeVp.contains(n)) continue;
 
       var label = (n.classList.contains('gw-label') ? n : (n.closest && n.closest('.gw-label')));
       if (label && label.dataset && label.dataset.objectId) {
@@ -1181,7 +1185,9 @@
       var stickyId = String(this._hoverObjectId);
       var stickyEl = null;
       try {
-        stickyEl = root.querySelector('.gw-label[data-object-id="' + stickyId + '"]');
+        stickyEl = activeVp
+          ? activeVp.querySelector('.gw-label[data-object-id="' + stickyId + '"]')
+          : root.querySelector('.gw-label[data-object-id="' + stickyId + '"]');
       } catch (err) { stickyEl = null; }
       var stickyOpen = stickyEl && stickyEl.classList.contains('is-expanded');
       if (stickyOpen) {
@@ -1635,17 +1641,23 @@
       // тап по подписи → выбор объекта (переход только по <a> внутри tooltip)
       if (start.labelAnchor) return;
 
-      if (start.label) {
-        var labelObj = self._objectById(start.label.dataset && start.label.dataset.objectId);
-        if (labelObj) {
-          self._handleObjectActivate(labelObj, stage, isExplore);
-        }
-        return;
+      var activateId = null;
+      if (start.label && start.label.dataset && start.label.dataset.objectId) {
+        activateId = start.label.dataset.objectId;
+      } else if (start.poly) {
+        var polyObj = self._objectByPoly(start.poly);
+        if (polyObj) activateId = polyObj.id;
+      } else {
+        // открытый tooltip гасит pointer-events у чужих poly — target пустой,
+        // добиваем hit-test (со снятием блокировки)
+        activateId = self._hitTestObjectId(ev.clientX, ev.clientY);
       }
 
-      if (start.poly) {
-        var obj = self._objectByPoly(start.poly);
-        self._handleObjectActivate(obj, stage, isExplore);
+      if (activateId != null) {
+        var activateObj = self._objectById(activateId);
+        if (activateObj) {
+          self._handleObjectActivate(activateObj, stage, isExplore);
+        }
         return;
       }
 
@@ -1697,6 +1709,52 @@
     });
   };
 
+  GenplanWidgetInstance.prototype._saveInlineCamera = function () {
+    this._inlineSnap = {
+      scale: this._scale,
+      tx: this._tx,
+      ty: this._ty,
+      minScale: this._minScale,
+      maxScale: this._maxScale,
+      fitScale: this._fitScale,
+      labelsBaseScale: this._labelsBaseScale,
+      offsetXFrac: this._offsetXFrac,
+      offsetYFrac: this._offsetYFrac,
+      vpW: this._vpW,
+      vpH: this._vpH
+    };
+  };
+
+  GenplanWidgetInstance.prototype._restoreInlineCamera = function () {
+    var snap = this._inlineSnap;
+    this._inlineSnap = null;
+    if (!snap) return false;
+    // вернуть scale/minScale как до explore — _layoutFit возьмёт верный prevZoom
+    this._scale = snap.scale;
+    this._tx = snap.tx;
+    this._ty = snap.ty;
+    this._minScale = snap.minScale;
+    this._maxScale = snap.maxScale;
+    this._fitScale = snap.fitScale;
+    this._labelsBaseScale = snap.labelsBaseScale;
+    this._offsetXFrac = snap.offsetXFrac;
+    this._offsetYFrac = snap.offsetYFrac;
+    return true;
+  };
+
+  GenplanWidgetInstance.prototype._resetInteractionState = function () {
+    this._cancelHoverClear();
+    this._activeObjectId = null;
+    this._hoverObjectId = null;
+    this._lastPointerX = null;
+    this._lastPointerY = null;
+    this._panStart = null;
+    this._moved = false;
+    this._pointers.clear();
+    this._pinchStartDist = 0;
+    if (this._els.root) this._els.root.classList.remove('has-label-expanded');
+  };
+
   GenplanWidgetInstance.prototype._cloneStageIntoExplore = function () {
     var exploreViewport = this._els.exploreViewport;
     exploreViewport.innerHTML = '';
@@ -1706,9 +1764,9 @@
     this._els.exploreStage = stage;
 
     this._bindStageInteractions(stage, exploreViewport, true);
-    if (this._activeObjectId != null) {
-      this._setActive(stage, this._activeObjectId);
-    }
+    // каждый вход в explore — с чистого состояния (без «залипшего» тултипа)
+    this._activeObjectId = null;
+    this._hoverObjectId = null;
     this._applyExploreTransform();
   };
 
@@ -1716,6 +1774,11 @@
     if (this.destroyed || this.exploring) return;
     if (!this.exploreFullscreen) return;
     this._syncOffsetFromPan();
+    this._saveInlineCamera();
+    this._resetInteractionState();
+    // сбрасываем выбор на inline до клона, чтобы не тащить expanded в компакт
+    if (this._els.stage) this._clearSelection(this._els.stage);
+    if (this._els.labels) this._els.labels.classList.remove('has-expanded');
     this.exploring = true;
     this._els.root.classList.add('is-explore');
     this._els.exploreLayer.setAttribute('aria-hidden', 'false');
@@ -1728,6 +1791,7 @@
     var vh = vp.clientHeight || window.innerHeight;
     var fit = Math.min(vw / this._imgW, vh / this._imgH);
     this._minScale = fit;
+    this._maxScale = Math.max(fit * 4, fit);
     this._scale = Math.min(Math.max(fit * 1.15, fit), this._maxScale);
     this._tx = (vw - this._imgW * this._scale) / 2;
     this._ty = (vh - this._imgH * this._scale) / 2;
@@ -1742,6 +1806,7 @@
   GenplanWidgetInstance.prototype._exitExplore = function (fromDestroy) {
     if (!this.exploring) return;
     this.exploring = false;
+    this._resetInteractionState();
     if (this._els.root) this._els.root.classList.remove('is-explore');
     if (this._els.exploreLayer) this._els.exploreLayer.setAttribute('aria-hidden', 'true');
     if (this._els.exploreViewport) this._els.exploreViewport.innerHTML = '';
@@ -1752,15 +1817,14 @@
     }
     document.removeEventListener('keydown', this._onKeyDown);
     if (!fromDestroy) {
-      if (this._els.stage) {
-        if (this._activeObjectId != null) {
-          this._setActive(this._els.stage, this._activeObjectId);
-        } else {
-          this._clearSelection(this._els.stage);
-        }
-      }
+      // тултипы скрыть, камера — как до «Увеличить»
+      if (this._els.stage) this._clearSelection(this._els.stage);
+      if (this._els.labels) this._els.labels.classList.remove('has-expanded');
+      this._restoreInlineCamera();
       this._layoutFit();
       this._syncIdleHighlight();
+    } else {
+      this._inlineSnap = null;
     }
   };
 
@@ -1969,6 +2033,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.4.8'
+    version: '2.4.10'
   };
 })(typeof window !== 'undefined' ? window : this);
