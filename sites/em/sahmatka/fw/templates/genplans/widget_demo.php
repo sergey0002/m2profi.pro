@@ -66,13 +66,13 @@ if ($api_base === '' || $script_src === '') {
   <pre id="gw_demo_snippet_full"></pre>
 </section>
 
-<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=2.4.1"></script>
+<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=2.4.2"></script>
 <script>
 (function () {
   var SCRIPT_SRC = <?= json_encode($script_src, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var API_BASE = <?= json_encode($api_base, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var KVARTAL_ID = <?= (int) $kvartal_id ?>;
-  var VER = (window.GenplanWidget && GenplanWidget.version) || '2.4.1';
+  var VER = (window.GenplanWidget && GenplanWidget.version) || '2.4.2';
 
   var qs = new URLSearchParams(window.location.search || '');
   var maxHParam = parseInt(qs.get('maxHeight') || '', 10);

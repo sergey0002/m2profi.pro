@@ -258,13 +258,13 @@
     '.gw-label { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: visible; pointer-events: auto; z-index: 5; cursor: pointer; -webkit-tap-highlight-color: transparent; }',
     '.gw-label.is-expanded { z-index: 200; }',
     '.gw-labels-overlay.has-expanded .gw-label:not(.is-expanded) { pointer-events: none !important; }',
-    '.gw-label__box { position: absolute; left: 0; bottom: 0; top: auto; display: flex; flex-direction: column; width: fit-content; max-width: 220px; text-align: left; background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); overflow: hidden; transform: translate(-50%, 0); transform-origin: center bottom; transition: border-radius 0.28s ease, box-shadow 0.28s ease, background 0.28s ease, width 0.28s ease, min-width 0.28s ease; }',
+    '.gw-label__box { position: absolute; left: 0; bottom: 0; top: auto; display: flex; flex-direction: column; width: fit-content; max-width: 220px; text-align: left; background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); overflow: hidden; transform: translate(-50%, 0); transform-origin: center bottom; transition: border-radius 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, width 0.18s ease, min-width 0.18s ease; }',
     /* раскрытие вверх: низ заголовка на якоре, контент растёт вверх */
     '.gw-label.is-expanded:not(.is-below) .gw-label__box { flex-direction: column-reverse; transform-origin: center bottom; }',
     /* раскрытие вниз: позицию низа заголовка держит JS (translateY -headH) */
     '.gw-label.is-below .gw-label__box { top: 0; bottom: auto; transform-origin: center top; }',
     '.gw-label.is-expanded .gw-label__box { background: rgba(255,255,255,0.9); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
-    '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; flex: 0 0 auto; transition: padding 0.28s ease; }',
+    '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; flex: 0 0 auto; transition: padding 0.18s ease; }',
     '.gw-label.is-compact .gw-label__head { padding: 4px 6px; }',
     '.gw-label.is-expanded .gw-label__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 12px; white-space: normal; width: 100%; max-width: none; box-sizing: border-box; }',
     '.gw-label.is-expanded.is-below .gw-label__head { border-bottom: 1px solid #000; }',
@@ -275,9 +275,9 @@
     '.gw-label:not(.is-expanded) .gw-label__status { display: none !important; }',
     '.gw-label__status { font-weight: 400; font-size: 12px; line-height: 1.25; }',
     '.gw-label.is-expanded .gw-label__status { display: inline; }',
-    '.gw-label__body-wrap { display: grid; grid-template-rows: 0fr; max-width: 0; min-width: 0; overflow: hidden; opacity: 0; flex: 0 0 auto; transition: grid-template-rows 0.28s ease, max-width 0.28s ease, opacity 0.22s ease; }',
+    '.gw-label__body-wrap { display: grid; grid-template-rows: 0fr; max-width: 0; min-width: 0; overflow: hidden; opacity: 0; flex: 0 0 auto; transition: grid-template-rows 0.18s ease, max-width 0.18s ease, opacity 0.14s ease; }',
     '.gw-label.is-expanded .gw-label__body-wrap { grid-template-rows: 1fr; max-width: none; width: 100%; opacity: 1; }',
-    '.gw-label__body { overflow: hidden; min-height: 0; font-size: 12px; line-height: 1.4; color: #333; padding: 0 12px; box-sizing: border-box; width: 100%; transition: padding 0.28s ease; }',
+    '.gw-label__body { overflow: hidden; min-height: 0; font-size: 12px; line-height: 1.4; color: #333; padding: 0 12px; box-sizing: border-box; width: 100%; transition: padding 0.18s ease; }',
     '.gw-label.is-expanded .gw-label__body { padding: 8px 12px 12px; }',
     '.gw-label__content { margin-bottom: 6px; }',
     '.gw-label__meta-line { display: block; color: #555; margin-bottom: 4px; }',
@@ -1185,7 +1185,7 @@
 
     if (expandedLabelId) return expandedLabelId;
 
-    // sticky: пока открыт tooltip — не переключаться на чужой poly в промежутке
+    // sticky только пока курсор на том же доме (poly/chip); иначе сразу отпускаем
     if (this._hoverObjectId != null) {
       var stickyId = String(this._hoverObjectId);
       var stickyEl = null;
@@ -1196,10 +1196,10 @@
         stickyEl.classList.contains('is-expanded') || stickyEl.dataset.expandPending === '1'
       );
       if (stickyOpen) {
-        if (chipId && chipId !== stickyId) return chipId;
+        if (chipId && chipId === stickyId) return stickyId;
         if (polyId && polyId === stickyId) return stickyId;
-        if (!polyId && !chipId) return null;
-        return stickyId;
+        if (chipId && chipId !== stickyId) return chipId;
+        return null;
       }
     }
 
@@ -1231,43 +1231,48 @@
       if (String(el.dataset.objectId) === String(objectId)) {
         if (expanded) {
           if (el.classList.contains('is-expanded') || el.dataset.expandPending === '1') continue;
-          // важно: захватить el в локальную переменную — иначе rAF видит последний узел цикла
           var targetEl = el;
           var targetId = String(objectId);
+          self._expandGen = (self._expandGen || 0) + 1;
+          var gen = self._expandGen;
           self._prepareExpandPlacement(targetEl, viewport);
           void targetEl.offsetWidth;
           targetEl.dataset.expandPending = '1';
+          self._syncExpandedOverlayClass(stage);
+          // один rAF: дать браузеру применить collapsed-стили, затем раскрыть
           requestAnimationFrame(function () {
-            requestAnimationFrame(function () {
+            if (self.destroyed || self._expandGen !== gen) {
               targetEl.dataset.expandPending = '0';
-              if (self.destroyed) return;
-              var stillHover = self._hoverObjectId != null
-                && String(self._hoverObjectId) === targetId;
-              var stillActive = self._activeObjectId != null
-                && String(self._activeObjectId) === targetId;
-              if (!stillHover && !stillActive) {
-                targetEl.classList.remove('is-below');
-                targetEl.dataset.shiftX = '0';
-                targetEl.dataset.shiftY = '0';
-                targetEl.dataset.expandSide = '';
-                self._applyLabelPlacement(targetEl, viewport);
-                self._syncExpandedOverlayClass(stage);
-                return;
-              }
-              if (targetEl.dataset.expandSide === 'below') targetEl.classList.add('is-below');
-              else targetEl.classList.remove('is-below');
-              targetEl.classList.add('is-expanded');
+              return;
+            }
+            targetEl.dataset.expandPending = '0';
+            var stillHover = self._hoverObjectId != null
+              && String(self._hoverObjectId) === targetId;
+            var stillActive = self._activeObjectId != null
+              && String(self._activeObjectId) === targetId;
+            if (!stillHover && !stillActive) {
+              targetEl.classList.remove('is-below');
+              targetEl.dataset.shiftX = '0';
+              targetEl.dataset.shiftY = '0';
+              targetEl.dataset.expandSide = '';
               self._applyLabelPlacement(targetEl, viewport);
               self._syncExpandedOverlayClass(stage);
-              if (targetEl._gwClampTimer) clearTimeout(targetEl._gwClampTimer);
-              targetEl._gwClampTimer = setTimeout(function () {
-                targetEl._gwClampTimer = null;
-                if (!targetEl.classList.contains('is-expanded')) return;
-                self._nudgeExpandedIntoViewport(targetEl, viewport);
-              }, 320);
-            });
+              return;
+            }
+            if (targetEl.dataset.expandSide === 'below') targetEl.classList.add('is-below');
+            else targetEl.classList.remove('is-below');
+            targetEl.classList.add('is-expanded');
+            self._applyLabelPlacement(targetEl, viewport);
+            self._syncExpandedOverlayClass(stage);
+            if (targetEl._gwClampTimer) clearTimeout(targetEl._gwClampTimer);
+            targetEl._gwClampTimer = setTimeout(function () {
+              targetEl._gwClampTimer = null;
+              if (!targetEl.classList.contains('is-expanded')) return;
+              self._nudgeExpandedIntoViewport(targetEl, viewport);
+            }, 200);
           });
         } else {
+          self._expandGen = (self._expandGen || 0) + 1;
           el.dataset.expandPending = '0';
           el.classList.remove('is-expanded');
           el.classList.remove('is-below');
@@ -1304,6 +1309,7 @@
   GenplanWidgetInstance.prototype._collapseAllLabels = function (stage) {
     if (!stage) return;
     var self = this;
+    this._expandGen = (this._expandGen || 0) + 1;
     var root = this._labelsOverlayForStage(stage);
     if (!root) return;
     var viewport = this._viewportForStage(stage);
@@ -1375,7 +1381,7 @@
       self._hoverClearTimer = null;
       if (self._activeObjectId != null) return;
       self._setHover(stage, null, true);
-    }, 220);
+    }, 70);
   };
 
   GenplanWidgetInstance.prototype._setHover = function (stage, objectId, fromTimer) {
@@ -1989,6 +1995,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.4.1'
+    version: '2.4.2'
   };
 })(typeof window !== 'undefined' ? window : this);
