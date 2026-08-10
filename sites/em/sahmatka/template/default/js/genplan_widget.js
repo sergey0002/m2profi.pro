@@ -256,6 +256,8 @@
     '.gw-label { position: absolute; transform: translate(-50%, -100%); transform-origin: center bottom; pointer-events: auto; z-index: 5; cursor: pointer; -webkit-tap-highlight-color: transparent; }',
     '.gw-label.is-expanded { z-index: 200; }',
     '.gw-label.is-expanded.is-below { transform-origin: center top; }',
+    /* пока открыт один tooltip — соседние chips не перехватывают hit (иначе «не тот дом») */
+    '.gw-labels-overlay.has-expanded .gw-label:not(.is-expanded) { pointer-events: none !important; }',
     '.gw-label__box { display: inline-block; width: fit-content; max-width: 220px; text-align: left; background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); overflow: hidden; transition: border-radius 0.28s ease, box-shadow 0.28s ease, background 0.28s ease; }',
     '.gw-label.is-expanded .gw-label__box { background: rgba(255,255,255,0.9); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
     '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; }',
@@ -411,6 +413,7 @@
   GenplanWidgetInstance.prototype.destroy = function () {
     if (this.destroyed) return;
     this.destroyed = true;
+    this._cancelHoverClear();
     this._stopIdleHighlight();
     if (this.exploring) {
       this._exitExplore(true);
@@ -433,6 +436,7 @@
     this.data = null;
     this._objectsById = {};
     this._activeObjectId = null;
+    this._hoverObjectId = null;
   };
 
   GenplanWidgetInstance.prototype.getState = function () {
@@ -909,6 +913,13 @@
     return vp ? vp.querySelector('.gw-labels-overlay') : null;
   };
 
+  GenplanWidgetInstance.prototype._syncExpandedOverlayClass = function (stage) {
+    var overlay = this._labelsOverlayForStage(stage);
+    if (!overlay) return;
+    var has = !!overlay.querySelector('.gw-label.is-expanded');
+    overlay.classList.toggle('has-expanded', has);
+  };
+
   GenplanWidgetInstance.prototype._labelElById = function (stage, objectId) {
     var root = this._labelsOverlayForStage(stage);
     if (!root || objectId == null) return null;
@@ -1123,33 +1134,36 @@
       if (String(el.dataset.objectId) === String(objectId)) {
         if (expanded) {
           if (el.classList.contains('is-expanded') || el.dataset.expandPending === '1') continue;
-          // 1) выбрать сторону скрыто, остаться collapsed
-          self._prepareExpandPlacement(el, viewport);
-          // 2) зафиксировать collapsed как стартовый кадр анимации
-          void el.offsetWidth;
-          el.dataset.expandPending = '1';
+          // важно: захватить el в локальную переменную — иначе rAF видит последний узел цикла
+          var targetEl = el;
+          var targetId = String(objectId);
+          self._prepareExpandPlacement(targetEl, viewport);
+          void targetEl.offsetWidth;
+          targetEl.dataset.expandPending = '1';
           requestAnimationFrame(function () {
             requestAnimationFrame(function () {
-              el.dataset.expandPending = '0';
+              targetEl.dataset.expandPending = '0';
               if (self.destroyed) return;
               var stillHover = self._hoverObjectId != null
-                && String(self._hoverObjectId) === String(objectId);
+                && String(self._hoverObjectId) === targetId;
               var stillActive = self._activeObjectId != null
-                && String(self._activeObjectId) === String(objectId);
+                && String(self._activeObjectId) === targetId;
               if (!stillHover && !stillActive) {
-                el.classList.remove('is-below');
-                el.dataset.shiftX = '0';
-                el.dataset.shiftY = '0';
-                self._applyLabelPlacement(el, viewport);
+                targetEl.classList.remove('is-below');
+                targetEl.dataset.shiftX = '0';
+                targetEl.dataset.shiftY = '0';
+                self._applyLabelPlacement(targetEl, viewport);
+                self._syncExpandedOverlayClass(stage);
                 return;
               }
-              el.classList.add('is-expanded');
-              self._applyLabelPlacement(el, viewport);
-              if (el._gwClampTimer) clearTimeout(el._gwClampTimer);
-              el._gwClampTimer = setTimeout(function () {
-                el._gwClampTimer = null;
-                if (!el.classList.contains('is-expanded')) return;
-                self._nudgeExpandedIntoViewport(el, viewport);
+              targetEl.classList.add('is-expanded');
+              self._applyLabelPlacement(targetEl, viewport);
+              self._syncExpandedOverlayClass(stage);
+              if (targetEl._gwClampTimer) clearTimeout(targetEl._gwClampTimer);
+              targetEl._gwClampTimer = setTimeout(function () {
+                targetEl._gwClampTimer = null;
+                if (!targetEl.classList.contains('is-expanded')) return;
+                self._nudgeExpandedIntoViewport(targetEl, viewport);
               }, 320);
             });
           });
@@ -1179,8 +1193,10 @@
           clearTimeout(el._gwClampTimer);
           el._gwClampTimer = null;
         }
+        self._applyLabelPlacement(el, viewport);
       }
     }
+    self._syncExpandedOverlayClass(stage);
   };
 
   GenplanWidgetInstance.prototype._collapseAllLabels = function (stage) {
@@ -1203,6 +1219,7 @@
       }
       self._applyLabelPlacement(el, viewport);
     });
+    self._syncExpandedOverlayClass(stage);
   };
 
   GenplanWidgetInstance.prototype._labelAnchor = function (obj) {
@@ -1258,26 +1275,48 @@
     }, 220);
   };
 
-  GenplanWidgetInstance.prototype._isPointerOverLabel = function (stage, objectId, clientX, clientY) {
-    var el = this._labelElById(stage, objectId);
-    if (!el || clientX == null || clientY == null) return false;
-    var pad = 10;
-    var r = el.getBoundingClientRect();
-    return clientX >= r.left - pad && clientX <= r.right + pad
-      && clientY >= r.top - pad && clientY <= r.bottom + pad;
-  };
+  GenplanWidgetInstance.prototype._hitTestObjectId = function (clientX, clientY) {
+    var root = this.shadow;
+    if (!root || clientX == null || clientY == null) return null;
 
-  GenplanWidgetInstance.prototype._isPointerOverPoly = function (stage, objectId, clientX, clientY) {
-    if (objectId == null || clientX == null || clientY == null) return false;
-    var polys = this._polysById(stage, objectId);
-    for (var i = 0; i < polys.length; i++) {
-      var r = polys[i].getBoundingClientRect();
-      if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
-        // bbox hit — для SVG точнее elementFromPoint внутри shadow
-        return true;
+    var stack = null;
+    if (typeof root.elementsFromPoint === 'function') {
+      try { stack = root.elementsFromPoint(clientX, clientY); } catch (e) { stack = null; }
+    }
+    if (!stack || !stack.length) {
+      var one = typeof root.elementFromPoint === 'function' ? root.elementFromPoint(clientX, clientY) : null;
+      stack = one ? [one] : [];
+    }
+
+    var expandedLabelId = null;
+    var polyId = null;
+    var chipId = null;
+
+    for (var i = 0; i < stack.length; i++) {
+      var n = stack[i];
+      if (!n || !n.classList) continue;
+
+      var label = (n.classList.contains('gw-label') ? n : (n.closest && n.closest('.gw-label')));
+      if (label && label.dataset && label.dataset.objectId) {
+        if (label.classList.contains('is-expanded')) {
+          if (!expandedLabelId) expandedLabelId = String(label.dataset.objectId);
+        } else if (!chipId) {
+          chipId = String(label.dataset.objectId);
+        }
+        continue;
+      }
+
+      if (n.classList.contains('gw-poly') && n.dataset && n.dataset.objectId) {
+        if (!polyId) polyId = String(n.dataset.objectId);
       }
     }
-    return false;
+
+    // приоритет: открытый tooltip → полигон дома → chip
+    // (chip не перекрывает соседний poly, если tooltip другого дома открыт)
+    if (expandedLabelId) return expandedLabelId;
+    if (polyId) return polyId;
+    if (chipId) return chipId;
+    return null;
   };
 
   GenplanWidgetInstance.prototype._setHover = function (stage, objectId, fromTimer) {
@@ -1423,41 +1462,7 @@
     }
 
     function resolveHoverId(ev) {
-      // 1) курсор на label/tooltip — высший приоритет
-      var label = targetLabel(ev);
-      if (label && label.dataset.objectId) return label.dataset.objectId;
-
-      // 2) sticky: пока курсор над текущим открытым tooltip / chip — не переключаем
-      if (self._hoverObjectId != null
-        && self._isPointerOverLabel(stage, self._hoverObjectId, ev.clientX, ev.clientY)) {
-        return String(self._hoverObjectId);
-      }
-
-      // 3) полигон под курсором
-      var poly = targetPoly(ev);
-      if (poly && poly.dataset.objectId) {
-        var polyId = String(poly.dataset.objectId);
-        // если открыт другой tooltip и курсор всё ещё в его зоне — держим (уже выше)
-        // иначе переключаем только если не «проскок» через соседний под открытым tooltip
-        if (self._hoverObjectId != null && polyId !== String(self._hoverObjectId)) {
-          var curLabel = self._labelElById(stage, self._hoverObjectId);
-          if (curLabel && curLabel.classList.contains('is-expanded')) {
-            // соседний poly под/рядом с открытым tooltip — не дёргать, пока не ушли с label
-            if (self._isPointerOverLabel(stage, self._hoverObjectId, ev.clientX, ev.clientY)) {
-              return String(self._hoverObjectId);
-            }
-          }
-        }
-        return polyId;
-      }
-
-      // 4) sticky по bbox текущего poly (дыры SVG / границы)
-      if (self._hoverObjectId != null
-        && self._isPointerOverPoly(stage, self._hoverObjectId, ev.clientX, ev.clientY)) {
-        return String(self._hoverObjectId);
-      }
-
-      return null;
+      return self._hitTestObjectId(ev.clientX, ev.clientY);
     }
 
     surface.addEventListener('pointerdown', function (ev) {
@@ -1634,7 +1639,7 @@
         var related = ev.relatedTarget;
         if (related && label.contains(related)) return;
         if (self._activeObjectId != null) return;
-        // не сбрасываем сразу: pointermove на surface решит через sticky / delay
+        // не сбрасываем сразу: pointermove на surface решит через hit-test / delay
         if (self._hoverObjectId != null
           && String(self._hoverObjectId) === String(label.dataset.objectId)) {
           self._scheduleHoverClear(stage);
@@ -1925,6 +1930,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.3.7'
+    version: '2.3.9'
   };
 })(typeof window !== 'undefined' ? window : this);
