@@ -253,8 +253,9 @@
     '.gw-poly.is-hover, .gw-poly.is-active, .gw-poly.is-showcase, .gw-poly:focus-visible { fill: var(--gw-hl-color, ' + HL + ') !important; stroke: var(--gw-hl-color, ' + HL + ') !important; fill-opacity: var(--gw-hl-opacity, 0.58); stroke-opacity: var(--gw-stroke-opacity, 0.4); stroke-width: 2; }',
     '@media (prefers-reduced-motion: reduce) { .gw-poly { transition: none; } }',
     '.gw-labels-overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; overflow: visible; }',
-    '.gw-label { position: absolute; transform: translate(-50%, -50%); transform-origin: center bottom; pointer-events: auto; z-index: 5; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 0.28s ease; }',
+    '.gw-label { position: absolute; transform: translate(-50%, -100%); transform-origin: center bottom; pointer-events: auto; z-index: 5; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 0.28s ease; }',
     '.gw-label.is-expanded { z-index: 200; }',
+    '.gw-label.is-expanded.is-below { transform-origin: center top; }',
     '.gw-label__box { display: inline-block; width: fit-content; max-width: 220px; text-align: left; background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); overflow: hidden; transition: border-radius 0.28s ease, box-shadow 0.28s ease, background 0.28s ease; }',
     '.gw-label.is-expanded .gw-label__box { background: rgba(255,255,255,0.9); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
     '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; }',
@@ -928,10 +929,17 @@
       var ay = parseFloat(el.dataset.anchorY || '0') || 0;
       var dx = parseFloat(el.dataset.shiftX || '0') || 0;
       var dy = parseFloat(el.dataset.shiftY || '0') || 0;
-      var lift = el.classList.contains('is-expanded') ? -LABEL_LIFT_PX : 0;
+      var expanded = el.classList.contains('is-expanded');
+      var below = expanded && el.classList.contains('is-below');
+      var lift = expanded ? (below ? LABEL_LIFT_PX : -LABEL_LIFT_PX) : 0;
       el.style.left = (tx + ax * S) + 'px';
       el.style.top = (ty + ay * S) + 'px';
-      el.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-100% + ' + lift + 'px + ' + dy + 'px))';
+      // idle/above: якорь снизу карточки; below: якорь сверху карточки (разворот вниз)
+      if (below) {
+        el.style.transform = 'translate(calc(-50% + ' + dx + 'px), ' + (lift + dy) + 'px)';
+      } else {
+        el.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-100% + ' + lift + 'px + ' + dy + 'px))';
+      }
     }
   };
 
@@ -954,10 +962,18 @@
     var margin = 10;
     el.dataset.shiftX = '0';
     el.dataset.shiftY = '0';
+    el.classList.remove('is-below');
     this._syncLabelPositionsForViewport(viewport);
 
     var vr = viewport.getBoundingClientRect();
     var r = el.getBoundingClientRect();
+    // Если сверху не влезает — разворачиваем вниз от точки
+    if (r.top < vr.top + margin) {
+      el.classList.add('is-below');
+      this._syncLabelPositionsForViewport(viewport);
+      r = el.getBoundingClientRect();
+    }
+
     var dx = 0;
     var dy = 0;
     if (r.right > vr.right - margin) dx += (vr.right - margin) - r.right;
@@ -968,6 +984,32 @@
     el.dataset.shiftX = String(dx);
     el.dataset.shiftY = String(dy);
     this._syncLabelPositionsForViewport(viewport);
+  };
+
+  GenplanWidgetInstance.prototype._scheduleClampExpandedLabel = function (stage, objectId) {
+    var self = this;
+    var el = this._labelElById(stage, objectId);
+    if (!el) return;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        self._clampExpandedLabel(stage, objectId);
+        // после анимации раскрытия body высота меняется — пересчёт
+        var box = el.querySelector('.gw-label__body-wrap') || el;
+        var done = false;
+        function finish() {
+          if (done) return;
+          done = true;
+          box.removeEventListener('transitionend', onEnd);
+          self._clampExpandedLabel(stage, objectId);
+        }
+        function onEnd(ev) {
+          if (ev && ev.target !== box && !box.contains(ev.target)) return;
+          finish();
+        }
+        box.addEventListener('transitionend', onEnd);
+        setTimeout(finish, 320);
+      });
+    });
   };
 
   GenplanWidgetInstance.prototype._reclampExpandedLabels = function (stage) {
@@ -994,19 +1036,17 @@
         if (expanded) {
           el.classList.add('is-expanded');
           self._syncLabelsForStage(stage);
-          requestAnimationFrame(function () {
-            requestAnimationFrame(function () {
-              self._clampExpandedLabel(stage, objectId);
-            });
-          });
+          self._scheduleClampExpandedLabel(stage, objectId);
         } else {
           el.classList.remove('is-expanded');
+          el.classList.remove('is-below');
           el.dataset.shiftX = '0';
           el.dataset.shiftY = '0';
           self._syncLabelsForStage(stage);
         }
       } else if (expanded) {
         el.classList.remove('is-expanded');
+        el.classList.remove('is-below');
         el.dataset.shiftX = '0';
         el.dataset.shiftY = '0';
       }
@@ -1021,6 +1061,7 @@
     if (!root) return;
     root.querySelectorAll('.gw-label.is-expanded').forEach(function (el) {
       el.classList.remove('is-expanded');
+      el.classList.remove('is-below');
       el.dataset.shiftX = '0';
       el.dataset.shiftY = '0';
     });
@@ -1703,6 +1744,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.3.2'
+    version: '2.3.3'
   };
 })(typeof window !== 'undefined' ? window : this);
