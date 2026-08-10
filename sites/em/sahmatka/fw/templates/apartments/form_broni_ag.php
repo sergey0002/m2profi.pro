@@ -36,7 +36,19 @@ $window_orient = $GLOBALS['window_orient'] ?? [];
                 <?= $html_compass ?>
             </div>
             <?php endif; ?>
+            <?php if (sun_path_should_show($o1, $o2)): ?>
+            <div class="plan-with-sun"
+                 data-sun-path
+                 data-orient-1="<?= (int)$o1 ?>"
+                 data-orient-2="<?= (int)$o2 ?>"
+                 data-sun-default="day"
+                 data-toggle-default="1">
+                <img class="plan-with-sun__img" src="<?=$apartment['image_pb'];?>?x=178" style="max-height:400px; max-width:100%" alt="">
+                <?= render_sun_path_overlay($o1, $o2) ?>
+            </div>
+            <?php else: ?>
             <img src="<?=$apartment['image_pb'];?>?x=178" style="max-height:400px; max-width:100%" alt="">
+            <?php endif; ?>
             <?php if ($o1 || $o2): ?>
             <div class="window-compass__label apartment-compas-caption">
                 Окна: <?= htmlspecialchars(window_orient_labels($o1, $o2)) ?>

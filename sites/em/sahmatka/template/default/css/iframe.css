@@ -5,12 +5,15 @@
     position: relative;
     text-align: center;
 }
+.apartment-plan-col .plan-with-sun {
+    margin-top: 4px;
+}
 .mdl-compas,
 .apartment-compas {
     position: absolute;
     top: 0;
     left: 0;
-    z-index: 2;
+    z-index: 5;
     width: auto;
     max-width: 240px;
 }

@@ -132,3 +132,5 @@ if (!function_exists('render_window_compass')) {
         return $html;
     }
 }
+
+include_once __DIR__ . '/sun_path.php';

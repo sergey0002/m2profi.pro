@@ -23,6 +23,8 @@
   $html_compass = render_window_compass_images($o1, $o2, 110);
    
   ?>
+
+  <link rel="stylesheet" href="/sahmatka/template/default/css/sun_path.css?v=1">
   
   
   <style>
@@ -449,6 +451,7 @@ background: #E30613;
   left: -19px;
   width: auto;
   max-width: 240px;
+  z-index: 5;
 }
 .mdl-compas img,
 .mdl-compas .window-compass-img {
@@ -696,7 +699,19 @@ background: #E30613;
           <?php endif; ?>
           <div class="mdl-pln">
             <div class="mdl-pln__top"><?=$data['data']['homes_kvartal_title']?>  </div>
-            <img style="    max-height: 80vh;" src="<?=$data['data']['image_pb']?>"  alt="" />
+            <?php if (sun_path_should_show($o1, $o2)): ?>
+            <div class="plan-with-sun"
+                 data-sun-path
+                 data-orient-1="<?= (int)$o1 ?>"
+                 data-orient-2="<?= (int)$o2 ?>"
+                 data-sun-default="day"
+                 data-toggle-default="1">
+              <img class="plan-with-sun__img" style="max-height: 80vh;" src="<?=$data['data']['image_pb']?>" alt="" />
+              <?= render_sun_path_overlay($o1, $o2) ?>
+            </div>
+            <?php else: ?>
+            <img style="max-height: 80vh;" src="<?=$data['data']['image_pb']?>" alt="" />
+            <?php endif; ?>
             <div class="mdl-pln__bottom"><?=$data['data']['adress']?> </div>
           </div>
         </div>
@@ -908,3 +923,4 @@ document.getElementById('printButton').addEventListener('click', function(e) {
   
   
 </script>
+<script src="/sahmatka/template/default/js/sun_path.js?v=1"></script>

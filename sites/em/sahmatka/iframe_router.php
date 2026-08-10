@@ -71,6 +71,7 @@ if( $_SESSION['sh_login'] || 1==1 )
 
     <link rel="stylesheet" href="/sahmatka/template/default/css/admin.css">
     <link rel="stylesheet" href="/sahmatka/template/default/css/iframe.css">
+    <link rel="stylesheet" href="/sahmatka/template/default/css/sun_path.css?v=1">
 
     <link rel="stylesheet" href="/wiget_rent.css">
 
@@ -111,6 +112,9 @@ if( $_SESSION['sh_login'] || 1==1 )
 		 include('router.php');
 		?>
       </div>
+    </center>
+
+    <script src="/sahmatka/template/default/js/sun_path.js?v=1"></script>
 
   </body>
 
