@@ -1463,6 +1463,22 @@
 
     surface.addEventListener('pointerdown', function (ev) {
       if (self.destroyed) return;
+
+      var label = targetLabel(ev);
+      var labelAnchor = null;
+      if (label && ev.target && ev.target.closest) {
+        var hitA = ev.target.closest('a');
+        if (hitA && label.contains(hitA)) labelAnchor = hitA;
+      }
+
+      // клик по <a> в tooltip (CTA / apt links) — не captur'им и не начинаем pan,
+      // иначе на desktop срывается переход по ссылке
+      if (labelAnchor) {
+        self._panStart = null;
+        self._moved = false;
+        return;
+      }
+
       // на мобилке в компактном виде не captur'им — иначе ломается скролл страницы
       if (!(isCoarsePointer() && !isExplore)) {
         surface.setPointerCapture && surface.setPointerCapture(ev.pointerId);
@@ -1480,12 +1496,6 @@
         return;
       }
 
-      var label = targetLabel(ev);
-      var labelAnchor = null;
-      if (label && ev.target && ev.target.closest) {
-        var hitA = ev.target.closest('a');
-        if (hitA && label.contains(hitA)) labelAnchor = hitA;
-      }
       var poly = label ? null : targetPoly(ev);
       self._panStart = {
         x: ev.clientX,
@@ -1494,7 +1504,7 @@
         ty: self._ty,
         poly: poly,
         label: label,
-        labelAnchor: labelAnchor,
+        labelAnchor: null,
         time: Date.now()
       };
     });
@@ -1533,6 +1543,9 @@
         }
         return;
       }
+
+      // если жест начался на ссылке — не паним и не сбрасываем tooltip
+      if (self._panStart.labelAnchor) return;
 
       var dx2 = ev.clientX - self._panStart.x;
       var dy2 = ev.clientY - self._panStart.y;
@@ -1926,6 +1939,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.4.5'
+    version: '2.4.6'
   };
 })(typeof window !== 'undefined' ? window : this);
