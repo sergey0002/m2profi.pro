@@ -22,6 +22,7 @@ $widget_demo_url = isset($data['widget_demo_url']) ? (string) $data['widget_demo
             <span class="genplan-editor__mode-toggle">
                 <button type="button" id="genplan_mode_poly" class="genplan-editor__btn genplan-editor__btn--primary">Полигоны</button>
                 <button type="button" id="genplan_mode_labels" class="genplan-editor__btn">Подписи</button>
+                <button type="button" id="genplan_add_point" class="genplan-editor__btn" style="display:none;">Точка</button>
             </span>
             <span id="genplan_dirty_actions" class="genplan-editor__dirty-actions" style="display:none;">
                 <button type="button" id="genplan_save" class="genplan-editor__btn genplan-editor__btn--primary">Сохранить</button>
@@ -37,10 +38,16 @@ $widget_demo_url = isset($data['widget_demo_url']) ? (string) $data['widget_demo
 
         <div id="genplan_meta_panel" class="genplan-editor__meta-panel" style="display:none;">
             <div class="genplan-editor__meta-grid">
-                <label class="genplan-editor__field genplan-editor__field--title">
-                    <span class="genplan-editor__field-label">Заголовок <span class="genplan-editor__hint">HTML · обязателен без дома</span></span>
-                    <textarea id="genplan_title_input" maxlength="4000" placeholder="Дом 26" rows="3"></textarea>
-                </label>
+                <div class="genplan-editor__meta-main">
+                    <label class="genplan-editor__field genplan-editor__field--title">
+                        <span class="genplan-editor__field-label">Заголовок <span class="genplan-editor__hint">HTML · обязателен без дома</span></span>
+                        <input type="text" id="genplan_title_input" maxlength="4000" placeholder="Дом 26" />
+                    </label>
+                    <label class="genplan-editor__field">
+                        <span class="genplan-editor__field-label">Контент <span class="genplan-editor__hint">HTML · тело карточки</span></span>
+                        <textarea id="genplan_content_input" maxlength="8000" placeholder="Дополнительный текст…" rows="3"></textarea>
+                    </label>
+                </div>
                 <div class="genplan-editor__meta-side">
                     <label class="genplan-editor__field">
                         <span class="genplan-editor__field-label">Дом <span class="genplan-editor__hint">опционально</span></span>
@@ -52,6 +59,20 @@ $widget_demo_url = isset($data['widget_demo_url']) ? (string) $data['widget_demo
                         <span class="genplan-editor__field-label">URL по клику</span>
                         <input type="text" id="genplan_link_input" maxlength="512" placeholder="https://…" />
                     </label>
+                    <div class="genplan-editor__checks">
+                        <label class="genplan-editor__check">
+                            <input type="checkbox" id="genplan_show_title_desktop" checked />
+                            <span>Заголовок на десктопе</span>
+                        </label>
+                        <label class="genplan-editor__check">
+                            <input type="checkbox" id="genplan_show_title_mobile" checked />
+                            <span>Заголовок на мобиле</span>
+                        </label>
+                        <label class="genplan-editor__check">
+                            <input type="checkbox" id="genplan_show_apt_links" disabled />
+                            <span>Ссылки на квартиры</span>
+                        </label>
+                    </div>
                 </div>
             </div>
             <div id="genplan_home_preview" class="genplan-editor__home-preview" aria-live="polite"></div>

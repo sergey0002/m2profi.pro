@@ -91,8 +91,13 @@
     var clearAllBtn = document.getElementById('genplan_clear_all');
     var metaPanel = document.getElementById('genplan_meta_panel');
     var titleInput = document.getElementById('genplan_title_input');
+    var contentInput = document.getElementById('genplan_content_input');
     var homeSelect = document.getElementById('genplan_home_select');
     var linkInput = document.getElementById('genplan_link_input');
+    var showTitleDesktopInput = document.getElementById('genplan_show_title_desktop');
+    var showTitleMobileInput = document.getElementById('genplan_show_title_mobile');
+    var showAptLinksInput = document.getElementById('genplan_show_apt_links');
+    var addPointBtn = document.getElementById('genplan_add_point');
     var homePreview = document.getElementById('genplan_home_preview');
 
     var hasImage = !!(cfg.imageUrl && cfg.imageWidth && cfg.imageHeight);
@@ -108,6 +113,7 @@
     var geometryDirty = false;
     var metaDirty = false;
     var editorMode = 'poly'; // 'poly' | 'labels'
+    var addPointMode = false;
     var selectedLayer = null;
     var labelMarker = null;
     var suppressMetaSync = false;
@@ -200,9 +206,40 @@
         polygons.eachLayer(fn);
     }
 
+    function eachPoint(fn) {
+        pointLayers.eachLayer(fn);
+    }
+
+    function eachObject(fn) {
+        eachPolygon(fn);
+        eachPoint(fn);
+    }
+
+    function isPointLayer(layer) {
+        return !!(layer && layer.genplanData && (layer.genplanData.kind === 'point' || !(layer.genplanData.points && layer.genplanData.points.length)));
+    }
+
+    function updateAptLinksUi() {
+        if (!showAptLinksInput) return;
+        var hasHome = !!(homeSelect && homeSelect.value);
+        showAptLinksInput.disabled = !hasHome;
+        if (!hasHome) {
+            showAptLinksInput.checked = false;
+            if (selectedLayer && selectedLayer.genplanData) {
+                selectedLayer.genplanData.showAptLinks = false;
+            }
+        }
+    }
+
+    function updateAddPointUi() {
+        if (!addPointBtn) return;
+        addPointBtn.style.display = editorMode === 'labels' ? '' : 'none';
+        addPointBtn.classList.toggle('is-active', addPointMode);
+    }
+
     function hasPendingNews() {
         var found = false;
-        eachPolygon(function (layer) {
+        eachObject(function (layer) {
             if (layer.genplanData && layer.genplanData.isNew) found = true;
         });
         return found;
@@ -210,7 +247,7 @@
 
     function hasLayerGeometryDirty() {
         var found = false;
-        eachPolygon(function (layer) {
+        eachObject(function (layer) {
             if (layer.genplanData && layer.genplanData.geometryDirty) found = true;
         });
         return found;
@@ -244,7 +281,7 @@
     function clearDirtyFlags() {
         geometryDirty = false;
         metaDirty = false;
-        eachPolygon(function (layer) {
+        eachObject(function (layer) {
             if (layer.genplanData) {
                 layer.genplanData.geometryDirty = false;
                 layer.genplanData.metaDirty = false;
@@ -266,8 +303,13 @@
         if (modePolyBtn) modePolyBtn.disabled = busy;
         if (modeLabelsBtn) modeLabelsBtn.disabled = busy;
         if (titleInput) titleInput.disabled = busy;
+        if (contentInput) contentInput.disabled = busy;
         if (homeSelect) homeSelect.disabled = busy;
         if (linkInput) linkInput.disabled = busy;
+        if (showTitleDesktopInput) showTitleDesktopInput.disabled = busy;
+        if (showTitleMobileInput) showTitleMobileInput.disabled = busy;
+        if (showAptLinksInput) showAptLinksInput.disabled = busy || !(homeSelect && homeSelect.value);
+        if (addPointBtn) addPointBtn.disabled = busy;
     }
 
     function restorePageTextSelection() {
@@ -363,8 +405,12 @@
     });
 
     var polygons = new L.FeatureGroup();
+    var pointLayers = new L.FeatureGroup();
+    var editableLayers = new L.FeatureGroup();
     var labelGroup = new L.FeatureGroup();
     map.addLayer(polygons);
+    map.addLayer(pointLayers);
+    map.addLayer(editableLayers);
     map.addLayer(labelGroup);
 
     var vertexIcon = new L.DivIcon({
@@ -385,7 +431,7 @@
     }
 
     var drawControl = new L.Control.Draw({
-        edit: { featureGroup: polygons, remove: true },
+        edit: { featureGroup: editableLayers, remove: true },
         draw: {
             polygon: {
                 allowIntersection: false,
@@ -552,17 +598,35 @@
 
     function applyDefaultStyle(layer) {
         if (!layer) return;
+        if (isPointLayer(layer)) {
+            layer.setStyle({
+                color: STYLE_DEFAULT.color,
+                weight: 2,
+                fillColor: STYLE_DEFAULT.fillColor,
+                fillOpacity: 0.35
+            });
+            return;
+        }
         layer.setStyle(STYLE_DEFAULT);
     }
 
     function applySelectedStyle(layer) {
         if (!layer) return;
+        if (isPointLayer(layer)) {
+            layer.setStyle({
+                color: STYLE_SELECTED.color,
+                weight: 4,
+                fillColor: STYLE_SELECTED.fillColor,
+                fillOpacity: 0.55
+            });
+            return;
+        }
         layer.setStyle(STYLE_SELECTED);
         if (layer.bringToFront) layer.bringToFront();
     }
 
     function refreshAllStyles() {
-        eachPolygon(function (layer) {
+        eachObject(function (layer) {
             if (layer === selectedLayer) applySelectedStyle(layer);
             else applyDefaultStyle(layer);
         });
@@ -571,16 +635,24 @@
     var labelDragBound = false;
 
     function onLabelMapMouseMove(e) {
-        if (!labelMarker || !labelMarker._genplanDragging) return;
-        labelMarker.setLatLng(e.latlng);
+        var target = labelMarker;
+        if (!target && selectedLayer && isPointLayer(selectedLayer)) {
+            target = selectedLayer;
+        }
+        if (!target || !target._genplanDragging) return;
+        target.setLatLng(e.latlng);
     }
 
     function onLabelMapMouseUp() {
-        if (!labelMarker || !labelMarker._genplanDragging) return;
-        labelMarker._genplanDragging = false;
+        var target = labelMarker;
+        if (!target && selectedLayer && isPointLayer(selectedLayer)) {
+            target = selectedLayer;
+        }
+        if (!target || !target._genplanDragging) return;
+        target._genplanDragging = false;
         if (map.dragging && !map.dragging.enabled()) map.dragging.enable();
         if (!selectedLayer || !selectedLayer.genplanData) return;
-        var ll = labelMarker.getLatLng();
+        var ll = target.getLatLng();
         selectedLayer.genplanData.labelX = Math.round(ll.lng);
         selectedLayer.genplanData.labelY = Math.round(ll.lat);
         markMetaDirty();
@@ -605,6 +677,7 @@
     function updateLabelMarkerFromSelection() {
         clearLabelMarker();
         if (editorMode !== 'labels' || !selectedLayer || !selectedLayer.genplanData) return;
+        if (isPointLayer(selectedLayer)) return;
 
         var data = selectedLayer.genplanData;
         var pts = layerToPoints(selectedLayer);
@@ -641,10 +714,15 @@
         suppressMetaSync = true;
         var data = (layer && layer.genplanData) || {};
         if (titleInput) titleInput.value = data.title || '';
+        if (contentInput) contentInput.value = data.content || '';
         if (linkInput) linkInput.value = data.linkUrl || '';
+        if (showTitleDesktopInput) showTitleDesktopInput.checked = data.showTitleDesktop !== false;
+        if (showTitleMobileInput) showTitleMobileInput.checked = data.showTitleMobile !== false;
+        if (showAptLinksInput) showAptLinksInput.checked = !!data.showAptLinks;
         if (homeSelect) {
             homeSelect.value = data.homeId ? String(data.homeId) : '';
         }
+        updateAptLinksUi();
         if (!data.homeId) {
             if (homePreview) {
                 homePreview.innerHTML = '';
@@ -659,7 +737,14 @@
     function clearMetaForm() {
         suppressMetaSync = true;
         if (titleInput) titleInput.value = '';
+        if (contentInput) contentInput.value = '';
         if (linkInput) linkInput.value = '';
+        if (showTitleDesktopInput) showTitleDesktopInput.checked = true;
+        if (showTitleMobileInput) showTitleMobileInput.checked = true;
+        if (showAptLinksInput) {
+            showAptLinksInput.checked = false;
+            showAptLinksInput.disabled = true;
+        }
         if (homeSelect) homeSelect.value = '';
         if (homePreview) {
             homePreview.innerHTML = '';
@@ -672,7 +757,11 @@
         if (!selectedLayer || !selectedLayer.genplanData) return;
         var data = selectedLayer.genplanData;
         data.title = titleInput ? titleInput.value : '';
+        data.content = contentInput ? contentInput.value : '';
         data.linkUrl = linkInput ? (linkInput.value || '').trim() : '';
+        data.showTitleDesktop = showTitleDesktopInput ? !!showTitleDesktopInput.checked : true;
+        data.showTitleMobile = showTitleMobileInput ? !!showTitleMobileInput.checked : true;
+        data.showAptLinks = showAptLinksInput && homeSelect && homeSelect.value ? !!showAptLinksInput.checked : false;
         var hid = homeSelect && homeSelect.value ? parseInt(homeSelect.value, 10) : 0;
         data.homeId = hid > 0 ? hid : null;
     }
@@ -701,16 +790,71 @@
         metaPanel.style.display = show ? '' : 'none';
     }
 
-    function bindPolygonClick(layer) {
+    function bindObjectClick(layer) {
         layer.on('click', function (e) {
             if (editorMode !== 'labels') return;
-            if (drawToolActive || deleteModeActive) return;
+            if (drawToolActive || deleteModeActive || addPointMode) return;
             if (e.originalEvent) {
                 L.DomEvent.stopPropagation(e.originalEvent);
             }
             selectLayer(layer);
             showMessage('Объект выбран — заполните подпись / дом / ссылку', 'info');
         });
+    }
+
+    function bindPolygonClick(layer) {
+        bindObjectClick(layer);
+    }
+
+    function defaultGenplanData(item) {
+        return {
+            id: item.id || null,
+            kind: item.kind || ((item.points && item.points.length) ? 'polygon' : 'point'),
+            homeId: item.homeId != null ? item.homeId : null,
+            title: item.title || '',
+            content: item.content || '',
+            showTitleDesktop: item.showTitleDesktop !== false,
+            showTitleMobile: item.showTitleMobile !== false,
+            showAptLinks: !!item.showAptLinks,
+            linkUrl: item.linkUrl || '',
+            labelX: item.labelX != null ? item.labelX : null,
+            labelY: item.labelY != null ? item.labelY : null,
+            points: clonePoints(item.points || []),
+            isNew: !item.id,
+            geometryDirty: !!item.geometryDirty,
+            metaDirty: false
+        };
+    }
+
+    function addPointLayer(item) {
+        var data = defaultGenplanData(item);
+        data.kind = 'point';
+        data.points = [];
+        if (data.labelX == null || data.labelY == null) {
+            data.labelX = Math.round((cfg.imageWidth || 0) / 2);
+            data.labelY = Math.round((cfg.imageHeight || 0) / 2);
+        }
+        var latlng = L.latLng(data.labelY, data.labelX);
+        var layer = L.circleMarker(latlng, {
+            radius: 8,
+            color: '#3388ff',
+            weight: 2,
+            fillColor: '#3388ff',
+            fillOpacity: 0.35
+        });
+        layer.genplanData = data;
+        layer.edited = false;
+        bindObjectClick(layer);
+        layer.on('mousedown', function (e) {
+            if (editorMode !== 'labels') return;
+            layer._genplanDragging = true;
+            if (map.dragging && map.dragging.enabled()) map.dragging.disable();
+            L.DomEvent.stopPropagation(e);
+            if (e.originalEvent) L.DomEvent.preventDefault(e.originalEvent);
+        });
+        pointLayers.addLayer(layer);
+        editableLayers.addLayer(layer);
+        return layer;
     }
 
     function addPolygonLayer(item) {
@@ -726,23 +870,14 @@
             opacity: STYLE_DEFAULT.opacity
         });
 
-        var data = {
-            id: item.id || null,
-            homeId: item.homeId != null ? item.homeId : null,
-            title: item.title || '',
-            linkUrl: item.linkUrl || '',
-            labelX: item.labelX != null ? item.labelX : null,
-            labelY: item.labelY != null ? item.labelY : null,
-            points: clonePoints(points),
-            isNew: !item.id,
-            geometryDirty: !!item.geometryDirty,
-            metaDirty: false
-        };
+        var data = defaultGenplanData(item);
+        data.kind = 'polygon';
         ensureLabelDefaults(data, points);
         layer.genplanData = data;
         layer.edited = false;
         bindPolygonClick(layer);
         polygons.addLayer(layer);
+        editableLayers.addLayer(layer);
         applyDefaultStyle(layer);
         return layer;
     }
@@ -758,12 +893,15 @@
             clearMetaForm();
         }
         if (polygons.hasLayer(layer)) polygons.removeLayer(layer);
+        if (pointLayers.hasLayer(layer)) pointLayers.removeLayer(layer);
+        if (editableLayers.hasLayer(layer)) editableLayers.removeLayer(layer);
     }
 
     function clearAllMapPolygons() {
         var all = [];
-        eachPolygon(function (l) { all.push(l); });
+        eachObject(function (l) { all.push(l); });
         all.forEach(removeLayerFromMap);
+        editableLayers.clearLayers();
         selectedLayer = null;
         pendingDeletes = {};
         clearLabelMarker();
@@ -821,7 +959,11 @@
             clearLabelMarker();
         }
         editorMode = mode;
+        if (mode !== 'labels') {
+            addPointMode = false;
+        }
         updateModeUi();
+        updateAddPointUi();
         syncDrawAvailability();
         if (mode === 'labels') {
             ensureHomesOptions();
@@ -829,7 +971,7 @@
                 fillMetaForm(selectedLayer);
                 updateLabelMarkerFromSelection();
             }
-            showMessage('Режим подписей: клик по полигону — форма; перетащите красную точку — якорь label', 'info');
+            showMessage('Режим подписей: клик по объекту — форма; «Точка» — маркер без полигона', 'info');
         } else {
             if (!hasImage) {
                 showMessage('Вначале загрузите файл плана', 'info');
@@ -849,6 +991,7 @@
             else modeLabelsBtn.classList.remove('is-active');
         }
         updateMetaPanelVisibility();
+        updateAddPointUi();
         refreshAllStyles();
         var el = map.getContainer();
         if (el) {
@@ -913,6 +1056,8 @@
                     if (res.statusText) parts.push(res.statusText);
                     if (res.metaDelivery) parts.push(res.metaDelivery);
                     if (res.metaAddress) parts.push(res.metaAddress);
+                    if (res.floorsLabel) parts.push(res.floorsLabel);
+                    if (res.sectionsLabel) parts.push(res.sectionsLabel);
                     homePreview.innerHTML = '';
                     var label = document.createElement('div');
                     label.className = 'genplan-editor__home-preview-title';
@@ -998,12 +1143,26 @@
 
     function savePolygon(layer) {
         var data = layer.genplanData || {};
-        var points = layerToPoints(layer);
-        if (points.length < 3) {
-            return Promise.resolve({ ok: false, message: 'Меньше 3 точек' });
-        }
+        var points;
+        var isPoint = isPointLayer(layer);
 
-        ensureLabelDefaults(data, points);
+        if (isPoint) {
+            points = [];
+            var ll = layer.getLatLng ? layer.getLatLng() : null;
+            if (ll) {
+                data.labelX = Math.round(ll.lng);
+                data.labelY = Math.round(ll.lat);
+            }
+            if (data.labelX == null || data.labelY == null) {
+                return Promise.resolve({ ok: false, message: 'Укажите позицию точки' });
+            }
+        } else {
+            points = layerToPoints(layer);
+            if (points.length < 3) {
+                return Promise.resolve({ ok: false, message: 'Меньше 3 точек' });
+            }
+            ensureLabelDefaults(data, points);
+        }
 
         var homeId = data.homeId ? parseInt(data.homeId, 10) : 0;
         var title = data.title || '';
@@ -1017,6 +1176,10 @@
             genplan_polygon_id: (data.id && !data.isNew) ? String(data.id) : '0',
             points: JSON.stringify(points),
             title: title,
+            content: data.content || '',
+            show_title_desktop: data.showTitleDesktop !== false ? '1' : '0',
+            show_title_mobile: data.showTitleMobile !== false ? '1' : '0',
+            show_apt_links: data.showAptLinks ? '1' : '0',
             home_id: homeId > 0 ? String(homeId) : '',
             link_url: data.linkUrl || '',
             label_x: data.labelX != null ? String(data.labelX) : '',
@@ -1051,6 +1214,11 @@
         if (!layer || !layer.genplanData) return false;
         var d = layer.genplanData;
         if (d.isNew || d.geometryDirty || d.metaDirty) return true;
+        if (isPointLayer(layer)) {
+            var ll = layer.getLatLng ? layer.getLatLng() : null;
+            if (ll && (Math.round(ll.lng) !== d.labelX || Math.round(ll.lat) !== d.labelY)) return true;
+            return false;
+        }
         var current = layerToPoints(layer);
         if (!pointsEqual(current, d.points)) return true;
         return false;
@@ -1080,7 +1248,7 @@
             forceExitVertexEdit();
 
             var toSave = [];
-            eachPolygon(function (layer) {
+            eachObject(function (layer) {
                 if (layerNeedsSave(layer)) toSave.push(layer);
             });
 
@@ -1133,7 +1301,11 @@
         pendingDeletes = {};
         if (!Array.isArray(list)) list = [];
         list.forEach(function (item) {
-            addPolygonLayer(item);
+            if (item.kind === 'point' || !item.points || !item.points.length) {
+                addPointLayer(item);
+            } else {
+                addPolygonLayer(item);
+            }
         });
         clearDirtyFlags();
         selectedLayer = null;
@@ -1309,7 +1481,7 @@
         if (isBusy()) return;
 
         var hasAny = false;
-        eachPolygon(function () { hasAny = true; });
+        eachObject(function () { hasAny = true; });
         if (!hasAny && !hasImage) {
             showMessage('Нечего очищать — нет ни файла плана, ни объектов', 'info');
             return;
@@ -1392,6 +1564,24 @@
         updateDirtyUi();
     });
 
+    pointLayers.on('layerremove', function (e) {
+        var layer = e.layer;
+        if (!deleteModeActive || !layer || !layer.genplanData) return;
+        if (stashDeletedLayer(layer, false)) {
+            markGeometryDirty();
+        }
+    });
+    pointLayers.on('layeradd', function (e) {
+        var layer = e.layer;
+        if (!deleteModeActive) return;
+        if (!layer || !layer.genplanData || !layer.genplanData.id) return;
+        var id = String(layer.genplanData.id);
+        var stashed = pendingDeletes[id];
+        if (stashed && stashed.confirmed) return;
+        delete pendingDeletes[id];
+        updateDirtyUi();
+    });
+
     map.on(L.Draw.Event.CREATED, function (e) {
         var layer = e.layer;
         var points = layerToPoints(layer);
@@ -1412,6 +1602,7 @@
         layer.edited = false;
         bindPolygonClick(layer);
         polygons.addLayer(layer);
+        editableLayers.addLayer(layer);
         applyDefaultStyle(layer);
         selectLayer(layer);
         markGeometryDirty();
@@ -1463,6 +1654,50 @@
             markMetaDirty();
         });
     }
+    if (contentInput) {
+        contentInput.addEventListener('input', function () {
+            if (suppressMetaSync) return;
+            if (selectedLayer && selectedLayer.genplanData) {
+                selectedLayer.genplanData.content = contentInput.value;
+            }
+            markMetaDirty();
+        });
+    }
+    if (showTitleDesktopInput) {
+        showTitleDesktopInput.addEventListener('change', function () {
+            if (suppressMetaSync) return;
+            if (selectedLayer && selectedLayer.genplanData) {
+                selectedLayer.genplanData.showTitleDesktop = !!showTitleDesktopInput.checked;
+            }
+            markMetaDirty();
+        });
+    }
+    if (showTitleMobileInput) {
+        showTitleMobileInput.addEventListener('change', function () {
+            if (suppressMetaSync) return;
+            if (selectedLayer && selectedLayer.genplanData) {
+                selectedLayer.genplanData.showTitleMobile = !!showTitleMobileInput.checked;
+            }
+            markMetaDirty();
+        });
+    }
+    if (showAptLinksInput) {
+        showAptLinksInput.addEventListener('change', function () {
+            if (suppressMetaSync) return;
+            if (selectedLayer && selectedLayer.genplanData) {
+                selectedLayer.genplanData.showAptLinks = !!showAptLinksInput.checked;
+            }
+            markMetaDirty();
+        });
+    }
+    if (addPointBtn) {
+        addPointBtn.addEventListener('click', function () {
+            if (isBusy() || editorMode !== 'labels' || !hasImage) return;
+            addPointMode = !addPointMode;
+            updateAddPointUi();
+            showMessage(addPointMode ? 'Кликните по карте, чтобы поставить точку' : 'Режим точки отменён', 'info');
+        });
+    }
     if (linkInput) {
         linkInput.addEventListener('input', function () {
             if (suppressMetaSync) return;
@@ -1480,6 +1715,7 @@
                 selectedLayer.genplanData.homeId = hid > 0 ? hid : null;
             }
             markMetaDirty();
+            updateAptLinksUi();
             if (hid > 0) {
                 fetchHomeAutofill(hid, { onlyPreview: false });
             } else if (homePreview) {
@@ -1529,10 +1765,27 @@
         return '';
     });
 
+    map.on('click', function (e) {
+        if (!addPointMode || editorMode !== 'labels' || !hasImage) return;
+        if (drawToolActive || deleteModeActive) return;
+        var layer = addPointLayer({
+            labelX: Math.round(e.latlng.lng),
+            labelY: Math.round(e.latlng.lat),
+            isNew: true,
+            geometryDirty: true
+        });
+        addPointMode = false;
+        updateAddPointUi();
+        selectLayer(layer);
+        markMetaDirty();
+        showMessage('Точка добавлена — заполните подпись и сохраните', 'success');
+    });
+
     // ─── Init ────────────────────────────────────────────────
 
     updateDirtyUi();
     updateModeUi();
+    updateAddPointUi();
     syncDrawAvailability();
     ensureHomesOptions();
     loadPolygons();

@@ -5,14 +5,16 @@
 **Область:** только `sites/em/**`  
 **БД:** `m2profi_em`  
 **Ветка:** `feature/10-interactive-genplan`  
-**Статус:** ✅ реализовано (Stage A–C + UX-полировка виджета)
+**Статус:** ✅ Stage 1 + **Stage 2** (chip/card, content, apt-links, point-only)
 
 | Документ | Роль |
 |----------|------|
-| [plan.md](./plan.md) | **Источник истины** для реализации |
+| [plan.md](./plan.md) | Stage 1 — источник истины (сделано) |
+| [plan-stage2.md](./plan-stage2.md) | **Stage 2 — канон к реализации** (title/content, tip, apt, point-only) |
 | [decisions.md](./decisions.md) | Все ответы заказчика (закрыты) |
 | [delivery.md](./delivery.md) | Что сдано, API виджета, QA |
-| [audit.md](./audit.md) | Аудит черновика |
+| [audit.md](./audit.md) | Аудит черновика Stage 1 |
+| [audit-stage2.md](./audit-stage2.md) | Аудит Stage 2 — план готов к коду |
 | [ref/](./ref/) | Макеты + снимок UI Sigma |
 
 **Вход:** `ctr=homes_kvartal` → edit → «Открыть редактор интерактивного плана».
@@ -21,15 +23,18 @@
 
 ## Цель
 
-Интерактивный план ЖК: один фон → полигоны → ручной title (HTML) + опциональный дом → виджет с labels, live-карточкой из `homes`, свободным URL, explore, `highlight` как у FacadeWidget (`#5B8FB8` / 0.58 / idle 0).
+Интерактивный план ЖК: один фон → полигоны и/или точки → title/content + опциональный дом → виджет с tip/title expand-маркерами, live-блоком из `homes`, apt-ссылками, свободным URL, explore, `highlight` как у FacadeWidget (`#5B8FB8` / 0.58 / idle 0).
 
 ## Канон (кратко)
 
 - Title HTML; **обязателен**, если дом не выбран.
+- Stage 2: content HTML; idle = chip+▲ (зелёный/красный/**синий ждёт**/серый); card opacity 0.8; badges этажи/секции; CTA.
 - С домом: статус/сдача/адрес **живые** из `homes` на каждый `widget_data`.
+- Stage 2: опционально ссылки на свободные квартиры по комнатам (каталог `PUBLIC_URL`).
+- Stage 2: **point-only** объекты без полигона (`points=[]` + `label_x/y`).
 - Footer карточки — **не делаем**.
 - Иконки amenities — нет.
 - Подсветка: `highlight` = API Sigma `facadeHighlight`, дефолт color `#5B8FB8`.
 - Explore — в поставке (мобилка: pan/zoom **только** в увеличенном режиме).
 
-Открытых вопросов нет.
+Открытых вопросов нет. Stage 2 спецификация: [plan-stage2.md](./plan-stage2.md).

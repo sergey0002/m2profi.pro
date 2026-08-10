@@ -452,6 +452,45 @@
     align-items: stretch;
 }
 
+.genplan-editor__meta-main {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.genplan-editor__checks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.genplan-editor__check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #44505c;
+    cursor: pointer;
+}
+
+.genplan-editor__check input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: #00CDAD;
+}
+
+.genplan-editor__check input:disabled + span {
+    color: #9aa0a6;
+}
+
+.genplan-editor__btn.is-active {
+    background: #00CDAD;
+    color: #fff;
+}
+
 .genplan-editor__meta-side {
     display: flex;
     flex-direction: column;
@@ -518,8 +557,8 @@
     box-shadow: 0 0 0 2px rgba(0, 205, 173, 0.25);
 }
 
-.genplan-editor__field--title {
-    height: 100%;
+.genplan-editor__field--title input[type="text"] {
+    height: 38px;
 }
 
 .genplan-editor__home-preview {

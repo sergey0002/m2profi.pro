@@ -179,6 +179,233 @@ class ctr__genplans extends ctr__
         return trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags((string) $html), ENT_QUOTES, 'UTF-8')));
     }
 
+    function public_site_url()
+    {
+        $url = getenv('PUBLIC_URL');
+        if ($url && $url !== '') {
+            return rtrim($url, '/');
+        }
+        return 'https://em-nsk.ru';
+    }
+
+    function ru_plural_label($n, $one, $few, $many)
+    {
+        $n = abs((int) $n);
+        $mod10 = $n % 10;
+        $mod100 = $n % 100;
+        if ($mod100 >= 11 && $mod100 <= 14) {
+            return $n . ' ' . $many;
+        }
+        if ($mod10 === 1) {
+            return $n . ' ' . $one;
+        }
+        if ($mod10 >= 2 && $mod10 <= 4) {
+            return $n . ' ' . $few;
+        }
+        return $n . ' ' . $many;
+    }
+
+    function polygon_kind_from_points($points)
+    {
+        if (!is_array($points) || count($points) === 0) {
+            return 'point';
+        }
+        return 'polygon';
+    }
+
+    function row_flag($row, $key, $default = 1)
+    {
+        if (!is_array($row) || !array_key_exists($key, $row) || $row[$key] === null || $row[$key] === '') {
+            return (int) $default ? 1 : 0;
+        }
+        return (int) $row[$key] ? 1 : 0;
+    }
+
+    function post_flag($key, $default = 1)
+    {
+        if (!isset($_POST[$key])) {
+            return (int) $default ? 1 : 0;
+        }
+        return (int) $_POST[$key] ? 1 : 0;
+    }
+
+    function ensure_stat_helpers()
+    {
+        if (!function_exists('stat_free_format_delivery_quarter')) {
+            $helper = dirname(__DIR__, 2) . '/inc/stat_free_apartments_helpers.php';
+            if (is_file($helper)) {
+                include_once $helper;
+            }
+        }
+    }
+
+    /**
+     * @param int[] $home_ids
+     * @return array{aptTotal:array,freeTotal:array,sections:array,aptLinksByHome:array,homes:array}
+     */
+    function batch_home_widget_stats(array $home_ids)
+    {
+        global $mysql;
+        $home_ids = array_values(array_unique(array_filter(array_map('intval', $home_ids))));
+        $result = [
+            'aptTotal' => [],
+            'freeTotal' => [],
+            'sections' => [],
+            'aptLinksByHome' => [],
+            'homes' => [],
+        ];
+        if (!$home_ids) {
+            return $result;
+        }
+
+        $idsSql = implode(',', $home_ids);
+        $homeRows = $mysql->get_arr('SELECT * FROM homes WHERE home_id IN (' . $idsSql . ')');
+        if ($homeRows) {
+            foreach ($homeRows as $h) {
+                $result['homes'][(int) $h['home_id']] = $h;
+            }
+        }
+
+        $aptRows = $mysql->get_arr(
+            'SELECT home_id,
+                    COUNT(*) AS apt_total,
+                    SUM(CASE WHEN status2 IS NULL OR status2 IN (0, 2) THEN 1 ELSE 0 END) AS free_total
+             FROM apartaments
+             WHERE home_id IN (' . $idsSql . ')
+             GROUP BY home_id'
+        );
+        if ($aptRows) {
+            foreach ($aptRows as $r) {
+                $hid = (int) $r['home_id'];
+                $result['aptTotal'][$hid] = (int) ($r['apt_total'] ?? 0);
+                $result['freeTotal'][$hid] = (int) ($r['free_total'] ?? 0);
+            }
+        }
+
+        $secRows = $mysql->get_arr(
+            'SELECT h.home_id, COUNT(s.section_id) AS sections_n
+             FROM homes h
+             LEFT JOIN homes_sections s ON s.homes_id = h.homes_id
+             WHERE h.home_id IN (' . $idsSql . ')
+             GROUP BY h.home_id'
+        );
+        if ($secRows) {
+            foreach ($secRows as $r) {
+                $result['sections'][(int) $r['home_id']] = (int) ($r['sections_n'] ?? 0);
+            }
+        }
+
+        $roomRows = $mysql->get_arr(
+            'SELECT home_id,
+                    CAST(TRIM(rooms) AS UNSIGNED) AS rooms_n,
+                    SUM(CASE WHEN status2 IS NULL OR status2 IN (0, 2) THEN 1 ELSE 0 END) AS free_count
+             FROM apartaments
+             WHERE home_id IN (' . $idsSql . ')
+               AND TRIM(rooms) <> ""
+               AND CAST(TRIM(rooms) AS UNSIGNED) > 0
+             GROUP BY home_id, CAST(TRIM(rooms) AS UNSIGNED)
+             HAVING free_count > 0
+             ORDER BY home_id, rooms_n'
+        );
+        if ($roomRows) {
+            $base = $this->public_site_url();
+            foreach ($roomRows as $r) {
+                $hid = (int) $r['home_id'];
+                $rooms = (int) $r['rooms_n'];
+                $free = (int) $r['free_count'];
+                if (!isset($result['aptLinksByHome'][$hid])) {
+                    $result['aptLinksByHome'][$hid] = [];
+                }
+                $result['aptLinksByHome'][$hid][] = [
+                    'rooms' => $rooms,
+                    'free' => $free,
+                    'label' => $rooms . '-комнатные (' . $free . ')',
+                    'url' => $base . '/catalog/?rooms_min=' . $rooms . '&rooms_max=' . $rooms . '&home_id=' . $hid . '&start=0&limit=15',
+                ];
+            }
+        }
+
+        return $result;
+    }
+
+    function home_delivery_meta($home)
+    {
+        $this->ensure_stat_helpers();
+        if (!$home || !function_exists('stat_free_format_delivery_quarter')) {
+            return null;
+        }
+        $label = stat_free_format_delivery_quarter(
+            $home['delivery_date'] ?? null,
+            $home['ready_quarter'] ?? null,
+            $home['built_year'] ?? null
+        );
+        if (!$label || $label === '—') {
+            return null;
+        }
+        return 'Срок сдачи: ' . $label;
+    }
+
+    /**
+     * @return array{statusTone:string,statusText:string}
+     */
+    function compute_home_status($home, $aptTotal, $freeTotal)
+    {
+        if (!$home) {
+            return ['statusTone' => 'muted', 'statusText' => ''];
+        }
+
+        $show = (int) ($home['show'] ?? 1);
+        if ($show === 0) {
+            $text = trim((string) ($home['complite_text'] ?? ''));
+            if ($text === '') {
+                $text = 'Скрыт';
+            }
+            return ['statusTone' => 'muted', 'statusText' => $text];
+        }
+
+        if ($aptTotal <= 0) {
+            return ['statusTone' => 'wait', 'statusText' => 'Ждет начала строительства'];
+        }
+
+        if ($freeTotal <= 0) {
+            return ['statusTone' => 'muted', 'statusText' => 'Квартиры проданы'];
+        }
+
+        if ((int) ($home['complite'] ?? 0) === 1) {
+            return ['statusTone' => 'ok', 'statusText' => 'Сдан'];
+        }
+
+        return ['statusTone' => 'warn', 'statusText' => 'Строится'];
+    }
+
+    /**
+     * @return array{0:?string,1:?string} ctaLabel, ctaUrl
+     */
+    function compute_cta_fields($statusTone, $linkUrl, $homeId)
+    {
+        $linkUrl = trim((string) $linkUrl);
+        if ($statusTone === 'muted') {
+            return [null, null];
+        }
+        if ($statusTone === 'wait') {
+            if ($linkUrl === '') {
+                return [null, null];
+            }
+            return ['Сообщить о старте продаж', $linkUrl];
+        }
+        if ($statusTone === 'ok' || $statusTone === 'warn') {
+            $url = $linkUrl;
+            if ($url === '' && $homeId > 0) {
+                $url = $this->public_site_url() . '/catalog/?home_id=' . (int) $homeId . '&start=0&limit=15';
+            }
+            if ($url === '') {
+                return [null, null];
+            }
+            return ['Выбрать квартиру', $url];
+        }
+        return [null, null];
+    }
+
     function get_kvartal($kvartal_id)
     {
         global $mysql;
@@ -219,10 +446,10 @@ class ctr__genplans extends ctr__
     }
 
     /**
-     * Live card fields from homes (same rules as home_autofill).
-     * @return array{statusText:?string,statusTone:?string,metaDelivery:?string,metaAddress:?string,homeTitle:string}
+     * Live card fields from homes (editor preview).
+     * @return array{statusText:?string,statusTone:?string,metaDelivery:?string,metaAddress:?string,homeTitle:string,floors:?int,sections:?int,floorsLabel:?string,sectionsLabel:?string}
      */
-    function live_home_card_fields($home)
+    function live_home_card_fields($home, $batch = null)
     {
         if (!$home) {
             return [
@@ -231,56 +458,62 @@ class ctr__genplans extends ctr__
                 'metaDelivery' => null,
                 'metaAddress' => null,
                 'homeTitle' => '',
+                'floors' => null,
+                'sections' => null,
+                'floorsLabel' => null,
+                'sectionsLabel' => null,
             ];
         }
+        $homeId = (int) ($home['home_id'] ?? 0);
         $homeTitle = trim((string) ($home['title'] ?? ''));
         if ($homeTitle === '' && !empty($home['long_title'])) {
             $homeTitle = trim((string) $home['long_title']);
         }
 
-        $complite = (int) ($home['complite'] ?? 0);
-        if ($complite === 1) {
-            $statusText = 'Дом сдан';
-            $statusTone = 'ok';
-        } else {
-            $statusText = 'Строится';
-            $statusTone = 'warn';
+        $aptTotal = 0;
+        $freeTotal = 0;
+        $sections = 0;
+        if (is_array($batch)) {
+            $aptTotal = (int) ($batch['aptTotal'][$homeId] ?? 0);
+            $freeTotal = (int) ($batch['freeTotal'][$homeId] ?? 0);
+            $sections = (int) ($batch['sections'][$homeId] ?? 0);
         }
 
-        $metaDelivery = null;
-        if (!function_exists('stat_free_format_delivery_quarter')) {
-            $helper = dirname(__DIR__, 2) . '/inc/stat_free_apartments_helpers.php';
-            if (is_file($helper)) {
-                include_once $helper;
-            }
-        }
-        if (function_exists('stat_free_format_delivery_quarter')) {
-            $label = stat_free_format_delivery_quarter(
-                $home['delivery_date'] ?? null,
-                $home['ready_quarter'] ?? null,
-                $home['built_year'] ?? null
-            );
-            if ($label && $label !== '—') {
-                $metaDelivery = 'Сдан: ' . $label;
-            }
-        }
-
+        $status = $this->compute_home_status($home, $aptTotal, $freeTotal);
+        $metaDelivery = $this->home_delivery_meta($home);
         $addr = trim((string) ($home['adress'] ?? ''));
         $metaAddress = $addr !== '' ? ('Адрес: ' . $addr) : null;
 
+        $floors = isset($home['floor']) && $home['floor'] !== '' ? (int) $home['floor'] : null;
+        $floorsLabel = ($floors && $floors > 0)
+            ? $this->ru_plural_label($floors, 'этаж', 'этажа', 'этажей')
+            : null;
+        $sectionsLabel = ($sections > 0)
+            ? $this->ru_plural_label($sections, 'секция', 'секции', 'секций')
+            : null;
+
         return [
-            'statusText' => $statusText,
-            'statusTone' => $statusTone,
+            'statusText' => $status['statusText'],
+            'statusTone' => $status['statusTone'],
             'metaDelivery' => $metaDelivery,
             'metaAddress' => $metaAddress,
             'homeTitle' => $homeTitle,
+            'floors' => $floors,
+            'sections' => $sections > 0 ? $sections : null,
+            'floorsLabel' => $floorsLabel,
+            'sectionsLabel' => $sectionsLabel,
         ];
     }
 
-    function polygon_public_payload($row)
+    function polygon_public_payload($row, $batch = null)
     {
         $points = json_decode($row['points'] ?? '', true);
-        if (!is_array($points) || count($points) < 3) {
+        if (!is_array($points)) {
+            $points = [];
+        }
+        $points = $this->normalize_points($points);
+        $kind = $this->polygon_kind_from_points($points);
+        if ($kind === 'polygon' && count($points) < 3) {
             return null;
         }
 
@@ -294,30 +527,59 @@ class ctr__genplans extends ctr__
         $rawTitle = (string) ($row['title'] ?? '');
         $titleHtml = $this->sanitize_title_html($rawTitle);
         $titleText = $this->title_plain($titleHtml);
+        $contentHtml = $this->sanitize_title_html((string) ($row['content'] ?? ''));
+
+        $showTitleDesktop = $this->row_flag($row, 'show_title_desktop', 1);
+        $showTitleMobile = $this->row_flag($row, 'show_title_mobile', 1);
+        $showAptLinks = $this->row_flag($row, 'show_apt_links', 0);
+        if (!$homeId) {
+            $showAptLinks = 0;
+        }
 
         $statusText = null;
-        $statusTone = null;
+        $statusTone = 'muted';
         $metaDelivery = null;
         $metaAddress = null;
+        $floors = null;
+        $sections = null;
+        $floorsLabel = null;
+        $sectionsLabel = null;
+        $aptTotal = 0;
+        $freeTotal = 0;
+        $homeShow = null;
+        $aptLinks = [];
 
         if ($homeId) {
-            $home = $this->get_home_row($homeId);
+            $home = is_array($batch) && isset($batch['homes'][$homeId])
+                ? $batch['homes'][$homeId]
+                : $this->get_home_row($homeId);
             $kvartalId = (int) $row['kvartal_id'];
             if ($home && $this->home_belongs_to_kvartal($homeId, $kvartalId)) {
-                $live = $this->live_home_card_fields($home);
+                if (is_array($batch)) {
+                    $aptTotal = (int) ($batch['aptTotal'][$homeId] ?? 0);
+                    $freeTotal = (int) ($batch['freeTotal'][$homeId] ?? 0);
+                }
+                $live = $this->live_home_card_fields($home, $batch);
                 $statusText = $live['statusText'];
                 $statusTone = $live['statusTone'];
                 $metaDelivery = $live['metaDelivery'];
                 $metaAddress = $live['metaAddress'];
+                $floors = $live['floors'];
+                $sections = $live['sections'];
+                $floorsLabel = $live['floorsLabel'];
+                $sectionsLabel = $live['sectionsLabel'];
+                $homeShow = isset($home['show']) ? (int) $home['show'] : null;
                 if ($titleText === '' && $live['homeTitle'] !== '') {
                     $titleText = $live['homeTitle'];
                     $titleHtml = htmlspecialchars($titleText, ENT_QUOTES, 'UTF-8');
+                }
+                if ($showAptLinks && is_array($batch) && !empty($batch['aptLinksByHome'][$homeId])) {
+                    $aptLinks = $batch['aptLinksByHome'][$homeId];
                 }
             }
         }
 
         if ($titleText === '' && !$homeId) {
-            // invalid public object without title
             return null;
         }
 
@@ -328,16 +590,40 @@ class ctr__genplans extends ctr__
             ? (int) $row['label_y']
             : null;
 
+        if ($kind === 'point' && ($labelX === null || $labelY === null)) {
+            return null;
+        }
+
+        $linkUrl = trim((string) ($row['link_url'] ?? ''));
+        list($ctaLabel, $ctaUrl) = $homeId
+            ? $this->compute_cta_fields($statusTone, $linkUrl, $homeId)
+            : [null, null];
+
         return [
             'id' => (int) $row['genplan_polygon_id'],
+            'kind' => $kind,
             'homeId' => $homeId,
             'titleHtml' => $titleHtml,
             'titleText' => $titleText,
+            'contentHtml' => $contentHtml !== '' ? $contentHtml : null,
+            'showTitleDesktop' => (bool) $showTitleDesktop,
+            'showTitleMobile' => (bool) $showTitleMobile,
+            'showAptLinks' => (bool) $showAptLinks,
             'statusText' => $statusText,
             'statusTone' => $statusTone,
             'metaDelivery' => $metaDelivery,
             'metaAddress' => $metaAddress,
-            'linkUrl' => trim((string) ($row['link_url'] ?? '')),
+            'floors' => $floors,
+            'sections' => $sections,
+            'floorsLabel' => $floorsLabel,
+            'sectionsLabel' => $sectionsLabel,
+            'aptTotal' => $aptTotal,
+            'freeTotal' => $freeTotal,
+            'homeShow' => $homeShow,
+            'aptLinks' => $aptLinks,
+            'ctaLabel' => $ctaLabel,
+            'ctaUrl' => $ctaUrl,
+            'linkUrl' => $linkUrl,
             'labelX' => $labelX,
             'labelY' => $labelY,
             'points' => $points,
@@ -492,7 +778,7 @@ class ctr__genplans extends ctr__
             foreach ($rows as $v) {
                 $points = json_decode($v['points'], true);
                 if (!is_array($points)) {
-                    continue;
+                    $points = [];
                 }
                 $homeId = isset($v['home_id']) && $v['home_id'] !== null && $v['home_id'] !== ''
                     ? (int) $v['home_id']
@@ -510,10 +796,15 @@ class ctr__genplans extends ctr__
                     'id' => (int) $v['genplan_polygon_id'],
                     'homeId' => $homeId,
                     'title' => (string) ($v['title'] ?? ''),
+                    'content' => (string) ($v['content'] ?? ''),
+                    'showTitleDesktop' => (bool) $this->row_flag($v, 'show_title_desktop', 1),
+                    'showTitleMobile' => (bool) $this->row_flag($v, 'show_title_mobile', 1),
+                    'showAptLinks' => (bool) ($homeId ? $this->row_flag($v, 'show_apt_links', 0) : 0),
                     'linkUrl' => (string) ($v['link_url'] ?? ''),
                     'labelX' => $labelX,
                     'labelY' => $labelY,
                     'points' => $points,
+                    'kind' => $this->polygon_kind_from_points($points),
                     'sortOrder' => (int) ($v['sort_order'] ?? 0),
                 ];
             }
@@ -533,10 +824,11 @@ class ctr__genplans extends ctr__
         $id = (int) ($_POST['genplan_polygon_id'] ?? 0);
         $points = json_decode($_POST['points'] ?? '', true);
         $title = (string) ($_POST['title'] ?? '');
+        $content = (string) ($_POST['content'] ?? '');
         $home_id_raw = $_POST['home_id'] ?? '';
         $home_id = ($home_id_raw === '' || $home_id_raw === null) ? 0 : (int) $home_id_raw;
 
-        if (!$kvartal_id || !is_array($points) || count($points) < 3) {
+        if (!$kvartal_id || !is_array($points)) {
             echo json_encode(['success' => false, 'message' => 'Некорректные данные полигона']);
             return;
         }
@@ -546,7 +838,8 @@ class ctr__genplans extends ctr__
         }
 
         $points = $this->normalize_points($points);
-        if (count($points) < 3) {
+        $isPoint = count($points) === 0;
+        if (!$isPoint && count($points) < 3) {
             echo json_encode(['success' => false, 'message' => 'Полигон должен иметь минимум 3 точки']);
             return;
         }
@@ -565,9 +858,22 @@ class ctr__genplans extends ctr__
         $label_x = isset($_POST['label_x']) && $_POST['label_x'] !== '' ? (int) $_POST['label_x'] : null;
         $label_y = isset($_POST['label_y']) && $_POST['label_y'] !== '' ? (int) $_POST['label_y'] : null;
 
+        if ($isPoint && ($label_x === null || $label_y === null)) {
+            echo json_encode(['success' => false, 'message' => 'Укажите позицию точки']);
+            return;
+        }
+
+        $show_title_desktop = $this->post_flag('show_title_desktop', 1);
+        $show_title_mobile = $this->post_flag('show_title_mobile', 1);
+        $show_apt_links = $home_id > 0 ? $this->post_flag('show_apt_links', 0) : 0;
+
         $data = [
             'kvartal_id' => $kvartal_id,
             'title' => $title,
+            'content' => $content,
+            'show_title_desktop' => $show_title_desktop,
+            'show_title_mobile' => $show_title_mobile,
+            'show_apt_links' => $show_apt_links,
             'link_url' => trim((string) ($_POST['link_url'] ?? '')),
             'points' => json_encode($points),
             'sort_order' => (int) ($_POST['sort_order'] ?? 0),
@@ -811,7 +1117,8 @@ class ctr__genplans extends ctr__
             echo json_encode(['success' => false, 'message' => 'Дом не найден']);
             return;
         }
-        $live = $this->live_home_card_fields($home);
+        $batch = $this->batch_home_widget_stats([$home_id]);
+        $live = $this->live_home_card_fields($home, $batch);
         $suggest = $live['homeTitle'];
         if ($suggest !== '' && mb_stripos($suggest, 'дом') === false) {
             $suggest = 'Дом ' . $suggest;
@@ -823,6 +1130,8 @@ class ctr__genplans extends ctr__
             'statusTone' => $live['statusTone'],
             'metaDelivery' => $live['metaDelivery'],
             'metaAddress' => $live['metaAddress'],
+            'floorsLabel' => $live['floorsLabel'],
+            'sectionsLabel' => $live['sectionsLabel'],
         ], JSON_UNESCAPED_UNICODE);
     }
 
@@ -858,10 +1167,23 @@ class ctr__genplans extends ctr__
             'SELECT * FROM genplan_polygons WHERE kvartal_id="' . $kvartal_id . '" AND del="0"
              ORDER BY sort_order, genplan_polygon_id'
         );
+        $homeIds = [];
+        if ($rows) {
+            foreach ($rows as $row) {
+                $hid = isset($row['home_id']) && $row['home_id'] !== null && $row['home_id'] !== ''
+                    ? (int) $row['home_id']
+                    : 0;
+                if ($hid > 0) {
+                    $homeIds[] = $hid;
+                }
+            }
+        }
+        $batch = $this->batch_home_widget_stats($homeIds);
+
         $objects = [];
         if ($rows) {
             foreach ($rows as $row) {
-                $payload = $this->polygon_public_payload($row);
+                $payload = $this->polygon_public_payload($row, $batch);
                 if ($payload) {
                     $objects[] = $payload;
                 }

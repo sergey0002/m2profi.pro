@@ -2,7 +2,7 @@
 
 **Дата:** 10.08.2026  
 **Ветка:** `feature/10-interactive-genplan`  
-**Миграция:** `sites/em/sahmatka/migrations/005_genplan_polygons.sql` → таблица `genplan_polygons`
+**Миграции:** `005_genplan_polygons.sql`, `006_genplan_label_content.sql`
 
 ---
 
@@ -28,7 +28,25 @@
 1. ЖК edit → **Открыть редактор интерактивного плана** (`ctr=genplans&act=editor&kvartal_id=`).
 2. Режимы: **Полигоны** / **Подписи** (недорисованный полигон сбрасывается при смене режима).
 3. Upload / clear фона; Save/Cancel dirty; demo-ссылка на виджет.
-4. Поля объекта: title (HTML), дом (опц.), `link_url`.
+4. Поля объекта: title/content (HTML), дом (опц.), чекбоксы заголовка desktop/mobile, apt-ссылки, `link_url`, точки без полигона.
+
+---
+
+## Stage 2 — виджет (chip + card 0.8)
+
+| Поле объекта | Описание |
+|--------------|----------|
+| `contentHtml` | ручной HTML тела |
+| `showTitleDesktop` / `showTitleMobile` | показ title-chip |
+| `showAptLinks` | группы free по комнатам |
+| `statusTone` | `ok` / `warn` / `wait` / `muted` |
+| `statusText`, `metaDelivery`, `metaAddress` | live из `homes` |
+| `floorsLabel`, `sectionsLabel` | badges |
+| `aptLinks` | `[{ rooms, free, label, url }]` |
+| `ctaLabel`, `ctaUrl` | кнопка «Выбрать квартиру» / «Сообщить о старте продаж» |
+| `kind` | `polygon` \| `point` |
+
+Idle: белый chip + ▲ (зел/крас/син/сер). Expand в том же DOM, фон `rgba(255,255,255,0.8)`. Floating tooltip не используется.
 
 ---
 

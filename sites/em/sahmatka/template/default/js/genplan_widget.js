@@ -212,11 +212,16 @@
     return { x: sx / n, y: sy / n };
   }
 
-  function statusToneColor(tone) {
+  function markerToneColor(tone) {
     if (tone === 'ok') return '#28a745';
-    if (tone === 'warn') return '#e6a23c';
+    if (tone === 'warn') return '#e53935';
+    if (tone === 'wait') return '#2f80ed';
     if (tone === 'danger') return '#dc3545';
-    return '#999';
+    return '#9aa0a6';
+  }
+
+  function statusToneColor(tone) {
+    return markerToneColor(tone);
   }
 
   function flipY(y, imageHeight) {
@@ -226,6 +231,7 @@
 
   var UI_STACK = 'Arial, Helvetica, sans-serif';
   var HL = HL_DEFAULT.color;
+  var LABEL_LIFT_PX = 18;
 
   var WIDGET_CSS = [
     ':host { display: block; box-sizing: border-box; }',
@@ -246,39 +252,41 @@
     '.gw-poly { fill: var(--gw-hl-color, ' + HL + '); fill-opacity: var(--gw-idle-opacity, 0); stroke: var(--gw-hl-color, ' + HL + '); stroke-width: 2; stroke-opacity: 0; cursor: pointer; pointer-events: all; transition: fill-opacity 0.18s ease, stroke-opacity 0.18s ease, stroke-width 0.18s ease; outline: none; }',
     '.gw-poly.is-hover, .gw-poly.is-active, .gw-poly.is-showcase, .gw-poly:focus-visible { fill: var(--gw-hl-color, ' + HL + ') !important; stroke: var(--gw-hl-color, ' + HL + ') !important; fill-opacity: var(--gw-hl-opacity, 0.58); stroke-opacity: var(--gw-stroke-opacity, 0.4); stroke-width: 2; }',
     '@media (prefers-reduced-motion: reduce) { .gw-poly { transition: none; } }',
-    '.gw-labels { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; overflow: visible; }',
-    '.gw-label { position: absolute; transform: translate(-50%, calc(-100% - 10px)); pointer-events: none; z-index: 3; }',
-    '.gw-label__bubble { position: relative; display: inline-flex; align-items: center; gap: 7px; max-width: 220px; padding: 6px 11px; background: #fff; color: #1a1a1a; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.18); font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; }',
-    '.gw-label__text { overflow: hidden; text-overflow: ellipsis; }',
-    '.gw-label__dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 1px rgba(255,255,255,0.8); }',
-    '.gw-label__arrow { position: absolute; left: 50%; bottom: -6px; width: 0; height: 0; margin-left: -7px; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 7px solid #fff; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.08)); }',
-    /* при hover/active с карточкой — прячем подпись, чтобы не дублировать заголовок */
-    '.gw-label.is-suppressed { visibility: hidden; }',
-    /* mobile: компактные «тултипные» подписи + тап по ним = переход */
-    /* mobile: подписи только после зума / в explore — иначе наползают */
-    '.gw-root.is-coarse:not(.is-labels-visible) .gw-labels { opacity: 0; visibility: hidden; }',
-    '.gw-root.is-coarse:not(.is-labels-visible) .gw-label { pointer-events: none !important; }',
-    '.gw-root.is-coarse .gw-label { transform: translate(-50%, calc(-100% - 5px)); pointer-events: auto; cursor: pointer; -webkit-tap-highlight-color: transparent; }',
-    '.gw-root.is-coarse .gw-label__bubble { gap: 4px; max-width: 120px; padding: 2px 6px; border-radius: 5px; font-size: 10px; font-weight: 600; line-height: 1.2; box-shadow: 0 1px 5px rgba(0,0,0,0.16); }',
-    '.gw-root.is-coarse .gw-label__dot { width: 5px; height: 5px; }',
-    '.gw-root.is-coarse .gw-label__arrow { bottom: -4px; margin-left: -4px; border-left-width: 4px; border-right-width: 4px; border-top-width: 4px; }',
-    /* белая карточка + стрелка вниз как у постоянных подписей */
-    '.gw-tooltip { position: absolute; z-index: 8; pointer-events: none; min-width: 160px; max-width: min(260px, 92%); padding: 10px 12px; border-radius: 8px; background: #fff; color: #1a1a1a; text-align: left; line-height: 1.3; opacity: 0; transform: translate(-50%, calc(-100% - 10px)); transition: none; box-shadow: 0 2px 10px rgba(0,0,0,0.18); }',
-    '.gw-tooltip.is-visible { opacity: 1; transition: opacity 220ms ease; }',
-    '@media (prefers-reduced-motion: reduce) { .gw-tooltip.is-visible { transition: none; } }',
-    '.gw-tooltip__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 2px; }',
-    '.gw-tooltip__title { font-weight: 700; font-size: 13px; color: #1a1a1a; line-height: 1.25; }',
-    '.gw-tooltip__status { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; line-height: 1.2; }',
-    '.gw-tooltip__status-dot { width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; }',
-    '.gw-tooltip__meta { margin-top: 6px; font-size: 11px; color: #777; line-height: 1.4; }',
-    '.gw-tooltip__meta-line { display: block; }',
-    '.gw-tooltip__arrow { position: absolute; left: 50%; bottom: -6px; width: 0; height: 0; margin-left: -7px; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 7px solid #fff; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.08)); }',
-    '.gw-root.is-coarse .gw-tooltip { min-width: 140px; max-width: min(220px, 90%); padding: 8px 10px; border-radius: 7px; transform: translate(-50%, calc(-100% - 8px)); }',
-    '.gw-root.is-coarse .gw-tooltip__title { font-size: 12px; }',
-    '.gw-root.is-coarse .gw-tooltip__status { font-size: 10px; gap: 4px; }',
-    '.gw-root.is-coarse .gw-tooltip__status-dot { width: 5px; height: 5px; }',
-    '.gw-root.is-coarse .gw-tooltip__meta { margin-top: 5px; font-size: 10px; }',
-    '.gw-root.is-coarse .gw-tooltip__arrow { bottom: -5px; margin-left: -5px; border-left-width: 5px; border-right-width: 5px; border-top-width: 5px; }',
+    '.gw-labels-overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; overflow: visible; }',
+    '.gw-label { position: absolute; transform: translate(-50%, -50%); transform-origin: center bottom; pointer-events: auto; z-index: 5; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 0.28s ease; }',
+    '.gw-label.is-expanded { z-index: 200; }',
+    '.gw-label__box { display: inline-block; width: fit-content; max-width: 220px; text-align: left; background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); overflow: hidden; transition: border-radius 0.28s ease, box-shadow 0.28s ease, background 0.28s ease; }',
+    '.gw-label.is-expanded .gw-label__box { background: rgba(255,255,255,0.9); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
+    '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; }',
+    '.gw-label.is-compact .gw-label__head { padding: 4px 6px; }',
+    '.gw-label.is-expanded .gw-label__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 12px 12px 8px; white-space: normal; width: 100%; max-width: none; box-sizing: border-box; border-bottom: 1px solid rgba(0,0,0,0.08); }',
+    '.gw-label__tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid #9aa0a6; flex: 0 0 auto; }',
+    '.gw-label__text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }',
+    '.gw-label.is-expanded .gw-label__text { overflow: visible; text-overflow: unset; white-space: normal; flex: 1 1 auto; min-width: 0; }',
+    '.gw-label:not(.is-expanded) .gw-label__status { display: none !important; }',
+    '.gw-label__status { font-weight: 400; font-size: 12px; line-height: 1.25; }',
+    '.gw-label.is-expanded .gw-label__status { display: inline; }',
+    '.gw-label__body-wrap { display: grid; grid-template-rows: 0fr; max-width: 0; min-width: 0; overflow: hidden; opacity: 0; transition: grid-template-rows 0.28s ease, max-width 0.28s ease, opacity 0.22s ease; }',
+    '.gw-label.is-expanded .gw-label__body-wrap { grid-template-rows: 1fr; max-width: none; width: 100%; opacity: 1; }',
+    '.gw-label__body { overflow: hidden; min-height: 0; font-size: 12px; line-height: 1.4; color: #333; padding: 0 12px; box-sizing: border-box; width: 100%; transition: padding 0.28s ease; }',
+    '.gw-label.is-expanded .gw-label__body { padding: 8px 12px 12px; }',
+    '.gw-label__content { margin-bottom: 6px; }',
+    '.gw-label__meta-line { display: block; color: #555; margin-bottom: 4px; }',
+    '.gw-label__badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }',
+    '.gw-label__badge { display: inline-block; padding: 4px 8px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 11px; color: #444; background: rgba(255,255,255,0.6); }',
+    '.gw-label__apts { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }',
+    '.gw-label__apts a { color: #056bf5; text-decoration: none; font-size: 12px; }',
+    '.gw-label__apts a:hover { text-decoration: underline; }',
+    '.gw-label__cta { display: block; margin-top: 10px; padding: 10px 12px; border-radius: 6px; background: #e53935; color: #fff !important; font-size: 13px; font-weight: 600; text-align: center; text-decoration: none !important; }',
+    '.gw-label__cta:hover { background: #c62828; }',
+    '.gw-root.is-coarse:not(.is-explore) .gw-label { pointer-events: none !important; }',
+    '.gw-root.is-coarse.is-explore .gw-label { pointer-events: auto; }',
+    '.gw-root.is-coarse .gw-label:not(.is-expanded) .gw-label__head { gap: 4px; max-width: 120px; padding: 2px 6px; font-size: 10px; }',
+    '.gw-root.is-coarse .gw-label__tri { border-left-width: 4px; border-right-width: 4px; border-bottom-width: 7px; }',
+    '.gw-root.is-coarse .gw-label.is-expanded .gw-label__box { width: min(280px, calc(100vw - 24px)); min-width: min(280px, calc(100vw - 24px)); max-width: min(280px, calc(100vw - 24px)); }',
+    '.gw-root.is-coarse .gw-label.is-expanded .gw-label__head { font-size: 11px; padding: 10px 10px 6px; max-width: none; }',
+    '.gw-root.is-coarse .gw-label.is-expanded .gw-label__body { font-size: 11px; padding: 6px 10px 10px; }',
+    '@media (prefers-reduced-motion: reduce) { .gw-label, .gw-label__box, .gw-label__body-wrap, .gw-label__body { transition: none; } }',
     '.gw-btn { appearance: none; border: 0; border-radius: 8px; background: rgba(255,255,255,0.95); color: #111; box-shadow: 0 1px 6px rgba(0,0,0,0.22); cursor: pointer; font: inherit; line-height: 1; margin: 0; padding: 0; }',
     '.gw-btn-close { position: absolute; top: 12px; right: 12px; z-index: 20; width: 40px; height: 40px; padding: 0; display: none; align-items: center; justify-content: center; }',
     '.gw-btn-close svg { display: block; width: 18px; height: 18px; }',
@@ -352,6 +360,7 @@
     this._moved = false;
     this._activeObjectId = null;
     this._hoverObjectId = null;
+    this._hoverClearTimer = null;
     this._objectsById = {};
     this._scrollLockHeld = 0;
 
@@ -464,19 +473,8 @@
 
   GenplanWidgetInstance.prototype._syncMobileLabelsVisibility = function () {
     if (!this._els.root) return;
-    // desktop — как есть
-    if (!isCoarsePointer()) {
-      this._els.root.classList.add('is-labels-visible');
-      return;
-    }
-    // explore («Увеличить») — показываем подписи
-    if (this.exploring) {
-      this._els.root.classList.add('is-labels-visible');
-      return;
-    }
-    var base = this._labelsBaseScale || this._minScale || 0;
-    var show = base > 0 && this._scale >= base * 1.18;
-    this._els.root.classList.toggle('is-labels-visible', show);
+    // desktop и mobile — заголовки видны (на mobile compact: только ▲ если showTitleMobile=0)
+    this._els.root.classList.add('is-labels-visible');
   };
 
   GenplanWidgetInstance.prototype._stopIdleHighlight = function () {
@@ -598,15 +596,11 @@
     root.appendChild(viewport);
     this._els.viewport = viewport;
 
-    var stage = this._buildStage(true);
+    var stage = this._buildMapStage(true);
     viewport.appendChild(stage);
     this._els.stage = stage;
-
-    var tooltip = document.createElement('div');
-    tooltip.className = 'gw-tooltip';
-    tooltip.setAttribute('aria-hidden', 'true');
-    viewport.appendChild(tooltip);
-    this._els.tooltip = tooltip;
+    var labelsOverlay = this._buildLabelsOverlay(true);
+    viewport.appendChild(labelsOverlay);
 
     var exploreBtn = document.createElement('button');
     exploreBtn.type = 'button';
@@ -689,7 +683,7 @@
     this._startIdleHighlight();
   };
 
-  GenplanWidgetInstance.prototype._buildStage = function (storeEls) {
+  GenplanWidgetInstance.prototype._buildMapStage = function (storeEls) {
     var data = this.data;
     var stage = document.createElement('div');
     stage.className = 'gw-stage';
@@ -711,60 +705,326 @@
     var objects = data.objects || [];
     for (var i = 0; i < objects.length; i++) {
       var obj = objects[i];
-      if (!obj || !obj.points || obj.points.length < 3) continue;
-      var poly = document.createElementNS(svgNS, 'polygon');
-      poly.setAttribute('points', pointsToSvgAttr(obj.points, data.imageHeight));
-      poly.setAttribute('class', 'gw-poly');
-      poly.setAttribute('tabindex', '0');
-      poly.setAttribute('role', 'button');
-      poly.setAttribute('aria-label', obj.titleText || ('Объект ' + obj.id));
-      poly.dataset.objectId = String(obj.id);
-      if (this._activeObjectId && String(this._activeObjectId) === String(obj.id)) {
-        poly.classList.add('is-active');
+      if (!obj) continue;
+      var isPoint = obj.kind === 'point' || !obj.points || obj.points.length < 3;
+      if (!isPoint && obj.points.length >= 3) {
+        var poly = document.createElementNS(svgNS, 'polygon');
+        poly.setAttribute('points', pointsToSvgAttr(obj.points, data.imageHeight));
+        poly.setAttribute('class', 'gw-poly');
+        poly.setAttribute('tabindex', '0');
+        poly.setAttribute('role', 'button');
+        poly.setAttribute('aria-label', obj.titleText || ('Объект ' + obj.id));
+        poly.dataset.objectId = String(obj.id);
+        if (this._activeObjectId && String(this._activeObjectId) === String(obj.id)) {
+          poly.classList.add('is-active');
+        }
+        svg.appendChild(poly);
       }
-      svg.appendChild(poly);
-    }
-
-    var labels = document.createElement('div');
-    labels.className = 'gw-labels';
-    stage.appendChild(labels);
-
-    for (var j = 0; j < objects.length; j++) {
-      var o = objects[j];
-      if (!o || !o.titleText) continue;
-      var anchor = this._labelAnchor(o);
-      var label = document.createElement('div');
-      label.className = 'gw-label';
-      label.style.left = ((anchor.xSvg / data.imageWidth) * 100) + '%';
-      label.style.top = ((anchor.ySvg / data.imageHeight) * 100) + '%';
-      label.dataset.objectId = String(o.id);
-
-      var bubble = document.createElement('div');
-      bubble.className = 'gw-label__bubble';
-      var text = document.createElement('span');
-      text.className = 'gw-label__text';
-      text.textContent = o.titleText;
-      bubble.appendChild(text);
-      if (o.statusTone) {
-        var dot = document.createElement('span');
-        dot.className = 'gw-label__dot';
-        dot.style.background = statusToneColor(o.statusTone);
-        bubble.appendChild(dot);
-      }
-      label.appendChild(bubble);
-      var arrow = document.createElement('div');
-      arrow.className = 'gw-label__arrow';
-      label.appendChild(arrow);
-      labels.appendChild(label);
     }
 
     if (storeEls) {
       this._els.img = img;
       this._els.svg = svg;
-      this._els.labels = labels;
     }
 
     return stage;
+  };
+
+  GenplanWidgetInstance.prototype._buildLabelsOverlay = function (storeEls) {
+    var data = this.data;
+    var labels = document.createElement('div');
+    labels.className = 'gw-labels-overlay';
+
+    var objects = data.objects || [];
+    for (var j = 0; j < objects.length; j++) {
+      var o = objects[j];
+      if (!o || (o.labelX == null && o.labelY == null && (!o.points || !o.points.length))) continue;
+      labels.appendChild(this._buildLabelElement(o, data));
+    }
+
+    if (storeEls) {
+      this._els.labels = labels;
+    }
+
+    return labels;
+  };
+
+  GenplanWidgetInstance.prototype._shouldShowTitleChip = function (obj) {
+    if (!obj) return true;
+    if (isCoarsePointer()) return obj.showTitleMobile !== false;
+    return obj.showTitleDesktop !== false;
+  };
+
+  GenplanWidgetInstance.prototype._objectHasExpandableBody = function (obj) {
+    if (!obj) return false;
+    if (obj.statusText) return true;
+    return this._objectHasLabelBody(obj);
+  };
+
+  GenplanWidgetInstance.prototype._objectHasLabelBody = function (obj) {
+    if (!obj) return false;
+    if (obj.contentHtml) return true;
+    if (obj.metaDelivery || obj.metaAddress) return true;
+    if (obj.floorsLabel || obj.sectionsLabel) return true;
+    if (obj.aptLinks && obj.aptLinks.length) return true;
+    if (obj.ctaLabel && obj.ctaUrl) return true;
+    return false;
+  };
+
+  GenplanWidgetInstance.prototype._makeTri = function (tone) {
+    var tri = document.createElement('span');
+    tri.className = 'gw-label__tri';
+    tri.style.borderBottomColor = markerToneColor(tone || 'muted');
+    tri.setAttribute('aria-hidden', 'true');
+    return tri;
+  };
+
+  GenplanWidgetInstance.prototype._buildLabelBody = function (o, self) {
+    var body = document.createElement('div');
+    body.className = 'gw-label__body';
+
+    if (o.contentHtml) {
+      var content = document.createElement('div');
+      content.className = 'gw-label__content';
+      content.innerHTML = o.contentHtml;
+      body.appendChild(content);
+    }
+    if (o.metaDelivery) {
+      var d1 = document.createElement('span');
+      d1.className = 'gw-label__meta-line';
+      d1.textContent = o.metaDelivery;
+      body.appendChild(d1);
+    }
+    if (o.metaAddress) {
+      var d2 = document.createElement('span');
+      d2.className = 'gw-label__meta-line';
+      d2.textContent = o.metaAddress;
+      body.appendChild(d2);
+    }
+    if (o.floorsLabel || o.sectionsLabel) {
+      var badges = document.createElement('div');
+      badges.className = 'gw-label__badges';
+      if (o.floorsLabel) {
+        var b1 = document.createElement('span');
+        b1.className = 'gw-label__badge';
+        b1.textContent = o.floorsLabel;
+        badges.appendChild(b1);
+      }
+      if (o.sectionsLabel) {
+        var b2 = document.createElement('span');
+        b2.className = 'gw-label__badge';
+        b2.textContent = o.sectionsLabel;
+        badges.appendChild(b2);
+      }
+      body.appendChild(badges);
+    }
+    if (o.aptLinks && o.aptLinks.length) {
+      var apts = document.createElement('div');
+      apts.className = 'gw-label__apts';
+      o.aptLinks.forEach(function (link) {
+        var a = document.createElement('a');
+        a.href = link.url;
+        a.textContent = link.label;
+        if (self.openLinksInNewTab) {
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+        }
+        a.addEventListener('click', function (e) { e.stopPropagation(); });
+        apts.appendChild(a);
+      });
+      body.appendChild(apts);
+    }
+    if (o.ctaLabel && o.ctaUrl) {
+      var cta = document.createElement('a');
+      cta.className = 'gw-label__cta';
+      cta.href = o.ctaUrl;
+      cta.textContent = o.ctaLabel;
+      if (self.openLinksInNewTab) {
+        cta.target = '_blank';
+        cta.rel = 'noopener noreferrer';
+      }
+      cta.addEventListener('click', function (e) { e.stopPropagation(); });
+      body.appendChild(cta);
+    }
+
+    return body;
+  };
+
+  GenplanWidgetInstance.prototype._buildLabelElement = function (o, data) {
+    var self = this;
+    var anchor = this._labelAnchor(o);
+    var showTitle = this._shouldShowTitleChip(o);
+    var tone = o.statusTone || 'muted';
+    var expandable = this._objectHasExpandableBody(o);
+    var hasBody = this._objectHasLabelBody(o);
+
+    var label = document.createElement('div');
+    label.className = 'gw-label' + (showTitle ? ' is-title' : ' is-compact') + (expandable ? ' gw-label--expandable' : '');
+    label.dataset.objectId = String(o.id);
+    label.dataset.anchorX = String(anchor.xSvg);
+    label.dataset.anchorY = String(anchor.ySvg);
+    label.dataset.shiftX = '0';
+    label.dataset.shiftY = '0';
+
+    var box = document.createElement('div');
+    box.className = 'gw-label__box';
+
+    var head = document.createElement('div');
+    head.className = 'gw-label__head';
+    head.appendChild(this._makeTri(tone));
+    if (showTitle) {
+      var chipText = document.createElement('span');
+      chipText.className = 'gw-label__text';
+      if (o.titleHtml) chipText.innerHTML = o.titleHtml;
+      else chipText.textContent = o.titleText || '';
+      head.appendChild(chipText);
+    }
+    if (o.statusText) {
+      var st = document.createElement('span');
+      st.className = 'gw-label__status';
+      st.style.color = markerToneColor(tone);
+      st.textContent = o.statusText;
+      head.appendChild(st);
+    }
+    box.appendChild(head);
+
+    if (hasBody) {
+      var bodyWrap = document.createElement('div');
+      bodyWrap.className = 'gw-label__body-wrap';
+      bodyWrap.appendChild(this._buildLabelBody(o, self));
+      box.appendChild(bodyWrap);
+    }
+
+    label.appendChild(box);
+    return label;
+  };
+
+  GenplanWidgetInstance.prototype._viewportForStage = function (stage) {
+    return stage && stage.parentElement ? stage.parentElement : null;
+  };
+
+  GenplanWidgetInstance.prototype._labelsOverlayForStage = function (stage) {
+    var vp = this._viewportForStage(stage);
+    return vp ? vp.querySelector('.gw-labels-overlay') : null;
+  };
+
+  GenplanWidgetInstance.prototype._labelElById = function (stage, objectId) {
+    var root = this._labelsOverlayForStage(stage);
+    if (!root || objectId == null) return null;
+    return root.querySelector('.gw-label[data-object-id="' + String(objectId) + '"]');
+  };
+
+  GenplanWidgetInstance.prototype._syncLabelPositionsForViewport = function (viewport) {
+    if (!viewport) return;
+    var overlay = viewport.querySelector('.gw-labels-overlay');
+    if (!overlay) return;
+    var S = this._scale;
+    var tx = this._tx;
+    var ty = this._ty;
+    var nodes = overlay.querySelectorAll('.gw-label');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var ax = parseFloat(el.dataset.anchorX || '0') || 0;
+      var ay = parseFloat(el.dataset.anchorY || '0') || 0;
+      var dx = parseFloat(el.dataset.shiftX || '0') || 0;
+      var dy = parseFloat(el.dataset.shiftY || '0') || 0;
+      var lift = el.classList.contains('is-expanded') ? -LABEL_LIFT_PX : 0;
+      el.style.left = (tx + ax * S) + 'px';
+      el.style.top = (ty + ay * S) + 'px';
+      el.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-100% + ' + lift + 'px + ' + dy + 'px))';
+    }
+  };
+
+  GenplanWidgetInstance.prototype._syncLabelsForStage = function (stage) {
+    var vp = this._viewportForStage(stage);
+    if (vp) this._syncLabelPositionsForViewport(vp);
+  };
+
+  GenplanWidgetInstance.prototype._viewportEl = function () {
+    if (this.exploring && this._els.exploreViewport) return this._els.exploreViewport;
+    return this._els.viewport;
+  };
+
+  GenplanWidgetInstance.prototype._clampExpandedLabel = function (stage, objectId) {
+    var el = this._labelElById(stage, objectId);
+    if (!el || !el.classList.contains('is-expanded')) return;
+    var viewport = this._viewportForStage(stage);
+    if (!viewport) return;
+
+    var margin = 10;
+    el.dataset.shiftX = '0';
+    el.dataset.shiftY = '0';
+    this._syncLabelPositionsForViewport(viewport);
+
+    var vr = viewport.getBoundingClientRect();
+    var r = el.getBoundingClientRect();
+    var dx = 0;
+    var dy = 0;
+    if (r.right > vr.right - margin) dx += (vr.right - margin) - r.right;
+    if (r.left + dx < vr.left + margin) dx += (vr.left + margin) - (r.left + dx);
+    if (r.bottom > vr.bottom - margin) dy += (vr.bottom - margin) - r.bottom;
+    if (r.top + dy < vr.top + margin) dy += (vr.top + margin) - (r.top + dy);
+
+    el.dataset.shiftX = String(dx);
+    el.dataset.shiftY = String(dy);
+    this._syncLabelPositionsForViewport(viewport);
+  };
+
+  GenplanWidgetInstance.prototype._reclampExpandedLabels = function (stage) {
+    if (!stage) return;
+    var self = this;
+    var root = this._labelsOverlayForStage(stage);
+    if (!root) return;
+    root.querySelectorAll('.gw-label.is-expanded').forEach(function (el) {
+      if (el.dataset && el.dataset.objectId) {
+        self._clampExpandedLabel(stage, el.dataset.objectId);
+      }
+    });
+  };
+
+  GenplanWidgetInstance.prototype._setLabelExpanded = function (stage, objectId, expanded) {
+    if (!stage) return;
+    var self = this;
+    var root = this._labelsOverlayForStage(stage);
+    if (!root) return;
+    var nodes = root.querySelectorAll('.gw-label');
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (String(el.dataset.objectId) === String(objectId)) {
+        if (expanded) {
+          el.classList.add('is-expanded');
+          self._syncLabelsForStage(stage);
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              self._clampExpandedLabel(stage, objectId);
+            });
+          });
+        } else {
+          el.classList.remove('is-expanded');
+          el.dataset.shiftX = '0';
+          el.dataset.shiftY = '0';
+          self._syncLabelsForStage(stage);
+        }
+      } else if (expanded) {
+        el.classList.remove('is-expanded');
+        el.dataset.shiftX = '0';
+        el.dataset.shiftY = '0';
+      }
+    }
+    if (expanded) self._syncLabelsForStage(stage);
+  };
+
+  GenplanWidgetInstance.prototype._collapseAllLabels = function (stage) {
+    if (!stage) return;
+    var self = this;
+    var root = this._labelsOverlayForStage(stage);
+    if (!root) return;
+    root.querySelectorAll('.gw-label.is-expanded').forEach(function (el) {
+      el.classList.remove('is-expanded');
+      el.dataset.shiftX = '0';
+      el.dataset.shiftY = '0';
+    });
+    self._syncLabelsForStage(stage);
   };
 
   GenplanWidgetInstance.prototype._labelAnchor = function (obj) {
@@ -803,153 +1063,63 @@
     return list;
   };
 
-  GenplanWidgetInstance.prototype._fillTooltip = function (obj, tooltipEl) {
-    if (!obj || !tooltipEl) return;
-    tooltipEl.innerHTML = '';
-
-    var head = document.createElement('div');
-    head.className = 'gw-tooltip__head';
-
-    var title = document.createElement('div');
-    title.className = 'gw-tooltip__title';
-    // titleHtml уже санитизирован на сервере
-    title.innerHTML = obj.titleHtml || '';
-    if (!title.textContent && obj.titleText) {
-      title.textContent = obj.titleText;
-    }
-    head.appendChild(title);
-
-    if (obj.statusText) {
-      var status = document.createElement('div');
-      status.className = 'gw-tooltip__status';
-      var tone = statusToneColor(obj.statusTone);
-      status.style.color = tone;
-      var sdot = document.createElement('span');
-      sdot.className = 'gw-tooltip__status-dot';
-      sdot.style.background = tone;
-      status.appendChild(sdot);
-      var slabel = document.createElement('span');
-      slabel.textContent = obj.statusText;
-      status.appendChild(slabel);
-      head.appendChild(status);
-    }
-
-    tooltipEl.appendChild(head);
-
-    var metaLines = [];
-    if (obj.metaDelivery) metaLines.push(obj.metaDelivery);
-    if (obj.metaAddress) metaLines.push(obj.metaAddress);
-    if (metaLines.length) {
-      var meta = document.createElement('div');
-      meta.className = 'gw-tooltip__meta';
-      metaLines.forEach(function (line) {
-        var row = document.createElement('span');
-        row.className = 'gw-tooltip__meta-line';
-        row.textContent = line;
-        meta.appendChild(row);
-      });
-      tooltipEl.appendChild(meta);
-    }
-
-    var arrow = document.createElement('div');
-    arrow.className = 'gw-tooltip__arrow';
-    tooltipEl.appendChild(arrow);
-  };
-
-  GenplanWidgetInstance.prototype._placeTooltip = function (tooltipEl, viewport, clientX, clientY) {
-    if (!tooltipEl || !viewport) return;
-    var rect = viewport.getBoundingClientRect();
-    var x = clientX - rect.left;
-    var y = clientY - rect.top;
-    var tw = tooltipEl.offsetWidth || 200;
-    var th = tooltipEl.offsetHeight || 60;
-    x = Math.max(tw / 2 + 8, Math.min(rect.width - tw / 2 - 8, x));
-    y = Math.max(th + 18, Math.min(rect.height - 8, y));
-    tooltipEl.style.left = x + 'px';
-    tooltipEl.style.top = y + 'px';
-  };
-
-  GenplanWidgetInstance.prototype._objectHasExtraInfo = function (obj) {
-    return !!(obj && (obj.statusText || obj.metaDelivery || obj.metaAddress));
-  };
-
-  GenplanWidgetInstance.prototype._syncLabelSuppression = function (stage) {
-    if (!stage) return;
-    var hide = {};
-    var hoverId = this._hoverObjectId;
-    var activeId = this._activeObjectId;
-    if (hoverId != null) {
-      var hobj = this._objectsById[String(hoverId)];
-      if (this._objectHasExtraInfo(hobj)) hide[String(hoverId)] = true;
-    }
-    if (activeId != null) {
-      var aobj = this._objectsById[String(activeId)];
-      if (this._objectHasExtraInfo(aobj)) hide[String(activeId)] = true;
-    }
-    var nodes = stage.querySelectorAll('.gw-label');
-    for (var i = 0; i < nodes.length; i++) {
-      var el = nodes[i];
-      if (hide[String(el.dataset.objectId)]) el.classList.add('is-suppressed');
-      else el.classList.remove('is-suppressed');
+  GenplanWidgetInstance.prototype._cancelHoverClear = function () {
+    if (this._hoverClearTimer) {
+      clearTimeout(this._hoverClearTimer);
+      this._hoverClearTimer = null;
     }
   };
 
-  GenplanWidgetInstance.prototype._showObjectCard = function (obj, stage, tooltipEl, viewport, clientX, clientY) {
-    if (!obj || !tooltipEl || !viewport) return false;
-    // нет статуса/меты — карточка дублировала бы только заголовок подписи
-    if (!this._objectHasExtraInfo(obj)) return false;
-    this._fillTooltip(obj, tooltipEl);
-    tooltipEl.classList.add('is-visible');
-    tooltipEl.setAttribute('aria-hidden', 'false');
-    // у якоря подписи — визуально заменяет title-bubble
-    if (stage) {
-      this._placeTooltipNearObject(obj, tooltipEl, viewport, stage);
-    } else if (clientX != null && clientY != null) {
-      this._placeTooltip(tooltipEl, viewport, clientX, clientY);
-    }
-    return true;
+  GenplanWidgetInstance.prototype._scheduleHoverClear = function (stage) {
+    var self = this;
+    this._cancelHoverClear();
+    this._hoverClearTimer = setTimeout(function () {
+      self._hoverClearTimer = null;
+      if (self._activeObjectId != null) return;
+      self._setHover(stage, null, true);
+    }, 140);
   };
 
-  GenplanWidgetInstance.prototype._hideObjectCard = function (tooltipEl) {
-    if (!tooltipEl) return;
-    tooltipEl.classList.remove('is-visible');
-    tooltipEl.setAttribute('aria-hidden', 'true');
+  GenplanWidgetInstance.prototype._isPointerOverLabel = function (stage, objectId, clientX, clientY) {
+    var el = this._labelElById(stage, objectId);
+    if (!el || clientX == null || clientY == null) return false;
+    var pad = 6;
+    var r = el.getBoundingClientRect();
+    return clientX >= r.left - pad && clientX <= r.right + pad
+      && clientY >= r.top - pad && clientY <= r.bottom + pad;
   };
 
-  GenplanWidgetInstance.prototype._setHover = function (stage, objectId, tooltipEl, clientX, clientY, viewport) {
+  GenplanWidgetInstance.prototype._setHover = function (stage, objectId, fromTimer) {
+    if (objectId != null) this._cancelHoverClear();
+    else if (!fromTimer) this._cancelHoverClear();
+
     this._clearShowcaseHighlight();
     var prev = this._hoverObjectId;
     if (prev && String(prev) !== String(objectId)) {
       this._polysById(stage, prev).forEach(function (el) {
         if (!el.classList.contains('is-active')) el.classList.remove('is-hover');
       });
+      if (this._activeObjectId == null) {
+        this._setLabelExpanded(stage, prev, false);
+      }
     }
     this._hoverObjectId = objectId || null;
     if (objectId != null) {
       this._polysById(stage, objectId).forEach(function (el) { el.classList.add('is-hover'); });
-      var obj = this._objectsById[String(objectId)];
-      // если уже есть active-карточка другого объекта — не перетираем её hover'ом
       if (this._activeObjectId != null && String(this._activeObjectId) !== String(objectId)) {
-        this._syncLabelSuppression(stage);
         return;
       }
-      if (!this._showObjectCard(obj, stage, tooltipEl, viewport, clientX, clientY)) {
-        if (tooltipEl && this._activeObjectId == null) this._hideObjectCard(tooltipEl);
+      var obj = this._objectsById[String(objectId)];
+      if (obj && this._objectHasExpandableBody(obj)) {
+        this._setLabelExpanded(stage, objectId, true);
       }
-    } else if (tooltipEl && this._activeObjectId == null) {
-      this._hideObjectCard(tooltipEl);
-    } else if (tooltipEl && this._activeObjectId != null) {
-      // вернуть карточку active, если hover ушёл
-      var aobj = this._objectsById[String(this._activeObjectId)];
-      if (!this._showObjectCard(aobj, stage, tooltipEl, viewport, null, null)) {
-        this._hideObjectCard(tooltipEl);
-      }
+    } else if (this._activeObjectId == null) {
+      this._collapseAllLabels(stage);
     }
-    this._syncLabelSuppression(stage);
     if (objectId == null) this._syncIdleHighlight();
   };
 
-  GenplanWidgetInstance.prototype._setActive = function (stage, objectId, tooltipEl, clientX, clientY, viewport) {
+  GenplanWidgetInstance.prototype._setActive = function (stage, objectId) {
     this._clearShowcaseHighlight();
     var prev = this._activeObjectId;
     if (prev != null) {
@@ -966,95 +1136,62 @@
         el.classList.remove('is-showcase');
       });
       var obj = this._objectsById[String(objectId)];
-      if (!this._showObjectCard(obj, stage, tooltipEl, viewport, clientX, clientY)) {
-        this._hideObjectCard(tooltipEl);
+      if (obj && this._objectHasExpandableBody(obj)) {
+        this._setLabelExpanded(stage, objectId, true);
+      } else {
+        this._setLabelExpanded(stage, objectId, false);
       }
-    } else if (tooltipEl) {
-      this._hideObjectCard(tooltipEl);
+    } else {
+      this._collapseAllLabels(stage);
     }
-    this._syncLabelSuppression(stage);
     if (objectId == null) this._syncIdleHighlight();
   };
 
-  GenplanWidgetInstance.prototype._placeTooltipNearObject = function (obj, tooltipEl, viewport, stage) {
-    if (!obj || !tooltipEl || !viewport || !stage) return;
-    var anchor = this._labelAnchor(obj);
-    var rect = viewport.getBoundingClientRect();
-    var stageRect = stage.getBoundingClientRect();
-    var x = stageRect.left - rect.left + (anchor.xSvg / this._imgW) * stageRect.width;
-    var y = stageRect.top - rect.top + (anchor.ySvg / this._imgH) * stageRect.height;
-    this._placeTooltip(tooltipEl, viewport, rect.left + x, rect.top + y);
+  GenplanWidgetInstance.prototype._clearSelection = function (stage) {
+    this._setHover(stage, null);
+    this._setActive(stage, null);
   };
 
-  GenplanWidgetInstance.prototype._clearSelection = function (stage, tooltipEl) {
-    this._setHover(stage, null, tooltipEl);
-    this._setActive(stage, null, tooltipEl);
+  GenplanWidgetInstance.prototype._shouldUseInlineExploreTap = function (isExplore) {
+    return !isExplore && isCoarsePointer() && this.exploreFullscreen && allowsExploreMode();
   };
 
-  GenplanWidgetInstance.prototype._fireObjectClick = function (obj) {
-    if (!obj) return;
-    var payload = {
-      id: obj.id,
-      homeId: obj.homeId,
-      titleText: obj.titleText,
-      titleHtml: obj.titleHtml,
-      linkUrl: obj.linkUrl || '',
-      statusText: obj.statusText,
-      statusTone: obj.statusTone,
-      metaDelivery: obj.metaDelivery,
-      metaAddress: obj.metaAddress
-    };
-    var result;
-    if (typeof this.options.onObjectClick === 'function') {
-      try {
-        result = this.options.onObjectClick(payload);
-      } catch (e) {
-        if (typeof console !== 'undefined' && console.error) console.error(e);
-      }
-    }
-    if (result && result.preventDefault) return;
-    var url = (payload.linkUrl || '').trim();
-    if (!url) return;
-    // гарантируем абсолютный/валидный переход; внутри iframe window.open может глотаться
+  GenplanWidgetInstance.prototype._notifyObjectSelect = function (obj) {
+    if (!obj || typeof this.options.onObjectClick !== 'function') return;
     try {
-      if (this.openLinksInNewTab) {
-        var w = window.open(url, '_blank', 'noopener,noreferrer');
-        if (!w) {
-          var a = document.createElement('a');
-          a.href = url;
-          a.target = '_blank';
-          a.rel = 'noopener noreferrer';
-          a.style.display = 'none';
-          (this.shadow || document.body).appendChild(a);
-          a.click();
-          a.remove();
-        }
-      } else {
-        window.top.location.href = url;
-      }
-    } catch (err) {
-      try { window.location.href = url; } catch (e2) { /* ignore */ }
+      this.options.onObjectClick({
+        id: obj.id,
+        homeId: obj.homeId,
+        titleText: obj.titleText,
+        titleHtml: obj.titleHtml,
+        linkUrl: obj.linkUrl || '',
+        statusText: obj.statusText,
+        statusTone: obj.statusTone,
+        metaDelivery: obj.metaDelivery,
+        metaAddress: obj.metaAddress
+      });
+    } catch (e) {
+      if (typeof console !== 'undefined' && console.error) console.error(e);
     }
   };
 
-  GenplanWidgetInstance.prototype._handleObjectActivate = function (obj, stage, tooltipEl, clientX, clientY, viewport) {
+  GenplanWidgetInstance.prototype._handleObjectActivate = function (obj, stage, isExplore) {
     if (!obj) return;
-    if (isCoarsePointer()) {
-      // Mobile: 1-й тап — highlight+card; 2-й по тому же — navigate
-      if (this._activeObjectId != null && String(this._activeObjectId) === String(obj.id)) {
-        this._fireObjectClick(obj);
-        return;
-      }
-      this._setActive(stage, obj.id, tooltipEl, clientX, clientY, viewport);
+    if (this._shouldUseInlineExploreTap(isExplore)) {
+      this._enterExplore();
       return;
     }
-    this._setActive(stage, obj.id, tooltipEl, clientX, clientY, viewport);
-    this._fireObjectClick(obj);
+    if (this._activeObjectId != null && String(this._activeObjectId) === String(obj.id)) {
+      this._clearSelection(stage);
+      return;
+    }
+    this._setActive(stage, obj.id);
+    this._notifyObjectSelect(obj);
   };
 
   GenplanWidgetInstance.prototype._bindStageInteractions = function (stage, viewport, isExplore) {
     var self = this;
-    var tooltipEl = isExplore ? this._els.exploreTooltip : this._els.tooltip;
+    var surface = viewport;
 
     function targetPoly(ev) {
       var t = ev.target;
@@ -1088,11 +1225,11 @@
       return null;
     }
 
-    stage.addEventListener('pointerdown', function (ev) {
+    surface.addEventListener('pointerdown', function (ev) {
       if (self.destroyed) return;
       // на мобилке в компактном виде не captur'им — иначе ломается скролл страницы
       if (!(isCoarsePointer() && !isExplore)) {
-        stage.setPointerCapture && stage.setPointerCapture(ev.pointerId);
+        surface.setPointerCapture && surface.setPointerCapture(ev.pointerId);
       }
       self._pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
       self._moved = false;
@@ -1108,6 +1245,11 @@
       }
 
       var label = targetLabel(ev);
+      var labelAnchor = null;
+      if (label && ev.target && ev.target.closest) {
+        var hitA = ev.target.closest('a');
+        if (hitA && label.contains(hitA)) labelAnchor = hitA;
+      }
       var poly = label ? null : targetPoly(ev);
       self._panStart = {
         x: ev.clientX,
@@ -1116,11 +1258,12 @@
         ty: self._ty,
         poly: poly,
         label: label,
+        labelAnchor: labelAnchor,
         time: Date.now()
       };
     });
 
-    stage.addEventListener('pointermove', function (ev) {
+    surface.addEventListener('pointermove', function (ev) {
       if (self.destroyed) return;
       if (self._pointers.has(ev.pointerId)) {
         self._pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
@@ -1139,14 +1282,26 @@
 
       if (!self._panStart) {
         if (!isCoarsePointer() || isExplore) {
+          var hlabel = targetLabel(ev);
+          if (hlabel) {
+            self._cancelHoverClear();
+            var lobj = self._objectById(hlabel.dataset && hlabel.dataset.objectId);
+            self._setHover(stage, lobj && lobj.id);
+            return;
+          }
           var hpoly = targetPoly(ev);
           if (hpoly) {
+            self._cancelHoverClear();
             var hobj = self._objectByPoly(hpoly);
-            self._setHover(stage, hobj && hobj.id, tooltipEl, ev.clientX, ev.clientY, viewport);
+            self._setHover(stage, hobj && hobj.id);
           } else if (self._activeObjectId == null) {
-            self._setHover(stage, null, tooltipEl);
+            if (self._hoverObjectId != null
+              && self._isPointerOverLabel(stage, self._hoverObjectId, ev.clientX, ev.clientY)) {
+              self._cancelHoverClear();
+              return;
+            }
+            self._scheduleHoverClear(stage);
           } else {
-            // keep active card; clear transient hover only
             self._hoverObjectId = null;
             stage.querySelectorAll('.gw-poly.is-hover').forEach(function (el) {
               if (!el.classList.contains('is-active')) el.classList.remove('is-hover');
@@ -1160,7 +1315,7 @@
       var dy2 = ev.clientY - self._panStart.y;
       if (Math.hypot(dx2, dy2) > 8) {
         if (!self._moved) {
-          self._clearSelection(stage, tooltipEl);
+          self._clearSelection(stage);
         }
         self._moved = true;
       }
@@ -1174,7 +1329,7 @@
         stage.classList.add('is-dragging');
       } else if (!isExplore && self._moved && isCoarsePointer() && self.exploreFullscreen && allowsExploreMode()) {
         // мобилка: жест pan → вход в explore (как Sigma), без inline-зума
-        try { stage.releasePointerCapture && stage.releasePointerCapture(ev.pointerId); } catch (err) { /* ignore */ }
+        try { surface.releasePointerCapture && surface.releasePointerCapture(ev.pointerId); } catch (err) { /* ignore */ }
         self._pointers.clear();
         self._panStart = null;
         self._enterExplore();
@@ -1205,35 +1360,65 @@
       var shortTap = !self._moved && (Date.now() - start.time < 500);
       if (!shortTap) return;
 
-      // тап по подписи → сразу переход (mobile/desktop)
+      // мобилка, компактный вид: любой тап по карте → explore (без ссылок/тултипов)
+      if (self._shouldUseInlineExploreTap(isExplore)) {
+        self._enterExplore();
+        return;
+      }
+
+      // тап по подписи → выбор объекта (переход только по <a> внутри tooltip)
+      if (start.labelAnchor) return;
+
       if (start.label) {
         var labelObj = self._objectById(start.label.dataset && start.label.dataset.objectId);
         if (labelObj) {
-          self._setActive(stage, labelObj.id, tooltipEl, ev.clientX, ev.clientY, viewport);
-          self._fireObjectClick(labelObj);
+          self._handleObjectActivate(labelObj, stage, isExplore);
         }
         return;
       }
 
       if (start.poly) {
         var obj = self._objectByPoly(start.poly);
-        self._handleObjectActivate(obj, stage, tooltipEl, ev.clientX, ev.clientY, viewport);
+        self._handleObjectActivate(obj, stage, isExplore);
         return;
       }
 
-      // тап вне полигона — сброс выделения (mobile) / игнор desktop
       if (isCoarsePointer() || self._activeObjectId != null) {
-        self._clearSelection(stage, tooltipEl);
+        self._clearSelection(stage);
       }
     }
 
-    stage.addEventListener('pointerup', endPointer);
-    stage.addEventListener('pointercancel', endPointer);
-    stage.addEventListener('pointerleave', function () {
+    surface.addEventListener('pointerup', endPointer);
+    surface.addEventListener('pointercancel', endPointer);
+    surface.addEventListener('pointerleave', function () {
       if (!self._panStart && !isCoarsePointer() && self._activeObjectId == null) {
-        self._setHover(stage, null, tooltipEl);
+        self._scheduleHoverClear(stage);
       }
     });
+
+    var labelsOverlay = viewport.querySelector('.gw-labels-overlay');
+    if (labelsOverlay) {
+      labelsOverlay.addEventListener('pointerover', function (ev) {
+        if (isCoarsePointer() && !isExplore) return;
+        var label = ev.target.closest && ev.target.closest('.gw-label');
+        if (!label) return;
+        self._cancelHoverClear();
+        var id = label.dataset.objectId;
+        if (id) self._setHover(stage, id);
+      });
+      labelsOverlay.addEventListener('pointerout', function (ev) {
+        if (isCoarsePointer() && !isExplore) return;
+        var label = ev.target.closest && ev.target.closest('.gw-label');
+        if (!label) return;
+        var related = ev.relatedTarget;
+        if (related && label.contains(related)) return;
+        if (self._activeObjectId != null) return;
+        if (self._hoverObjectId != null
+          && String(self._hoverObjectId) === String(label.dataset.objectId)) {
+          self._scheduleHoverClear(stage);
+        }
+      });
+    }
 
     stage.addEventListener('keydown', function (ev) {
       var poly = targetPoly(ev);
@@ -1241,7 +1426,7 @@
       if (ev.key === 'Enter' || ev.key === ' ') {
         ev.preventDefault();
         var obj = self._objectByPoly(poly);
-        self._handleObjectActivate(obj, stage, tooltipEl, null, null, viewport);
+        self._handleObjectActivate(obj, stage, isExplore);
       }
     });
   };
@@ -1249,19 +1434,14 @@
   GenplanWidgetInstance.prototype._cloneStageIntoExplore = function () {
     var exploreViewport = this._els.exploreViewport;
     exploreViewport.innerHTML = '';
-    var clone = this._buildStage(false);
-    exploreViewport.appendChild(clone);
-    this._els.exploreStage = clone;
+    var stage = this._buildMapStage(false);
+    exploreViewport.appendChild(stage);
+    exploreViewport.appendChild(this._buildLabelsOverlay(false));
+    this._els.exploreStage = stage;
 
-    var tooltip = document.createElement('div');
-    tooltip.className = 'gw-tooltip';
-    tooltip.setAttribute('aria-hidden', 'true');
-    exploreViewport.appendChild(tooltip);
-    this._els.exploreTooltip = tooltip;
-
-    this._bindStageInteractions(clone, exploreViewport, true);
+    this._bindStageInteractions(stage, exploreViewport, true);
     if (this._activeObjectId != null) {
-      this._setActive(clone, this._activeObjectId, tooltip, null, null, exploreViewport);
+      this._setActive(stage, this._activeObjectId);
     }
     this._applyExploreTransform();
   };
@@ -1300,19 +1480,17 @@
     if (this._els.exploreLayer) this._els.exploreLayer.setAttribute('aria-hidden', 'true');
     if (this._els.exploreViewport) this._els.exploreViewport.innerHTML = '';
     this._els.exploreStage = null;
-    this._els.exploreTooltip = null;
     if (this._scrollLockHeld > 0) {
       releaseScrollLock();
       this._scrollLockHeld -= 1;
     }
     document.removeEventListener('keydown', this._onKeyDown);
     if (!fromDestroy) {
-      // синхронизируем active на основной stage
-      if (this._els.stage && this._els.tooltip && this._els.viewport) {
+      if (this._els.stage) {
         if (this._activeObjectId != null) {
-          this._setActive(this._els.stage, this._activeObjectId, this._els.tooltip, null, null, this._els.viewport);
+          this._setActive(this._els.stage, this._activeObjectId);
         } else {
-          this._clearSelection(this._els.stage, this._els.tooltip);
+          this._clearSelection(this._els.stage);
         }
       }
       this._layoutFit();
@@ -1333,6 +1511,8 @@
     stage.style.width = this._imgW + 'px';
     stage.style.height = this._imgH + 'px';
     stage.style.transform = 'translate(' + this._tx + 'px,' + this._ty + 'px) scale(' + this._scale + ')';
+    this._syncLabelPositionsForViewport(this._els.exploreViewport);
+    this._reclampExpandedLabels(stage);
   };
 
   GenplanWidgetInstance.prototype._clampTransform = function (viewport) {
@@ -1371,9 +1551,9 @@
     this._syncMobileLabelsVisibility();
     // при зуме скрываем активный/hover тултип
     if (this.exploring) {
-      this._clearSelection(this._els.exploreStage, this._els.exploreTooltip);
+      this._clearSelection(this._els.exploreStage);
     } else {
-      this._clearSelection(this._els.stage, this._els.tooltip);
+      this._clearSelection(this._els.stage);
     }
   };
 
@@ -1384,6 +1564,8 @@
     stage.style.height = this._imgH + 'px';
     stage.style.transformOrigin = '0 0';
     stage.style.transform = 'translate(' + this._tx + 'px,' + this._ty + 'px) scale(' + this._scale + ')';
+    this._syncLabelPositionsForViewport(this._els.viewport);
+    this._reclampExpandedLabels(stage);
   };
 
   GenplanWidgetInstance.prototype._updatePannableClass = function () {
@@ -1481,12 +1663,17 @@
     this._applyInlineTransform();
     this._updatePannableClass();
     this._syncMobileLabelsVisibility();
+    if (this._els.stage) this._reclampExpandedLabels(this._els.stage);
   };
 
   GenplanWidgetInstance.prototype._onResize = function () {
     if (this.destroyed) return;
     this._syncCoarseClass();
     if (!this.exploring) this._layoutFit();
+    else if (this._els.exploreStage) {
+      this._syncLabelPositionsForViewport(this._els.exploreViewport);
+      this._reclampExpandedLabels(this._els.exploreStage);
+    }
   };
 
   function mount(options) {
@@ -1516,6 +1703,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '1.0.9'
+    version: '2.3.2'
   };
 })(typeof window !== 'undefined' ? window : this);
