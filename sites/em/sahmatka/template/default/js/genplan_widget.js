@@ -258,13 +258,13 @@
     '.gw-label { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: visible; pointer-events: auto; z-index: 5; cursor: pointer; -webkit-tap-highlight-color: transparent; }',
     '.gw-label.is-expanded { z-index: 200; }',
     '.gw-labels-overlay.has-expanded .gw-label:not(.is-expanded) { pointer-events: none !important; }',
-    '.gw-label__box { position: absolute; left: 0; bottom: 0; top: auto; display: flex; flex-direction: column; width: fit-content; max-width: 220px; text-align: left; background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); overflow: hidden; transform: translate(-50%, 0); transform-origin: center bottom; transition: border-radius 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, width 0.18s ease, min-width 0.18s ease; }',
+    '.gw-label__box { position: absolute; left: 0; bottom: 0; top: auto; display: flex; flex-direction: column; width: fit-content; max-width: 220px; text-align: left; background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); overflow: hidden; transform: translate(-50%, 0); transform-origin: center bottom; transition: border-radius 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, width 0.12s ease, min-width 0.12s ease; }',
     /* раскрытие вверх: низ заголовка на якоре, контент растёт вверх */
     '.gw-label.is-expanded:not(.is-below) .gw-label__box { flex-direction: column-reverse; transform-origin: center bottom; }',
     /* раскрытие вниз: позицию низа заголовка держит JS (translateY -headH) */
     '.gw-label.is-below .gw-label__box { top: 0; bottom: auto; transform-origin: center top; }',
     '.gw-label.is-expanded .gw-label__box { background: rgba(255,255,255,0.9); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
-    '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; flex: 0 0 auto; transition: padding 0.18s ease; }',
+    '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; flex: 0 0 auto; transition: padding 0.12s ease; }',
     '.gw-label.is-compact .gw-label__head { padding: 4px 6px; }',
     '.gw-label.is-expanded .gw-label__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 12px 8px 9px; white-space: normal; width: 100%; max-width: none; box-sizing: border-box; }',
     '.gw-label.is-expanded.is-below .gw-label__head { border-bottom: 1px solid #000; }',
@@ -275,9 +275,11 @@
     '.gw-label:not(.is-expanded) .gw-label__status { display: none !important; }',
     '.gw-label__status { font-weight: 400; font-size: 12px; line-height: 1.25; }',
     '.gw-label.is-expanded .gw-label__status { display: inline; }',
-    '.gw-label__body-wrap { display: grid; grid-template-rows: 0fr; max-width: 0; min-width: 0; overflow: hidden; opacity: 0; flex: 0 0 auto; transition: grid-template-rows 0.18s ease, max-width 0.18s ease, opacity 0.14s ease; }',
+    '.gw-label__body-wrap { display: grid; grid-template-rows: 0fr; max-width: 0; min-width: 0; overflow: hidden; opacity: 0; flex: 0 0 auto; transition: grid-template-rows 0.12s ease, max-width 0.12s ease, opacity 0.1s ease; }',
     '.gw-label.is-expanded .gw-label__body-wrap { grid-template-rows: 1fr; max-width: none; width: 100%; opacity: 1; }',
-    '.gw-label__body { overflow: hidden; min-height: 0; font-size: 12px; line-height: 1.4; color: #333; padding: 0 12px; box-sizing: border-box; width: 100%; transition: padding 0.18s ease; }',
+    '.gw-label__body { overflow: hidden; min-height: 0; font-size: 12px; line-height: 1.4; color: #333; padding: 0 12px; box-sizing: border-box; width: 100%; transition: padding 0.12s ease; }',
+    /* мгновенное закрытие при смене дома — без «хвоста» анимации */
+    '.gw-label.is-snap .gw-label__box, .gw-label.is-snap .gw-label__body-wrap, .gw-label.is-snap .gw-label__body, .gw-label.is-snap .gw-label__head { transition: none !important; }',
     '.gw-label.is-expanded .gw-label__body { padding: 8px 12px 12px; }',
     '.gw-label__content { margin-bottom: 6px; }',
     '.gw-label__meta-line { display: block; color: #555; margin-bottom: 4px; }',
@@ -985,44 +987,27 @@
   };
 
   /**
-   * До раскрытия: измерить карточку и выбрать сторону (вверх/вниз) по свободному месту.
-   * Заголовок остаётся на якоре; ширина растёт вправо, буквы chip не уезжают.
+   * Быстрый расчёт стороны/сдвига без visibility:hidden и лишних reflow.
+   * Точный clamp — после появления (_nudgeExpandedIntoViewport).
    */
   GenplanWidgetInstance.prototype._prepareExpandPlacement = function (el, viewport) {
     if (!el || !viewport) return;
     var margin = 10;
-    var bodyWrap = el.querySelector('.gw-label__body-wrap');
-    var body = el.querySelector('.gw-label__body');
     var head = el.querySelector('.gw-label__head');
-    var boxRect = el.querySelector('.gw-label__box');
-
-    // ширина idle-chip до expand — закрепляем левый край (буквы на месте)
-    this._applyLabelPlacement(el, viewport);
-    var idleW = (boxRect && boxRect.getBoundingClientRect().width) || 40;
-
-    el.classList.add('is-expanded');
-    el.style.visibility = 'hidden';
-    if (bodyWrap) {
-      bodyWrap.style.transition = 'none';
-      bodyWrap.style.gridTemplateRows = '1fr';
-      bodyWrap.style.maxWidth = 'none';
-      bodyWrap.style.width = '100%';
-      bodyWrap.style.opacity = '1';
-    }
-    if (body) {
-      body.style.transition = 'none';
-      body.style.padding = isCoarsePointer() ? '6px 10px 10px' : '8px 12px 12px';
-    }
+    var box = el.querySelector('.gw-label__box');
 
     el.classList.remove('is-below');
     el.dataset.shiftX = '0';
     el.dataset.shiftY = '0';
     this._applyLabelPlacement(el, viewport);
 
+    var idleW = (box && box.offsetWidth) ? box.offsetWidth : 40;
     var headH = (head && head.offsetHeight) ? head.offsetHeight : 28;
-    var full = boxRect ? boxRect.getBoundingClientRect() : el.getBoundingClientRect();
-    var bodyH = Math.max(0, (full.height || 0) - headH);
-    var w = full.width || 0;
+    var headHExp = headH + 10;
+    var cardW = isCoarsePointer()
+      ? Math.min(280, Math.max(200, viewport.clientWidth - 24))
+      : 260;
+    var bodyH = parseFloat(el.dataset.cachedBodyH || '') || 150;
 
     var S = this._scale;
     var ax = parseFloat(el.dataset.anchorX || '0') || 0;
@@ -1032,76 +1017,59 @@
     var vw = viewport.clientWidth;
     var vh = viewport.clientHeight;
 
-    // приоритет: вверх от заголовка; вниз — только если сверху не хватает места
-    var spaceAbove = Math.max(0, anchorY - headH - margin);
+    var spaceAbove = Math.max(0, anchorY - headHExp - margin);
     var spaceBelow = Math.max(0, vh - anchorY - margin);
     var below = bodyH > spaceAbove;
-    // если и снизу не влезает — выбираем сторону с большим запасом
-    if (below && bodyH > spaceBelow && spaceAbove >= spaceBelow) {
-      below = false;
-    }
+    if (below && bodyH > spaceBelow && spaceAbove >= spaceBelow) below = false;
 
-    if (below) el.classList.add('is-below');
-    else el.classList.remove('is-below');
-    this._applyLabelPlacement(el, viewport);
-
-    full = boxRect ? boxRect.getBoundingClientRect() : el.getBoundingClientRect();
-    w = full.width || w;
-    var h = full.height || 0;
-
-    // левый край idle-chip фиксируем → буквы заголовка на месте, ширина растёт вправо;
-    // сдвиг только если карточка не влезает в viewport
-    var dx = Math.max(0, (w - idleW) / 2);
-    var left = anchorX + dx - w / 2;
-    var right = anchorX + dx + w / 2;
+    // левый край idle-chip → буквы на месте; сдвиг только у края viewport
+    var dx = Math.max(0, (cardW - idleW) / 2);
+    var left = anchorX + dx - cardW / 2;
+    var right = anchorX + dx + cardW / 2;
     if (right > vw - margin) dx += (vw - margin) - right;
-    left = anchorX + dx - w / 2;
+    left = anchorX + dx - cardW / 2;
     if (left < margin) dx += margin - left;
 
     var dy = 0;
+    var h = headHExp + bodyH;
     if (below) {
-      var bottom = anchorY + Math.max(0, h - headH);
+      var bottom = anchorY + bodyH;
       if (bottom > vh - margin) dy = (vh - margin) - bottom;
-      var topBelow = anchorY - headH + dy;
+      var topBelow = anchorY - headHExp + dy;
       if (topBelow < margin) dy += margin - topBelow;
     } else {
       var topAbove = anchorY - h;
-      // transform Y = -dy: отрицательный dy сдвигает карточку вниз
       if (topAbove < margin) dy = topAbove - margin;
     }
 
-    this._clearMeasureStyles(el);
-    el.classList.remove('is-expanded');
-    el.classList.remove('is-below');
-    if (bodyWrap) {
-      bodyWrap.style.transition = 'none';
-      bodyWrap.style.gridTemplateRows = '0fr';
-      bodyWrap.style.maxWidth = '0';
-      bodyWrap.style.width = '';
-      bodyWrap.style.opacity = '0';
-    }
-    if (body) {
-      body.style.transition = 'none';
-      body.style.padding = '0 12px';
-    }
-    void el.offsetWidth;
-    if (bodyWrap) {
-      bodyWrap.style.transition = '';
-      bodyWrap.style.gridTemplateRows = '';
-      bodyWrap.style.maxWidth = '';
-      bodyWrap.style.opacity = '';
-    }
-    if (body) {
-      body.style.transition = '';
-      body.style.padding = '';
-    }
-
-    // сторону применяем только вместе с is-expanded — иначе idle-chip прыгает
     el.dataset.expandSide = below ? 'below' : 'above';
     el.dataset.shiftX = String(dx);
     el.dataset.shiftY = String(dy);
     el.dataset.placementReady = '1';
     this._applyLabelPlacement(el, viewport);
+  };
+
+  GenplanWidgetInstance.prototype._snapCollapseLabel = function (el, viewport) {
+    if (!el) return;
+    el.classList.add('is-snap');
+    el.dataset.expandPending = '0';
+    el.classList.remove('is-expanded');
+    el.classList.remove('is-below');
+    el.dataset.shiftX = '0';
+    el.dataset.shiftY = '0';
+    el.dataset.placementReady = '0';
+    el.dataset.expandSide = '';
+    this._clearMeasureStyles(el);
+    if (el._gwClampTimer) {
+      clearTimeout(el._gwClampTimer);
+      el._gwClampTimer = null;
+    }
+    this._applyLabelPlacement(el, viewport);
+    // снять snap на следующем кадре — следующие expand снова с анимацией
+    var self = this;
+    requestAnimationFrame(function () {
+      if (!self.destroyed) el.classList.remove('is-snap');
+    });
   };
 
   GenplanWidgetInstance.prototype._syncLabelPositionsForViewport = function (viewport) {
@@ -1227,25 +1195,15 @@
     var viewport = this._viewportForStage(stage);
     var nodes = root.querySelectorAll('.gw-label');
 
-    // при открытии нового — сразу гасим все остальные (без ожидания)
+    // при открытии нового — мгновенно гасим все остальные
     if (expanded) {
       self._expandGen = (self._expandGen || 0) + 1;
       for (var j = 0; j < nodes.length; j++) {
         var other = nodes[j];
         if (String(other.dataset.objectId) === String(objectId)) continue;
-        other.dataset.expandPending = '0';
-        other.classList.remove('is-expanded');
-        other.classList.remove('is-below');
-        other.dataset.shiftX = '0';
-        other.dataset.shiftY = '0';
-        other.dataset.placementReady = '0';
-        other.dataset.expandSide = '';
-        self._clearMeasureStyles(other);
-        if (other._gwClampTimer) {
-          clearTimeout(other._gwClampTimer);
-          other._gwClampTimer = null;
+        if (other.classList.contains('is-expanded') || other.dataset.expandPending === '1') {
+          self._snapCollapseLabel(other, viewport);
         }
-        self._applyLabelPlacement(other, viewport);
       }
     }
 
@@ -1259,35 +1217,32 @@
           return;
         }
         var targetEl = el;
+        var targetId = String(objectId);
         self._prepareExpandPlacement(targetEl, viewport);
-        void targetEl.offsetWidth;
         if (targetEl.dataset.expandSide === 'below') targetEl.classList.add('is-below');
         else targetEl.classList.remove('is-below');
         targetEl.dataset.expandPending = '0';
+        targetEl.classList.remove('is-snap');
         targetEl.classList.add('is-expanded');
         self._applyLabelPlacement(targetEl, viewport);
         self._syncExpandedOverlayClass(stage);
         if (targetEl._gwClampTimer) clearTimeout(targetEl._gwClampTimer);
         targetEl._gwClampTimer = setTimeout(function () {
           targetEl._gwClampTimer = null;
-          if (!targetEl.classList.contains('is-expanded')) return;
+          if (self.destroyed || !targetEl.classList.contains('is-expanded')) return;
+          if (self._hoverObjectId != null && String(self._hoverObjectId) !== targetId
+            && self._activeObjectId != null && String(self._activeObjectId) !== targetId) {
+            return;
+          }
+          var body = targetEl.querySelector('.gw-label__body');
+          if (body && body.offsetHeight) {
+            targetEl.dataset.cachedBodyH = String(body.offsetHeight);
+          }
           self._nudgeExpandedIntoViewport(targetEl, viewport);
-        }, 200);
+        }, 80);
       } else {
         self._expandGen = (self._expandGen || 0) + 1;
-        el.dataset.expandPending = '0';
-        el.classList.remove('is-expanded');
-        el.classList.remove('is-below');
-        el.dataset.shiftX = '0';
-        el.dataset.shiftY = '0';
-        el.dataset.placementReady = '0';
-        el.dataset.expandSide = '';
-        self._clearMeasureStyles(el);
-        if (el._gwClampTimer) {
-          clearTimeout(el._gwClampTimer);
-          el._gwClampTimer = null;
-        }
-        self._applyLabelPlacement(el, viewport);
+        self._snapCollapseLabel(el, viewport);
       }
     }
     self._syncExpandedOverlayClass(stage);
@@ -1301,19 +1256,7 @@
     if (!root) return;
     var viewport = this._viewportForStage(stage);
     root.querySelectorAll('.gw-label.is-expanded, .gw-label[data-expand-pending="1"]').forEach(function (el) {
-      el.dataset.expandPending = '0';
-      el.classList.remove('is-expanded');
-      el.classList.remove('is-below');
-      el.dataset.shiftX = '0';
-      el.dataset.shiftY = '0';
-      el.dataset.placementReady = '0';
-      el.dataset.expandSide = '';
-      self._clearMeasureStyles(el);
-      if (el._gwClampTimer) {
-        clearTimeout(el._gwClampTimer);
-        el._gwClampTimer = null;
-      }
-      self._applyLabelPlacement(el, viewport);
+      self._snapCollapseLabel(el, viewport);
     });
     self._syncExpandedOverlayClass(stage);
   };
@@ -1368,14 +1311,13 @@
       self._hoverClearTimer = null;
       if (self._activeObjectId != null) return;
       self._setHover(stage, null, true);
-    }, 70);
+    }, 40);
   };
 
   GenplanWidgetInstance.prototype._setHover = function (stage, objectId, fromTimer) {
     if (objectId != null) this._cancelHoverClear();
     else if (!fromTimer) this._cancelHoverClear();
 
-    // тот же дом — не пересоздаём expand/clamp (иначе дергается)
     if (objectId != null && this._hoverObjectId != null
       && String(this._hoverObjectId) === String(objectId)) {
       return;
@@ -1384,14 +1326,10 @@
     this._clearShowcaseHighlight();
     var prev = this._hoverObjectId;
 
-    // новый дом: сразу гасим чужой tooltip и подсветку
     if (prev && String(prev) !== String(objectId || '')) {
       this._polysById(stage, prev).forEach(function (el) {
         if (!el.classList.contains('is-active')) el.classList.remove('is-hover');
       });
-      if (this._activeObjectId == null || String(this._activeObjectId) !== String(prev)) {
-        this._setLabelExpanded(stage, prev, false);
-      }
     }
 
     this._hoverObjectId = objectId || null;
@@ -1402,6 +1340,7 @@
       }
       var obj = this._objectsById[String(objectId)];
       if (obj && this._objectHasExpandableBody(obj)) {
+        // сразу открывает новый и snap-закрывает остальные
         this._setLabelExpanded(stage, objectId, true);
       } else {
         this._collapseAllLabels(stage);
@@ -1987,6 +1926,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.4.4'
+    version: '2.4.5'
   };
 })(typeof window !== 'undefined' ? window : this);
