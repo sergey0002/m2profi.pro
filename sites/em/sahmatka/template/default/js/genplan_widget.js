@@ -231,7 +231,6 @@
 
   var UI_STACK = 'Arial, Helvetica, sans-serif';
   var HL = HL_DEFAULT.color;
-  var LABEL_LIFT_PX = 18;
 
   var WIDGET_CSS = [
     ':host { display: block; box-sizing: border-box; }',
@@ -251,25 +250,32 @@
     /* pointer-events:all — иначе при idle fill-opacity:0 клик «пролетает» сквозь polygon (SVG visiblePainted) */
     '.gw-poly { fill: var(--gw-hl-color, ' + HL + '); fill-opacity: var(--gw-idle-opacity, 0); stroke: var(--gw-hl-color, ' + HL + '); stroke-width: 2; stroke-opacity: 0; cursor: pointer; pointer-events: all; transition: fill-opacity 0.18s ease, stroke-opacity 0.18s ease, stroke-width 0.18s ease; outline: none; }',
     '.gw-poly.is-hover, .gw-poly.is-active, .gw-poly.is-showcase, .gw-poly:focus-visible { fill: var(--gw-hl-color, ' + HL + ') !important; stroke: var(--gw-hl-color, ' + HL + ') !important; fill-opacity: var(--gw-hl-opacity, 0.58); stroke-opacity: var(--gw-stroke-opacity, 0.4); stroke-width: 2; }',
+    /* открытый tooltip: чужие полигоны не перехватывают путь курсора к карточке */
+    '.gw-root.has-label-expanded .gw-poly:not(.is-hover):not(.is-active) { pointer-events: none !important; }',
     '@media (prefers-reduced-motion: reduce) { .gw-poly { transition: none; } }',
     '.gw-labels-overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; overflow: visible; }',
-    '.gw-label { position: absolute; transform: translate(-50%, -100%); transform-origin: center bottom; pointer-events: auto; z-index: 5; cursor: pointer; -webkit-tap-highlight-color: transparent; }',
+    /* якорь = точка дома; chip/заголовок остаётся у якоря, тело растёт в свободную сторону */
+    '.gw-label { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: visible; pointer-events: auto; z-index: 5; cursor: pointer; -webkit-tap-highlight-color: transparent; }',
     '.gw-label.is-expanded { z-index: 200; }',
-    '.gw-label.is-expanded.is-below { transform-origin: center top; }',
-    /* пока открыт один tooltip — соседние chips не перехватывают hit (иначе «не тот дом») */
     '.gw-labels-overlay.has-expanded .gw-label:not(.is-expanded) { pointer-events: none !important; }',
-    '.gw-label__box { display: inline-block; width: fit-content; max-width: 220px; text-align: left; background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); overflow: hidden; transition: border-radius 0.28s ease, box-shadow 0.28s ease, background 0.28s ease; }',
+    '.gw-label__box { position: absolute; left: 0; bottom: 0; top: auto; display: flex; flex-direction: column; width: fit-content; max-width: 220px; text-align: left; background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); overflow: hidden; transform: translate(-50%, 0); transform-origin: center bottom; transition: border-radius 0.28s ease, box-shadow 0.28s ease, background 0.28s ease, width 0.28s ease, min-width 0.28s ease; }',
+    /* раскрытие вверх: низ заголовка на якоре, контент растёт вверх */
+    '.gw-label.is-expanded:not(.is-below) .gw-label__box { flex-direction: column-reverse; transform-origin: center bottom; }',
+    /* раскрытие вниз: позицию низа заголовка держит JS (translateY -headH) */
+    '.gw-label.is-below .gw-label__box { top: 0; bottom: auto; transform-origin: center top; }',
     '.gw-label.is-expanded .gw-label__box { background: rgba(255,255,255,0.9); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
-    '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; }',
+    '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; flex: 0 0 auto; transition: padding 0.28s ease; }',
     '.gw-label.is-compact .gw-label__head { padding: 4px 6px; }',
-    '.gw-label.is-expanded .gw-label__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 12px 12px 8px; white-space: normal; width: 100%; max-width: none; box-sizing: border-box; border-bottom: 1px solid #000; }',
+    '.gw-label.is-expanded .gw-label__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 12px; white-space: normal; width: 100%; max-width: none; box-sizing: border-box; }',
+    '.gw-label.is-expanded.is-below .gw-label__head { border-bottom: 1px solid #000; }',
+    '.gw-label.is-expanded:not(.is-below) .gw-label__head { border-top: 1px solid #000; }',
     '.gw-label__tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid #9aa0a6; flex: 0 0 auto; }',
     '.gw-label__text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }',
     '.gw-label.is-expanded .gw-label__text { overflow: visible; text-overflow: unset; white-space: normal; flex: 1 1 auto; min-width: 0; }',
     '.gw-label:not(.is-expanded) .gw-label__status { display: none !important; }',
     '.gw-label__status { font-weight: 400; font-size: 12px; line-height: 1.25; }',
     '.gw-label.is-expanded .gw-label__status { display: inline; }',
-    '.gw-label__body-wrap { display: grid; grid-template-rows: 0fr; max-width: 0; min-width: 0; overflow: hidden; opacity: 0; transition: grid-template-rows 0.28s ease, max-width 0.28s ease, opacity 0.22s ease; }',
+    '.gw-label__body-wrap { display: grid; grid-template-rows: 0fr; max-width: 0; min-width: 0; overflow: hidden; opacity: 0; flex: 0 0 auto; transition: grid-template-rows 0.28s ease, max-width 0.28s ease, opacity 0.22s ease; }',
     '.gw-label.is-expanded .gw-label__body-wrap { grid-template-rows: 1fr; max-width: none; width: 100%; opacity: 1; }',
     '.gw-label__body { overflow: hidden; min-height: 0; font-size: 12px; line-height: 1.4; color: #333; padding: 0 12px; box-sizing: border-box; width: 100%; transition: padding 0.28s ease; }',
     '.gw-label.is-expanded .gw-label__body { padding: 8px 12px 12px; }',
@@ -916,8 +922,11 @@
   GenplanWidgetInstance.prototype._syncExpandedOverlayClass = function (stage) {
     var overlay = this._labelsOverlayForStage(stage);
     if (!overlay) return;
-    var has = !!overlay.querySelector('.gw-label.is-expanded');
+    var has = !!overlay.querySelector('.gw-label.is-expanded, .gw-label[data-expand-pending="1"]');
     overlay.classList.toggle('has-expanded', has);
+    if (this._els && this._els.root) {
+      this._els.root.classList.toggle('has-label-expanded', has);
+    }
   };
 
   GenplanWidgetInstance.prototype._labelElById = function (stage, objectId) {
@@ -933,18 +942,23 @@
     var ay = parseFloat(el.dataset.anchorY || '0') || 0;
     var dx = parseFloat(el.dataset.shiftX || '0') || 0;
     var dy = parseFloat(el.dataset.shiftY || '0') || 0;
-    var expanded = el.classList.contains('is-expanded');
-    var below = el.classList.contains('is-below');
-    var lift = expanded ? (below ? LABEL_LIFT_PX : -LABEL_LIFT_PX) : 0;
+    var box = el.querySelector('.gw-label__box');
+    var head = el.querySelector('.gw-label__head');
     el.style.left = (this._tx + ax * S) + 'px';
     el.style.top = (this._ty + ay * S) + 'px';
-    if (expanded && below) {
-      el.style.transform = 'translate(calc(-50% + ' + dx + 'px), ' + (lift + dy) + 'px)';
-    } else if (expanded) {
-      el.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-100% + ' + lift + 'px + ' + dy + 'px))';
+    if (!box) return;
+
+    if (el.classList.contains('is-below')) {
+      // низ заголовка на якоре; тело раскрывается вниз
+      var headH = (head && head.offsetHeight) ? head.offsetHeight : 28;
+      box.style.top = '0';
+      box.style.bottom = 'auto';
+      box.style.transform = 'translate(calc(-50% + ' + dx + 'px), ' + (-headH + dy) + 'px)';
     } else {
-      // idle chip всегда над точкой
-      el.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-100% + ' + dy + 'px))';
+      // idle / раскрытие вверх: низ бокса (заголовок) на якоре
+      box.style.top = 'auto';
+      box.style.bottom = '0';
+      box.style.transform = 'translate(calc(-50% + ' + dx + 'px), ' + (-dy) + 'px)';
     }
   };
 
@@ -971,14 +985,15 @@
   };
 
   /**
-   * До раскрытия: измерить полную высоту карточки и выбрать сторону (выше/ниже),
-   * чтобы анимация сразу шла в корректную сторону без прыжка.
+   * До раскрытия: измерить карточку и выбрать сторону (вверх/вниз) по свободному месту.
+   * Заголовок остаётся на якоре — анимируется только тело.
    */
   GenplanWidgetInstance.prototype._prepareExpandPlacement = function (el, viewport) {
     if (!el || !viewport) return;
     var margin = 10;
     var bodyWrap = el.querySelector('.gw-label__body-wrap');
     var body = el.querySelector('.gw-label__body');
+    var head = el.querySelector('.gw-label__head');
 
     el.classList.add('is-expanded');
     el.style.visibility = 'hidden';
@@ -999,9 +1014,11 @@
     el.dataset.shiftY = '0';
     this._applyLabelPlacement(el, viewport);
 
-    var box = el.getBoundingClientRect();
-    var h = box.height || 0;
-    var w = box.width || 0;
+    var headH = (head && head.offsetHeight) ? head.offsetHeight : 28;
+    var boxRect = el.querySelector('.gw-label__box');
+    var full = boxRect ? boxRect.getBoundingClientRect() : el.getBoundingClientRect();
+    var bodyH = Math.max(0, (full.height || 0) - headH);
+    var w = full.width || 0;
 
     var S = this._scale;
     var ax = parseFloat(el.dataset.anchorX || '0') || 0;
@@ -1011,14 +1028,28 @@
     var vw = viewport.clientWidth;
     var vh = viewport.clientHeight;
 
-    var spaceAbove = Math.max(0, anchorY - LABEL_LIFT_PX - margin);
-    var spaceBelow = Math.max(0, vh - (anchorY + LABEL_LIFT_PX) - margin);
-    var below = spaceAbove < h;
-    if (spaceAbove < h && spaceBelow < h) {
+    // свободное место относительно якоря (низ заголовка)
+    var spaceAbove = Math.max(0, anchorY - headH - margin);
+    var spaceBelow = Math.max(0, vh - anchorY - margin);
+    var below;
+    if (bodyH <= spaceAbove && bodyH <= spaceBelow) {
+      below = spaceBelow > spaceAbove;
+    } else if (bodyH <= spaceAbove) {
+      below = false;
+    } else if (bodyH <= spaceBelow) {
+      below = true;
+    } else {
       below = spaceBelow >= spaceAbove;
     }
 
-    // горизонтальный сдвиг от якоря (карточка центрируется по X)
+    if (below) el.classList.add('is-below');
+    else el.classList.remove('is-below');
+    this._applyLabelPlacement(el, viewport);
+
+    full = boxRect ? boxRect.getBoundingClientRect() : el.getBoundingClientRect();
+    w = full.width || w;
+    var h = full.height || 0;
+
     var left = anchorX - w / 2;
     var right = anchorX + w / 2;
     var dx = 0;
@@ -1027,20 +1058,19 @@
 
     var dy = 0;
     if (below) {
-      var bottom = anchorY + LABEL_LIFT_PX + h;
+      var bottom = anchorY + Math.max(0, h - headH);
       if (bottom > vh - margin) dy = (vh - margin) - bottom;
-      var top = anchorY + LABEL_LIFT_PX + dy;
-      if (top < margin) dy += margin - top;
+      var topBelow = anchorY - headH + dy;
+      if (topBelow < margin) dy += margin - topBelow;
     } else {
-      var top2 = anchorY - LABEL_LIFT_PX - h;
-      if (top2 < margin) dy = margin - top2;
-      var bottom2 = anchorY - LABEL_LIFT_PX + dy;
-      if (bottom2 > vh - margin) dy += (vh - margin) - bottom2;
+      var topAbove = anchorY - h;
+      // transform Y = -dy: отрицательный dy сдвигает карточку вниз в viewport
+      if (topAbove < margin) dy = topAbove - margin;
     }
 
     this._clearMeasureStyles(el);
     el.classList.remove('is-expanded');
-    // явно вернуть collapsed без transition — иначе следующий expand не анимируется
+    el.classList.remove('is-below');
     if (bodyWrap) {
       bodyWrap.style.transition = 'none';
       bodyWrap.style.gridTemplateRows = '0fr';
@@ -1064,8 +1094,8 @@
       body.style.padding = '';
     }
 
-    if (below) el.classList.add('is-below');
-    else el.classList.remove('is-below');
+    // сторону применяем только вместе с is-expanded — иначе idle-chip прыгает
+    el.dataset.expandSide = below ? 'below' : 'above';
     el.dataset.shiftX = String(dx);
     el.dataset.shiftY = String(dy);
     el.dataset.placementReady = '1';
@@ -1097,18 +1127,85 @@
     var margin = 10;
     var vr = viewport.getBoundingClientRect();
     this._applyLabelPlacement(el, viewport);
-    var r = el.getBoundingClientRect();
+    var box = el.querySelector('.gw-label__box') || el;
+    var r = box.getBoundingClientRect();
     var dx = parseFloat(el.dataset.shiftX || '0') || 0;
     var dy = parseFloat(el.dataset.shiftY || '0') || 0;
-    var changed = false;
-    if (r.right > vr.right - margin) { dx += (vr.right - margin) - r.right; changed = true; }
-    if (r.left < vr.left + margin) { dx += (vr.left + margin) - r.left; changed = true; }
-    if (r.bottom > vr.bottom - margin) { dy += (vr.bottom - margin) - r.bottom; changed = true; }
-    if (r.top < vr.top + margin) { dy += (vr.top + margin) - r.top; changed = true; }
-    if (!changed) return;
+    var dScreenX = 0;
+    var dScreenY = 0;
+    if (r.right > vr.right - margin) dScreenX += (vr.right - margin) - r.right;
+    if (r.left < vr.left + margin) dScreenX += (vr.left + margin) - r.left;
+    if (r.bottom > vr.bottom - margin) dScreenY += (vr.bottom - margin) - r.bottom;
+    if (r.top < vr.top + margin) dScreenY += (vr.top + margin) - r.top;
+    if (!dScreenX && !dScreenY) return;
+    dx += dScreenX;
+    // below: +dy вниз; above: transform Y=-dy → для сдвига вниз уменьшаем dy
+    if (el.classList.contains('is-below')) dy += dScreenY;
+    else dy -= dScreenY;
     el.dataset.shiftX = String(dx);
     el.dataset.shiftY = String(dy);
     this._applyLabelPlacement(el, viewport);
+  };
+
+  GenplanWidgetInstance.prototype._hitTestObjectId = function (clientX, clientY) {
+    var root = this.shadow;
+    if (!root || clientX == null || clientY == null) return null;
+
+    var stack = null;
+    if (typeof root.elementsFromPoint === 'function') {
+      try { stack = root.elementsFromPoint(clientX, clientY); } catch (e) { stack = null; }
+    }
+    if (!stack || !stack.length) {
+      var one = typeof root.elementFromPoint === 'function' ? root.elementFromPoint(clientX, clientY) : null;
+      stack = one ? [one] : [];
+    }
+
+    var expandedLabelId = null;
+    var polyId = null;
+    var chipId = null;
+
+    for (var i = 0; i < stack.length; i++) {
+      var n = stack[i];
+      if (!n || !n.classList) continue;
+
+      var label = (n.classList.contains('gw-label') ? n : (n.closest && n.closest('.gw-label')));
+      if (label && label.dataset && label.dataset.objectId) {
+        if (label.classList.contains('is-expanded') || label.dataset.expandPending === '1') {
+          if (!expandedLabelId) expandedLabelId = String(label.dataset.objectId);
+        } else if (!chipId) {
+          chipId = String(label.dataset.objectId);
+        }
+        continue;
+      }
+
+      if (n.classList.contains('gw-poly') && n.dataset && n.dataset.objectId) {
+        if (!polyId) polyId = String(n.dataset.objectId);
+      }
+    }
+
+    if (expandedLabelId) return expandedLabelId;
+
+    // sticky: пока открыт tooltip — не переключаться на чужой poly в промежутке
+    if (this._hoverObjectId != null) {
+      var stickyId = String(this._hoverObjectId);
+      var stickyEl = null;
+      try {
+        stickyEl = root.querySelector('.gw-label[data-object-id="' + stickyId + '"]');
+      } catch (err) { stickyEl = null; }
+      var stickyOpen = stickyEl && (
+        stickyEl.classList.contains('is-expanded') || stickyEl.dataset.expandPending === '1'
+      );
+      if (stickyOpen) {
+        if (chipId && chipId !== stickyId) return chipId;
+        if (polyId && polyId === stickyId) return stickyId;
+        if (!polyId && !chipId) return null;
+        return stickyId;
+      }
+    }
+
+    if (polyId) return polyId;
+    if (chipId) return chipId;
+    return null;
   };
 
   GenplanWidgetInstance.prototype._reclampExpandedLabels = function (stage) {
@@ -1152,10 +1249,13 @@
                 targetEl.classList.remove('is-below');
                 targetEl.dataset.shiftX = '0';
                 targetEl.dataset.shiftY = '0';
+                targetEl.dataset.expandSide = '';
                 self._applyLabelPlacement(targetEl, viewport);
                 self._syncExpandedOverlayClass(stage);
                 return;
               }
+              if (targetEl.dataset.expandSide === 'below') targetEl.classList.add('is-below');
+              else targetEl.classList.remove('is-below');
               targetEl.classList.add('is-expanded');
               self._applyLabelPlacement(targetEl, viewport);
               self._syncExpandedOverlayClass(stage);
@@ -1174,6 +1274,7 @@
           el.dataset.shiftX = '0';
           el.dataset.shiftY = '0';
           el.dataset.placementReady = '0';
+          el.dataset.expandSide = '';
           self._clearMeasureStyles(el);
           if (el._gwClampTimer) {
             clearTimeout(el._gwClampTimer);
@@ -1188,6 +1289,7 @@
         el.dataset.shiftX = '0';
         el.dataset.shiftY = '0';
         el.dataset.placementReady = '0';
+        el.dataset.expandSide = '';
         self._clearMeasureStyles(el);
         if (el._gwClampTimer) {
           clearTimeout(el._gwClampTimer);
@@ -1212,6 +1314,7 @@
       el.dataset.shiftX = '0';
       el.dataset.shiftY = '0';
       el.dataset.placementReady = '0';
+      el.dataset.expandSide = '';
       self._clearMeasureStyles(el);
       if (el._gwClampTimer) {
         clearTimeout(el._gwClampTimer);
@@ -1273,50 +1376,6 @@
       if (self._activeObjectId != null) return;
       self._setHover(stage, null, true);
     }, 220);
-  };
-
-  GenplanWidgetInstance.prototype._hitTestObjectId = function (clientX, clientY) {
-    var root = this.shadow;
-    if (!root || clientX == null || clientY == null) return null;
-
-    var stack = null;
-    if (typeof root.elementsFromPoint === 'function') {
-      try { stack = root.elementsFromPoint(clientX, clientY); } catch (e) { stack = null; }
-    }
-    if (!stack || !stack.length) {
-      var one = typeof root.elementFromPoint === 'function' ? root.elementFromPoint(clientX, clientY) : null;
-      stack = one ? [one] : [];
-    }
-
-    var expandedLabelId = null;
-    var polyId = null;
-    var chipId = null;
-
-    for (var i = 0; i < stack.length; i++) {
-      var n = stack[i];
-      if (!n || !n.classList) continue;
-
-      var label = (n.classList.contains('gw-label') ? n : (n.closest && n.closest('.gw-label')));
-      if (label && label.dataset && label.dataset.objectId) {
-        if (label.classList.contains('is-expanded')) {
-          if (!expandedLabelId) expandedLabelId = String(label.dataset.objectId);
-        } else if (!chipId) {
-          chipId = String(label.dataset.objectId);
-        }
-        continue;
-      }
-
-      if (n.classList.contains('gw-poly') && n.dataset && n.dataset.objectId) {
-        if (!polyId) polyId = String(n.dataset.objectId);
-      }
-    }
-
-    // приоритет: открытый tooltip → полигон дома → chip
-    // (chip не перекрывает соседний poly, если tooltip другого дома открыт)
-    if (expandedLabelId) return expandedLabelId;
-    if (polyId) return polyId;
-    if (chipId) return chipId;
-    return null;
   };
 
   GenplanWidgetInstance.prototype._setHover = function (stage, objectId, fromTimer) {
@@ -1930,6 +1989,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.4.0'
+    version: '2.4.1'
   };
 })(typeof window !== 'undefined' ? window : this);
