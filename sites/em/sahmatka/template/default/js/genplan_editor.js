@@ -1071,13 +1071,6 @@
                     });
                     homePreview.style.display = '';
                 }
-                if (!opts.onlyPreview && titleInput && !(titleInput.value || '').trim() && res.titleSuggest) {
-                    titleInput.value = res.titleSuggest;
-                    if (selectedLayer && selectedLayer.genplanData) {
-                        selectedLayer.genplanData.title = res.titleSuggest;
-                    }
-                    markMetaDirty();
-                }
             })
             .catch(function () {
                 if (homePreview) {

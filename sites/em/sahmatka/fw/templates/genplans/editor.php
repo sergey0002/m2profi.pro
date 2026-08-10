@@ -40,8 +40,8 @@ $widget_demo_url = isset($data['widget_demo_url']) ? (string) $data['widget_demo
             <div class="genplan-editor__meta-grid">
                 <div class="genplan-editor__meta-main">
                     <label class="genplan-editor__field genplan-editor__field--title">
-                        <span class="genplan-editor__field-label">Заголовок <span class="genplan-editor__hint">HTML · обязателен без дома</span></span>
-                        <input type="text" id="genplan_title_input" maxlength="4000" placeholder="Дом 26" />
+                        <span class="genplan-editor__field-label">Заголовок <span class="genplan-editor__hint">можно пустым, если выбран дом</span></span>
+                        <input type="text" id="genplan_title_input" maxlength="4000" placeholder="например, Дом 26" />
                     </label>
                     <label class="genplan-editor__field">
                         <span class="genplan-editor__field-label">Контент <span class="genplan-editor__hint">HTML · тело карточки</span></span>
