@@ -660,12 +660,7 @@
     this._els.exploreViewport = exploreViewport;
     this._els.closeBtn = closeBtn;
 
-    exploreViewport.addEventListener('wheel', function (ev) {
-      if (!self.exploring) return;
-      ev.preventDefault();
-      var factor = ev.deltaY < 0 ? 1.08 : 1 / 1.08;
-      self._setScaleAt(self._scale * factor, ev.clientX, ev.clientY, exploreViewport);
-    }, { passive: false });
+    // wheel на explore-viewport вешается в _cloneStageIntoExplore (viewport пересоздаётся)
 
     viewport.addEventListener('wheel', function (ev) {
       if (self.destroyed || self.exploring) return;
@@ -1459,6 +1454,22 @@
     var self = this;
     var surface = viewport;
 
+    function isStaleExploreBinding() {
+      // после повторного входа в explore старые listener'ы на удалённом viewport
+      // не должны трогать state / detached stage
+      if (!isExplore) return false;
+      return !self.exploring
+        || stage !== self._els.exploreStage
+        || viewport !== self._els.exploreViewport
+        || !stage
+        || !stage.isConnected;
+    }
+
+    function liveStage() {
+      if (isExplore) return self._els.exploreStage || stage;
+      return stage;
+    }
+
     function targetPoly(ev) {
       var t = ev.target;
       if (t && t.classList && t.classList.contains('gw-poly')) return t;
@@ -1496,7 +1507,7 @@
     }
 
     surface.addEventListener('pointerdown', function (ev) {
-      if (self.destroyed) return;
+      if (self.destroyed || isStaleExploreBinding()) return;
 
       var label = targetLabel(ev);
       var labelAnchor = null;
@@ -1544,7 +1555,8 @@
     });
 
     surface.addEventListener('pointermove', function (ev) {
-      if (self.destroyed) return;
+      if (self.destroyed || isStaleExploreBinding()) return;
+      var curStage = liveStage();
       if (self._pointers.has(ev.pointerId)) {
         self._pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
       }
@@ -1567,12 +1579,12 @@
           var hoverId = resolveHoverId(ev);
           if (hoverId != null) {
             self._cancelHoverClear();
-            self._setHover(stage, hoverId);
+            self._setHover(curStage, hoverId);
           } else if (self._activeObjectId == null) {
-            self._scheduleHoverClear(stage);
+            self._scheduleHoverClear(curStage);
           } else {
             self._hoverObjectId = null;
-            stage.querySelectorAll('.gw-poly.is-hover').forEach(function (el) {
+            curStage.querySelectorAll('.gw-poly.is-hover').forEach(function (el) {
               if (!el.classList.contains('is-active')) el.classList.remove('is-hover');
             });
           }
@@ -1587,7 +1599,7 @@
       var dy2 = ev.clientY - self._panStart.y;
       if (Math.hypot(dx2, dy2) > 8) {
         if (!self._moved) {
-          self._clearSelection(stage);
+          self._clearSelection(curStage);
         }
         self._moved = true;
       }
@@ -1598,7 +1610,7 @@
         self._ty = self._panStart.ty + dy2;
         self._clampTransform(viewport);
         self._applyExploreTransform();
-        stage.classList.add('is-dragging');
+        curStage.classList.add('is-dragging');
       } else if (!isExplore && self._moved && isCoarsePointer() && self.exploreFullscreen && allowsExploreMode()) {
         // мобилка: жест pan → вход в explore (как Sigma), без inline-зума
         try { surface.releasePointerCapture && surface.releasePointerCapture(ev.pointerId); } catch (err) { /* ignore */ }
@@ -1612,14 +1624,15 @@
         self._clampTransform(viewport);
         self._applyInlineTransform();
         self._syncOffsetFromPan();
-        stage.classList.add('is-dragging');
+        curStage.classList.add('is-dragging');
       }
     });
 
     function endPointer(ev) {
-      if (self.destroyed) return;
+      if (self.destroyed || isStaleExploreBinding()) return;
+      var curStage = liveStage();
       self._pointers.delete(ev.pointerId);
-      stage.classList.remove('is-dragging');
+      if (curStage) curStage.classList.remove('is-dragging');
 
       if (self._pointers.size < 2) {
         self._pinchStartDist = 0;
@@ -1656,34 +1669,37 @@
       if (activateId != null) {
         var activateObj = self._objectById(activateId);
         if (activateObj) {
-          self._handleObjectActivate(activateObj, stage, isExplore);
+          self._handleObjectActivate(activateObj, curStage, isExplore);
         }
         return;
       }
 
       if (isCoarsePointer() || self._activeObjectId != null) {
-        self._clearSelection(stage);
+        self._clearSelection(curStage);
       }
     }
 
     surface.addEventListener('pointerup', endPointer);
     surface.addEventListener('pointercancel', endPointer);
     surface.addEventListener('pointerleave', function () {
+      if (isStaleExploreBinding()) return;
       if (!self._panStart && !isCoarsePointer() && self._activeObjectId == null) {
-        self._scheduleHoverClear(stage);
+        self._scheduleHoverClear(liveStage());
       }
     });
 
     var labelsOverlay = viewport.querySelector('.gw-labels-overlay');
     if (labelsOverlay) {
       labelsOverlay.addEventListener('pointerover', function (ev) {
+        if (isStaleExploreBinding()) return;
         if (isCoarsePointer() && !isExplore) return;
         var label = ev.target.closest && ev.target.closest('.gw-label');
         if (!label || !label.dataset.objectId) return;
         self._cancelHoverClear();
-        self._setHover(stage, label.dataset.objectId);
+        self._setHover(liveStage(), label.dataset.objectId);
       });
       labelsOverlay.addEventListener('pointerout', function (ev) {
+        if (isStaleExploreBinding()) return;
         if (isCoarsePointer() && !isExplore) return;
         var label = ev.target.closest && ev.target.closest('.gw-label');
         if (!label) return;
@@ -1693,18 +1709,19 @@
         // не сбрасываем сразу: pointermove на surface решит через hit-test / delay
         if (self._hoverObjectId != null
           && String(self._hoverObjectId) === String(label.dataset.objectId)) {
-          self._scheduleHoverClear(stage);
+          self._scheduleHoverClear(liveStage());
         }
       });
     }
 
     stage.addEventListener('keydown', function (ev) {
+      if (isStaleExploreBinding()) return;
       var poly = targetPoly(ev);
       if (!poly) return;
       if (ev.key === 'Enter' || ev.key === ' ') {
         ev.preventDefault();
         var obj = self._objectByPoly(poly);
-        self._handleObjectActivate(obj, stage, isExplore);
+        self._handleObjectActivate(obj, liveStage(), isExplore);
       }
     });
   };
@@ -1756,8 +1773,30 @@
   };
 
   GenplanWidgetInstance.prototype._cloneStageIntoExplore = function () {
-    var exploreViewport = this._els.exploreViewport;
-    exploreViewport.innerHTML = '';
+    var self = this;
+    var exploreInner = this._els.exploreInner;
+    if (!exploreInner) return;
+
+    // Новый viewport — иначе pointer-listener'ы копятся и тапают по detached stage
+    var oldVp = this._els.exploreViewport;
+    var exploreViewport = document.createElement('div');
+    exploreViewport.className = 'gw-viewport';
+    if (oldVp && oldVp.parentNode === exploreInner) {
+      exploreInner.replaceChild(exploreViewport, oldVp);
+    } else {
+      // closeBtn должен остаться поверх — viewport в начало
+      exploreInner.insertBefore(exploreViewport, exploreInner.firstChild);
+      if (oldVp && oldVp.parentNode) oldVp.parentNode.removeChild(oldVp);
+    }
+    this._els.exploreViewport = exploreViewport;
+
+    exploreViewport.addEventListener('wheel', function (ev) {
+      if (!self.exploring) return;
+      ev.preventDefault();
+      var factor = ev.deltaY < 0 ? 1.08 : 1 / 1.08;
+      self._setScaleAt(self._scale * factor, ev.clientX, ev.clientY, exploreViewport);
+    }, { passive: false });
+
     var stage = this._buildMapStage(false);
     exploreViewport.appendChild(stage);
     exploreViewport.appendChild(this._buildLabelsOverlay(false));
@@ -2033,6 +2072,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.4.10'
+    version: '2.4.11'
   };
 })(typeof window !== 'undefined' ? window : this);
