@@ -1,7 +1,8 @@
 # Задача 10 — поставка (delivery)
 
-**Дата:** 10.08.2026  
-**Ветка:** `feature/10-interactive-genplan`  
+**Дата:** 10.08.2026 (обновлено 11.08.2026)  
+**Ветка:** `master` (было `feature/10-interactive-genplan`)  
+**Виджет:** `GenplanWidget` **v2.4.11**  
 **Миграции:** `005_genplan_polygons.sql`, `006_genplan_label_content.sql`
 
 ---
@@ -48,6 +49,16 @@
 
 Idle: белый chip + ▲ (зел/крас/син/сер). Expand в том же DOM, фон `rgba(255,255,255,0.8)`. Floating tooltip не используется.
 
+### Live meta (дом)
+
+| Поле | Формат |
+|------|--------|
+| `metaDelivery` | `Срок сдачи: N квартал YYYY` — арабская цифра квартала + слово «квартал» (не римские `IV`) |
+| `metaAddress` | `Адрес: …` |
+| Шрифт meta-строк | `11px` (чуть меньше тела карточки) |
+
+Источник: `delivery_date` → иначе `ready_quarter` + `built_year` (`ctr__genplans::home_delivery_meta`).
+
 ---
 
 ## Виджет `GenplanWidget.mount`
@@ -57,8 +68,8 @@ GenplanWidget.mount({
   el: '#genplan',
   kvartalId: 6,
   apiBase: '…/ajax_router.php?ctr=genplans', // опц.
-  width: 700,            // px или '100%'
-  maxHeight: 400,        // высота viewport
+  width: '100%',         // px или '100%'
+  maxHeight: 600,        // высота viewport
   offsetBottom: 100,     // стартовый сдвиг от низа, px
   offsetX: 0, offsetY: 0,// 0…1 (если нет offsetBottom)
   minZoom: 1, maxZoom: 4,
@@ -69,34 +80,57 @@ GenplanWidget.mount({
 });
 ```
 
-### Поведение UX (зафиксировано при приёмке)
+Версия скрипта: `genplan_widget.js?v=2.4.11` (менять cache-bust вместе с `GenplanWidget.version`).
+
+### Поведение UX (зафиксировано при приёмке + правки 11.08.2026)
 
 | Контекст | Поведение |
 |----------|-----------|
-| Клик по полигону | `link_url` (desktop сразу; mobile: 1-й тап card, 2-й navigate); тап по label — сразу URL |
-| Тултип vs label | при доп.инфо label скрывается, card у якоря + стрелка; иначе без дубля |
+| Desktop hover | card по наведению; быстрый переход дом→дом не «залипает» без тултипа |
+| Клик / тап по дому | раскрытие card; повторный тап по тому же — закрытие |
 | `idleHighlight` | подсветка домов по очереди; стоп при курсоре в карте / mobile explore / active |
 | Desktop | pan + wheel-zoom в обычном виджете |
-| Mobile компакт | **без** pan/zoom карты; жест pan / кнопка → explore; idle-анимация да |
-| Mobile explore | pan / pinch / wheel-zoom; labels видны |
-| Mobile labels (компакт) | скрыты, чтобы не наползали |
+| Mobile компакт | **без** pan/zoom карты; жест pan / кнопка «Увеличить» → explore; idle-анимация да; chips видны (compact) |
+| Mobile explore | pan / pinch / wheel-zoom; тап по дому открывает card |
+| Закрытие explore (✕) | **полный сброс**: все тултипы скрыты, выбор сброшен, масштаб/пан компакта **как до** «Увеличить» |
+| Повторный вход в explore | чистый viewport (без stale listeners); тултипы снова работают |
 
 Демо: `iframe_router.php?ctr=genplans&act=widget_demo&kvartal_id=6`  
-(по умолчанию width 700, maxHeight 400, offsetBottom 100; query `?maxHeight=` / `?width=` / `?offsetBottom=`).
+(по умолчанию width `100%`, maxHeight `600`, offsetBottom `100`; query `?maxHeight=` / `?width=` / `?offsetBottom=`).
+
+### Внутренние инварианты (для правок JS)
+
+1. **Hit-test** при открытой карточке временно снимает `has-label-expanded` / `has-expanded` **только у активного viewport** (не у первого overlay в shadow — иначе ломается explore).
+2. На **coarse** чужие poly **не** получают `pointer-events: none` при открытой карточке (иначе тап по соседнему дому «пролетает»).
+3. При каждом `_cloneStageIntoExplore` **пересоздаётся** `.gw-viewport` explore — иначе pointer-listeners копятся и кликают по detached stage.
+4. Перед explore сохраняется `_inlineSnap` (scale/tx/ty/offsets); на exit — restore + `_layoutFit`.
 
 ---
 
 ## QA checklist
 
-- [ ] Миграция `005` на стенде
+- [ ] Миграция `005` / `006` на стенде
 - [ ] Upload фона, draw polygon, rubber-band видна поверх фона
 - [ ] Подписи / link_url / save → `widget_data` отдаёт `linkUrl`
-- [ ] Desktop: hover card, click URL, pan/zoom, idle highlight вне курсора
-- [ ] Mobile: idle highlight; tap house; explore pan/zoom; labels в explore
+- [ ] Desktop: hover card, быстрый переход между домами, pan/zoom, idle highlight вне курсора
+- [ ] Срок сдачи в card: `N квартал YYYY` (арабская), шрифт meta чуть меньше
+- [ ] Mobile: idle highlight; «Увеличить» → tap house → card; закрыть ✕ → компакт без тултипов, тот же масштаб
+- [ ] Mobile: повторно открыть explore → тап по домам снова выделяет / открывает card
 - [ ] Смена режима Подписи сбрасывает недорисованный полигон
 
 ---
 
-## Сопутствующие фиксы (в том же коммите)
+## Changelog виджета (после Stage 2)
+
+| Версия | Что |
+|--------|-----|
+| 2.4.7 | Hover: hit-test видит соседний дом при открытой карточке; sticky переключает poly |
+| 2.4.8 | Meta: `N квартал YYYY` + font-size 11px |
+| 2.4.9–2.4.10 | Exit explore: сброс selection + restore inline camera |
+| 2.4.11 | Re-open explore: recreate viewport (fix stale listeners на mobile) |
+
+---
+
+## Сопутствующие фиксы (ранний коммит Stage 1)
 
 - PHP 8: quoted keys в `in_head.php`, `admin_object.php` (доступ к админке/объектам).
