@@ -372,6 +372,8 @@
     this._activeObjectId = null;
     this._hoverObjectId = null;
     this._hoverClearTimer = null;
+    this._lastPointerX = null;
+    this._lastPointerY = null;
     this._objectsById = {};
     this._scrollLockHeld = 0;
 
@@ -1121,13 +1123,32 @@
     var root = this.shadow;
     if (!root || clientX == null || clientY == null) return null;
 
+    // Пока tooltip открыт, CSS гасит pointer-events у чужих poly/chip
+    // (чтобы курсор мог дойти до карточки). Для hit-test временно снимаем —
+    // иначе быстрый переход A→B не видит дом B, clear схлопывает tooltip,
+    // а без нового pointermove он больше не открывается.
+    var rootEl = this._els && this._els.root;
+    var overlay = null;
+    try {
+      overlay = root.querySelector('.gw-labels-overlay.has-expanded');
+    } catch (e0) { overlay = null; }
+    var hadRootBlock = !!(rootEl && rootEl.classList.contains('has-label-expanded'));
+    var hadOverlayBlock = !!(overlay && overlay.classList.contains('has-expanded'));
+    if (hadRootBlock) rootEl.classList.remove('has-label-expanded');
+    if (hadOverlayBlock) overlay.classList.remove('has-expanded');
+
     var stack = null;
-    if (typeof root.elementsFromPoint === 'function') {
-      try { stack = root.elementsFromPoint(clientX, clientY); } catch (e) { stack = null; }
-    }
-    if (!stack || !stack.length) {
-      var one = typeof root.elementFromPoint === 'function' ? root.elementFromPoint(clientX, clientY) : null;
-      stack = one ? [one] : [];
+    try {
+      if (typeof root.elementsFromPoint === 'function') {
+        try { stack = root.elementsFromPoint(clientX, clientY); } catch (e) { stack = null; }
+      }
+      if (!stack || !stack.length) {
+        var one = typeof root.elementFromPoint === 'function' ? root.elementFromPoint(clientX, clientY) : null;
+        stack = one ? [one] : [];
+      }
+    } finally {
+      if (hadRootBlock) rootEl.classList.add('has-label-expanded');
+      if (hadOverlayBlock) overlay.classList.add('has-expanded');
     }
 
     var expandedLabelId = null;
@@ -1155,7 +1176,7 @@
 
     if (expandedLabelId) return expandedLabelId;
 
-    // sticky только пока курсор на том же доме (poly/chip); иначе сразу отпускаем
+    // sticky только пока курсор на том же доме (poly/chip); иначе сразу переключаем / отпускаем
     if (this._hoverObjectId != null) {
       var stickyId = String(this._hoverObjectId);
       var stickyEl = null;
@@ -1167,6 +1188,7 @@
         if (chipId && chipId === stickyId) return stickyId;
         if (polyId && polyId === stickyId) return stickyId;
         if (chipId && chipId !== stickyId) return chipId;
+        if (polyId && polyId !== stickyId) return polyId;
         return null;
       }
     }
@@ -1311,6 +1333,12 @@
       self._hoverClearTimer = null;
       if (self._activeObjectId != null) return;
       self._setHover(stage, null, true);
+      // после схлопывания pointer-events у polys снова включены —
+      // если курсор уже над другим домом (без нового move), открыть его
+      if (self._lastPointerX != null && self._lastPointerY != null) {
+        var again = self._hitTestObjectId(self._lastPointerX, self._lastPointerY);
+        if (again != null) self._setHover(stage, again);
+      }
     }, 40);
   };
 
@@ -1528,6 +1556,8 @@
 
       if (!self._panStart) {
         if (!isCoarsePointer() || isExplore) {
+          self._lastPointerX = ev.clientX;
+          self._lastPointerY = ev.clientY;
           var hoverId = resolveHoverId(ev);
           if (hoverId != null) {
             self._cancelHoverClear();
@@ -1939,6 +1969,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.4.6'
+    version: '2.4.7'
   };
 })(typeof window !== 'undefined' ? window : this);
