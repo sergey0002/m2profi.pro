@@ -253,7 +253,7 @@
     '.gw-poly.is-hover, .gw-poly.is-active, .gw-poly.is-showcase, .gw-poly:focus-visible { fill: var(--gw-hl-color, ' + HL + ') !important; stroke: var(--gw-hl-color, ' + HL + ') !important; fill-opacity: var(--gw-hl-opacity, 0.58); stroke-opacity: var(--gw-stroke-opacity, 0.4); stroke-width: 2; }',
     '@media (prefers-reduced-motion: reduce) { .gw-poly { transition: none; } }',
     '.gw-labels-overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; overflow: visible; }',
-    '.gw-label { position: absolute; transform: translate(-50%, -100%); transform-origin: center bottom; pointer-events: auto; z-index: 5; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 0.28s ease; }',
+    '.gw-label { position: absolute; transform: translate(-50%, -100%); transform-origin: center bottom; pointer-events: auto; z-index: 5; cursor: pointer; -webkit-tap-highlight-color: transparent; }',
     '.gw-label.is-expanded { z-index: 200; }',
     '.gw-label.is-expanded.is-below { transform-origin: center top; }',
     '.gw-label__box { display: inline-block; width: fit-content; max-width: 220px; text-align: left; background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); overflow: hidden; transition: border-radius 0.28s ease, box-shadow 0.28s ease, background 0.28s ease; }',
@@ -287,7 +287,7 @@
     '.gw-root.is-coarse .gw-label.is-expanded .gw-label__box { width: min(280px, calc(100vw - 24px)); min-width: min(280px, calc(100vw - 24px)); max-width: min(280px, calc(100vw - 24px)); }',
     '.gw-root.is-coarse .gw-label.is-expanded .gw-label__head { font-size: 11px; padding: 10px 10px 6px; max-width: none; }',
     '.gw-root.is-coarse .gw-label.is-expanded .gw-label__body { font-size: 11px; padding: 6px 10px 10px; }',
-    '@media (prefers-reduced-motion: reduce) { .gw-label, .gw-label__box, .gw-label__body-wrap, .gw-label__body { transition: none; } }',
+    '@media (prefers-reduced-motion: reduce) { .gw-label__box, .gw-label__body-wrap, .gw-label__body { transition: none; } }',
     '.gw-btn { appearance: none; border: 0; border-radius: 8px; background: rgba(255,255,255,0.95); color: #111; box-shadow: 0 1px 6px rgba(0,0,0,0.22); cursor: pointer; font: inherit; line-height: 1; margin: 0; padding: 0; }',
     '.gw-btn-close { position: absolute; top: 12px; right: 12px; z-index: 20; width: 40px; height: 40px; padding: 0; display: none; align-items: center; justify-content: center; }',
     '.gw-btn-close svg { display: block; width: 18px; height: 18px; }',
@@ -915,31 +915,41 @@
     return root.querySelector('.gw-label[data-object-id="' + String(objectId) + '"]');
   };
 
+  GenplanWidgetInstance.prototype._applyLabelPlacement = function (el, viewport) {
+    if (!el || !viewport) return;
+    var S = this._scale;
+    var ax = parseFloat(el.dataset.anchorX || '0') || 0;
+    var ay = parseFloat(el.dataset.anchorY || '0') || 0;
+    var dx = parseFloat(el.dataset.shiftX || '0') || 0;
+    var dy = parseFloat(el.dataset.shiftY || '0') || 0;
+    var expanded = el.classList.contains('is-expanded');
+    var below = expanded && el.classList.contains('is-below');
+    var lift = expanded ? (below ? LABEL_LIFT_PX : -LABEL_LIFT_PX) : 0;
+    el.style.left = (this._tx + ax * S) + 'px';
+    el.style.top = (this._ty + ay * S) + 'px';
+    if (below) {
+      el.style.transform = 'translate(calc(-50% + ' + dx + 'px), ' + (lift + dy) + 'px)';
+    } else {
+      el.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-100% + ' + lift + 'px + ' + dy + 'px))';
+    }
+  };
+
+  GenplanWidgetInstance.prototype._measureLabelBox = function (el, viewport, below, dx, dy) {
+    if (below) el.classList.add('is-below');
+    else el.classList.remove('is-below');
+    el.dataset.shiftX = String(dx || 0);
+    el.dataset.shiftY = String(dy || 0);
+    this._applyLabelPlacement(el, viewport);
+    return el.getBoundingClientRect();
+  };
+
   GenplanWidgetInstance.prototype._syncLabelPositionsForViewport = function (viewport) {
     if (!viewport) return;
     var overlay = viewport.querySelector('.gw-labels-overlay');
     if (!overlay) return;
-    var S = this._scale;
-    var tx = this._tx;
-    var ty = this._ty;
     var nodes = overlay.querySelectorAll('.gw-label');
     for (var i = 0; i < nodes.length; i++) {
-      var el = nodes[i];
-      var ax = parseFloat(el.dataset.anchorX || '0') || 0;
-      var ay = parseFloat(el.dataset.anchorY || '0') || 0;
-      var dx = parseFloat(el.dataset.shiftX || '0') || 0;
-      var dy = parseFloat(el.dataset.shiftY || '0') || 0;
-      var expanded = el.classList.contains('is-expanded');
-      var below = expanded && el.classList.contains('is-below');
-      var lift = expanded ? (below ? LABEL_LIFT_PX : -LABEL_LIFT_PX) : 0;
-      el.style.left = (tx + ax * S) + 'px';
-      el.style.top = (ty + ay * S) + 'px';
-      // idle/above: якорь снизу карточки; below: якорь сверху карточки (разворот вниз)
-      if (below) {
-        el.style.transform = 'translate(calc(-50% + ' + dx + 'px), ' + (lift + dy) + 'px)';
-      } else {
-        el.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-100% + ' + lift + 'px + ' + dy + 'px))';
-      }
+      this._applyLabelPlacement(nodes[i], viewport);
     }
   };
 
@@ -953,26 +963,24 @@
     return this._els.viewport;
   };
 
-  GenplanWidgetInstance.prototype._clampExpandedLabel = function (stage, objectId) {
+  GenplanWidgetInstance.prototype._clampExpandedLabel = function (stage, objectId, force) {
     var el = this._labelElById(stage, objectId);
     if (!el || !el.classList.contains('is-expanded')) return;
     var viewport = this._viewportForStage(stage);
     if (!viewport) return;
+    if (!force && el.dataset.placementReady === '1') {
+      // только дожать в viewport при pan/zoom, без сброса above/below
+      this._nudgeExpandedIntoViewport(el, viewport);
+      return;
+    }
 
     var margin = 10;
-    el.dataset.shiftX = '0';
-    el.dataset.shiftY = '0';
-    el.classList.remove('is-below');
-    this._syncLabelPositionsForViewport(viewport);
-
     var vr = viewport.getBoundingClientRect();
-    var r = el.getBoundingClientRect();
-    // Если сверху не влезает — разворачиваем вниз от точки
-    if (r.top < vr.top + margin) {
-      el.classList.add('is-below');
-      this._syncLabelPositionsForViewport(viewport);
-      r = el.getBoundingClientRect();
-    }
+
+    // 1) пробуем сверху
+    var rAbove = this._measureLabelBox(el, viewport, false, 0, 0);
+    var below = rAbove.top < vr.top + margin;
+    var r = below ? this._measureLabelBox(el, viewport, true, 0, 0) : rAbove;
 
     var dx = 0;
     var dy = 0;
@@ -981,33 +989,60 @@
     if (r.bottom > vr.bottom - margin) dy += (vr.bottom - margin) - r.bottom;
     if (r.top + dy < vr.top + margin) dy += (vr.top + margin) - (r.top + dy);
 
+    // если сверху не влезло даже со сдвигом — вниз
+    if (!below && (r.top + dy < vr.top + margin)) {
+      below = true;
+      r = this._measureLabelBox(el, viewport, true, 0, 0);
+      dx = 0;
+      dy = 0;
+      if (r.right > vr.right - margin) dx += (vr.right - margin) - r.right;
+      if (r.left + dx < vr.left + margin) dx += (vr.left + margin) - (r.left + dx);
+      if (r.bottom > vr.bottom - margin) dy += (vr.bottom - margin) - r.bottom;
+      if (r.top + dy < vr.top + margin) dy += (vr.top + margin) - (r.top + dy);
+    }
+
+    this._measureLabelBox(el, viewport, below, dx, dy);
+    el.dataset.placementReady = '1';
+  };
+
+  GenplanWidgetInstance.prototype._nudgeExpandedIntoViewport = function (el, viewport) {
+    if (!el || !viewport) return;
+    var margin = 10;
+    var vr = viewport.getBoundingClientRect();
+    this._applyLabelPlacement(el, viewport);
+    var r = el.getBoundingClientRect();
+    var dx = parseFloat(el.dataset.shiftX || '0') || 0;
+    var dy = parseFloat(el.dataset.shiftY || '0') || 0;
+    var changed = false;
+    if (r.right > vr.right - margin) { dx += (vr.right - margin) - r.right; changed = true; }
+    if (r.left < vr.left + margin) { dx += (vr.left + margin) - r.left; changed = true; }
+    if (r.bottom > vr.bottom - margin) { dy += (vr.bottom - margin) - r.bottom; changed = true; }
+    if (r.top < vr.top + margin) { dy += (vr.top + margin) - r.top; changed = true; }
+    if (!changed) return;
     el.dataset.shiftX = String(dx);
     el.dataset.shiftY = String(dy);
-    this._syncLabelPositionsForViewport(viewport);
+    this._applyLabelPlacement(el, viewport);
   };
 
   GenplanWidgetInstance.prototype._scheduleClampExpandedLabel = function (stage, objectId) {
     var self = this;
     var el = this._labelElById(stage, objectId);
     if (!el) return;
+    el.dataset.placementReady = '0';
+    if (el._gwClampTimer) {
+      clearTimeout(el._gwClampTimer);
+      el._gwClampTimer = null;
+    }
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
-        self._clampExpandedLabel(stage, objectId);
-        // после анимации раскрытия body высота меняется — пересчёт
-        var box = el.querySelector('.gw-label__body-wrap') || el;
-        var done = false;
-        function finish() {
-          if (done) return;
-          done = true;
-          box.removeEventListener('transitionend', onEnd);
-          self._clampExpandedLabel(stage, objectId);
-        }
-        function onEnd(ev) {
-          if (ev && ev.target !== box && !box.contains(ev.target)) return;
-          finish();
-        }
-        box.addEventListener('transitionend', onEnd);
-        setTimeout(finish, 320);
+        self._clampExpandedLabel(stage, objectId, true);
+        // один пересчёт после анимации высоты
+        el._gwClampTimer = setTimeout(function () {
+          el._gwClampTimer = null;
+          if (!el.classList.contains('is-expanded')) return;
+          el.dataset.placementReady = '0';
+          self._clampExpandedLabel(stage, objectId, true);
+        }, 300);
       });
     });
   };
@@ -1019,7 +1054,7 @@
     if (!root) return;
     root.querySelectorAll('.gw-label.is-expanded').forEach(function (el) {
       if (el.dataset && el.dataset.objectId) {
-        self._clampExpandedLabel(stage, el.dataset.objectId);
+        self._clampExpandedLabel(stage, el.dataset.objectId, false);
       }
     });
   };
@@ -1034,7 +1069,12 @@
       var el = nodes[i];
       if (String(el.dataset.objectId) === String(objectId)) {
         if (expanded) {
+          if (el.classList.contains('is-expanded')) {
+            // уже открыт — не дергаем clamp заново
+            continue;
+          }
           el.classList.add('is-expanded');
+          el.dataset.placementReady = '0';
           self._syncLabelsForStage(stage);
           self._scheduleClampExpandedLabel(stage, objectId);
         } else {
@@ -1042,6 +1082,11 @@
           el.classList.remove('is-below');
           el.dataset.shiftX = '0';
           el.dataset.shiftY = '0';
+          el.dataset.placementReady = '0';
+          if (el._gwClampTimer) {
+            clearTimeout(el._gwClampTimer);
+            el._gwClampTimer = null;
+          }
           self._syncLabelsForStage(stage);
         }
       } else if (expanded) {
@@ -1049,9 +1094,9 @@
         el.classList.remove('is-below');
         el.dataset.shiftX = '0';
         el.dataset.shiftY = '0';
+        el.dataset.placementReady = '0';
       }
     }
-    if (expanded) self._syncLabelsForStage(stage);
   };
 
   GenplanWidgetInstance.prototype._collapseAllLabels = function (stage) {
@@ -1064,6 +1109,11 @@
       el.classList.remove('is-below');
       el.dataset.shiftX = '0';
       el.dataset.shiftY = '0';
+      el.dataset.placementReady = '0';
+      if (el._gwClampTimer) {
+        clearTimeout(el._gwClampTimer);
+        el._gwClampTimer = null;
+      }
     });
     self._syncLabelsForStage(stage);
   };
@@ -1118,21 +1168,40 @@
       self._hoverClearTimer = null;
       if (self._activeObjectId != null) return;
       self._setHover(stage, null, true);
-    }, 140);
+    }, 220);
   };
 
   GenplanWidgetInstance.prototype._isPointerOverLabel = function (stage, objectId, clientX, clientY) {
     var el = this._labelElById(stage, objectId);
     if (!el || clientX == null || clientY == null) return false;
-    var pad = 6;
+    var pad = 10;
     var r = el.getBoundingClientRect();
     return clientX >= r.left - pad && clientX <= r.right + pad
       && clientY >= r.top - pad && clientY <= r.bottom + pad;
   };
 
+  GenplanWidgetInstance.prototype._isPointerOverPoly = function (stage, objectId, clientX, clientY) {
+    if (objectId == null || clientX == null || clientY == null) return false;
+    var polys = this._polysById(stage, objectId);
+    for (var i = 0; i < polys.length; i++) {
+      var r = polys[i].getBoundingClientRect();
+      if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) {
+        // bbox hit — для SVG точнее elementFromPoint внутри shadow
+        return true;
+      }
+    }
+    return false;
+  };
+
   GenplanWidgetInstance.prototype._setHover = function (stage, objectId, fromTimer) {
     if (objectId != null) this._cancelHoverClear();
     else if (!fromTimer) this._cancelHoverClear();
+
+    // тот же дом — не пересоздаём expand/clamp (иначе дергается)
+    if (objectId != null && this._hoverObjectId != null
+      && String(this._hoverObjectId) === String(objectId)) {
+      return;
+    }
 
     this._clearShowcaseHighlight();
     var prev = this._hoverObjectId;
@@ -1266,6 +1335,44 @@
       return null;
     }
 
+    function resolveHoverId(ev) {
+      // 1) курсор на label/tooltip — высший приоритет
+      var label = targetLabel(ev);
+      if (label && label.dataset.objectId) return label.dataset.objectId;
+
+      // 2) sticky: пока курсор над текущим открытым tooltip / chip — не переключаем
+      if (self._hoverObjectId != null
+        && self._isPointerOverLabel(stage, self._hoverObjectId, ev.clientX, ev.clientY)) {
+        return String(self._hoverObjectId);
+      }
+
+      // 3) полигон под курсором
+      var poly = targetPoly(ev);
+      if (poly && poly.dataset.objectId) {
+        var polyId = String(poly.dataset.objectId);
+        // если открыт другой tooltip и курсор всё ещё в его зоне — держим (уже выше)
+        // иначе переключаем только если не «проскок» через соседний под открытым tooltip
+        if (self._hoverObjectId != null && polyId !== String(self._hoverObjectId)) {
+          var curLabel = self._labelElById(stage, self._hoverObjectId);
+          if (curLabel && curLabel.classList.contains('is-expanded')) {
+            // соседний poly под/рядом с открытым tooltip — не дёргать, пока не ушли с label
+            if (self._isPointerOverLabel(stage, self._hoverObjectId, ev.clientX, ev.clientY)) {
+              return String(self._hoverObjectId);
+            }
+          }
+        }
+        return polyId;
+      }
+
+      // 4) sticky по bbox текущего poly (дыры SVG / границы)
+      if (self._hoverObjectId != null
+        && self._isPointerOverPoly(stage, self._hoverObjectId, ev.clientX, ev.clientY)) {
+        return String(self._hoverObjectId);
+      }
+
+      return null;
+    }
+
     surface.addEventListener('pointerdown', function (ev) {
       if (self.destroyed) return;
       // на мобилке в компактном виде не captur'им — иначе ломается скролл страницы
@@ -1323,24 +1430,11 @@
 
       if (!self._panStart) {
         if (!isCoarsePointer() || isExplore) {
-          var hlabel = targetLabel(ev);
-          if (hlabel) {
+          var hoverId = resolveHoverId(ev);
+          if (hoverId != null) {
             self._cancelHoverClear();
-            var lobj = self._objectById(hlabel.dataset && hlabel.dataset.objectId);
-            self._setHover(stage, lobj && lobj.id);
-            return;
-          }
-          var hpoly = targetPoly(ev);
-          if (hpoly) {
-            self._cancelHoverClear();
-            var hobj = self._objectByPoly(hpoly);
-            self._setHover(stage, hobj && hobj.id);
+            self._setHover(stage, hoverId);
           } else if (self._activeObjectId == null) {
-            if (self._hoverObjectId != null
-              && self._isPointerOverLabel(stage, self._hoverObjectId, ev.clientX, ev.clientY)) {
-              self._cancelHoverClear();
-              return;
-            }
             self._scheduleHoverClear(stage);
           } else {
             self._hoverObjectId = null;
@@ -1442,10 +1536,9 @@
       labelsOverlay.addEventListener('pointerover', function (ev) {
         if (isCoarsePointer() && !isExplore) return;
         var label = ev.target.closest && ev.target.closest('.gw-label');
-        if (!label) return;
+        if (!label || !label.dataset.objectId) return;
         self._cancelHoverClear();
-        var id = label.dataset.objectId;
-        if (id) self._setHover(stage, id);
+        self._setHover(stage, label.dataset.objectId);
       });
       labelsOverlay.addEventListener('pointerout', function (ev) {
         if (isCoarsePointer() && !isExplore) return;
@@ -1454,6 +1547,7 @@
         var related = ev.relatedTarget;
         if (related && label.contains(related)) return;
         if (self._activeObjectId != null) return;
+        // не сбрасываем сразу: pointermove на surface решит через sticky / delay
         if (self._hoverObjectId != null
           && String(self._hoverObjectId) === String(label.dataset.objectId)) {
           self._scheduleHoverClear(stage);
@@ -1744,6 +1838,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.3.4'
+    version: '2.3.5'
   };
 })(typeof window !== 'undefined' ? window : this);
