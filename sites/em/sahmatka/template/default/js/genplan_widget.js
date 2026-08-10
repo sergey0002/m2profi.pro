@@ -266,7 +266,7 @@
     '.gw-label.is-expanded .gw-label__box { background: rgba(255,255,255,0.9); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
     '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; flex: 0 0 auto; transition: padding 0.18s ease; }',
     '.gw-label.is-compact .gw-label__head { padding: 4px 6px; }',
-    '.gw-label.is-expanded .gw-label__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 12px; white-space: normal; width: 100%; max-width: none; box-sizing: border-box; }',
+    '.gw-label.is-expanded .gw-label__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 12px 8px 9px; white-space: normal; width: 100%; max-width: none; box-sizing: border-box; }',
     '.gw-label.is-expanded.is-below .gw-label__head { border-bottom: 1px solid #000; }',
     '.gw-label.is-expanded:not(.is-below) .gw-label__head { border-top: 1px solid #000; }',
     '.gw-label__tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid #9aa0a6; flex: 0 0 auto; }',
@@ -1982,6 +1982,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.4.3'
+    version: '2.4.4'
   };
 })(typeof window !== 'undefined' ? window : this);
