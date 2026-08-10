@@ -282,7 +282,7 @@
     '.gw-label.is-snap .gw-label__box, .gw-label.is-snap .gw-label__body-wrap, .gw-label.is-snap .gw-label__body, .gw-label.is-snap .gw-label__head { transition: none !important; }',
     '.gw-label.is-expanded .gw-label__body { padding: 8px 12px 12px; }',
     '.gw-label__content { margin-bottom: 6px; }',
-    '.gw-label__meta-line { display: block; color: #555; margin-bottom: 4px; }',
+    '.gw-label__meta-line { display: block; color: #555; margin-bottom: 4px; font-size: 11px; line-height: 1.35; }',
     '.gw-label__badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }',
     '.gw-label__badge { display: inline-block; padding: 4px 8px; border: 1px solid #e53935; border-radius: 6px; font-size: 11px; color: #444; background: rgba(255,255,255,0.6); }',
     '.gw-label__apts { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }',
@@ -1969,6 +1969,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.4.7'
+    version: '2.4.8'
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -328,21 +328,32 @@ class ctr__genplans extends ctr__
         return $result;
     }
 
+    /**
+     * Срок сдачи для тултипа виджета: «4 квартал 2025» (арабская цифра + слово «квартал»).
+     */
     function home_delivery_meta($home)
     {
-        $this->ensure_stat_helpers();
-        if (!$home || !function_exists('stat_free_format_delivery_quarter')) {
+        if (!$home) {
             return null;
         }
-        $label = stat_free_format_delivery_quarter(
-            $home['delivery_date'] ?? null,
-            $home['ready_quarter'] ?? null,
-            $home['built_year'] ?? null
-        );
-        if (!$label || $label === '—') {
+        $q = 0;
+        $year = 0;
+        $deliveryDate = trim((string) ($home['delivery_date'] ?? ''));
+        if ($deliveryDate !== '' && $deliveryDate !== '0000-00-00') {
+            $ts = strtotime($deliveryDate);
+            if ($ts) {
+                $q = (int) ceil(((int) date('n', $ts)) / 3);
+                $year = (int) date('Y', $ts);
+            }
+        }
+        if ($q < 1 || $year < 1) {
+            $q = (int) ($home['ready_quarter'] ?? 0);
+            $year = (int) ($home['built_year'] ?? 0);
+        }
+        if ($q < 1 || $q > 4 || $year < 1) {
             return null;
         }
-        return 'Срок сдачи: ' . $label;
+        return 'Срок сдачи: ' . $q . ' квартал ' . $year;
     }
 
     /**
