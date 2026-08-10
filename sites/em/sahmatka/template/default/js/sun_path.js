@@ -11,11 +11,14 @@
   var ELLIPSE_SCALE = 0.96;
   /** Запас под подписи/солнце */
   var EDGE_PAD = 22;
-  /** Вынос подписи от пунктира — больше радиуса солнышка, чтобы не перекрывать текст */
-  var LABEL_OUTSET = 34;
-  var MARKER_CLEAR = 16;
+  /** Вынос подписи от пунктира — вне маркера на конце дуги */
+  var LABEL_OUTSET = 38;
   var ANIM_MS = 400;
   var FADE_MS = 400;
+  /** Дуга дня: восход → день → закат (180°) */
+  var DAY_SWEEP = 180;
+  /** Продление дуги за восход/закат (одинаково с обеих сторон), ° */
+  var ARC_OVERSHOOT = 22;
   /** Локальные углы суток относительно севера (как у компаса) */
   var TIME_THETA = {
     morning: 90,  // Восток — Восход
@@ -43,15 +46,13 @@
       return {
         ellipseScale: 0.94,
         edgePad: 24,
-        labelOutset: 28,
-        markerClear: 14
+        labelOutset: 32
       };
     }
     return {
       ellipseScale: ELLIPSE_SCALE,
       edgePad: EDGE_PAD,
-      labelOutset: LABEL_OUTSET,
-      markerClear: MARKER_CLEAR
+      labelOutset: LABEL_OUTSET
     };
   }
 
@@ -70,6 +71,19 @@
       x: cx + rx * Math.sin(rad),
       y: cy - ry * Math.cos(rad)
     };
+  }
+
+  /** SVG-путь дуги восход→закат по тем же точкам, что маркеры/солнце */
+  function buildDayArcPath(cx, cy, rx, ry, startDeg, sweepDeg, steps) {
+    steps = steps || 64;
+    var d = '';
+    var i;
+    for (i = 0; i <= steps; i++) {
+      var th = startDeg + (sweepDeg * i) / steps;
+      var p = pointOnEllipse(cx, cy, rx, ry, th);
+      d += (i === 0 ? 'M ' : ' L ') + p.x.toFixed(2) + ' ' + p.y.toFixed(2);
+    }
+    return d;
   }
 
   function orientDegFromRoot(root) {
@@ -91,7 +105,8 @@
     var frame = root.querySelector('.plan-with-sun__frame');
     var img = root.querySelector('.plan-with-sun__img');
     var stage = root.querySelector('.sun-path__stage');
-    var ellipse = root.querySelector('.sun-path__ellipse');
+    var orbit = root.querySelector('.sun-path__orbit');
+    var arc = root.querySelector('.sun-path__arc');
     var sun = root.querySelector('.sun-path__sun');
     var markerRise = root.querySelector('.sun-path__marker--rise');
     var markerSet = root.querySelector('.sun-path__marker--set');
@@ -101,7 +116,7 @@
     var controls = root.querySelector('.sun-path__controls');
     var timeButtons = root.querySelectorAll('.sun-path__controls [data-sun-time]');
 
-    if (!frame || !img || !stage || !ellipse || !sun) {
+    if (!frame || !img || !stage || !orbit || !arc || !sun) {
       return;
     }
 
@@ -163,7 +178,6 @@
       var ellipseScale = params.ellipseScale;
       var edgePad = params.edgePad;
       var labelOutset = params.labelOutset;
-      var markerClear = params.markerClear || 16;
 
       // Полуоси по реальному размеру картинки (квадрат / вытянутая / широкая)
       var rx = (w * 0.5) * ellipseScale;
@@ -199,45 +213,43 @@
       state.rx = rx;
       state.ry = ry;
 
-      // Круглый PNG растягиваем в эллипс под aspect планировки (оси плана, без rotate картинки)
-      ellipse.style.width = (rx * 2) + 'px';
-      ellipse.style.height = (ry * 2) + 'px';
-      ellipse.style.left = (cx - rx) + 'px';
-      ellipse.style.top = (cy - ry) + 'px';
-      ellipse.style.transform = '';
+      // Дуга дня: чуть дальше восхода и заката (солнышки на линии, не на концах)
+      var riseAng = screenTheta(TIME_THETA.morning);
+      var setAng = riseAng + DAY_SWEEP;
+      var arcStart = riseAng - ARC_OVERSHOOT;
+      var arcSweep = DAY_SWEEP + ARC_OVERSHOOT * 2;
+      var fw = Math.max(frame.clientWidth || frameRect.width, 1);
+      var fh = Math.max(frame.clientHeight || frameRect.height, 1);
+      orbit.setAttribute('viewBox', '0 0 ' + fw + ' ' + fh);
+      orbit.setAttribute('width', String(fw));
+      orbit.setAttribute('height', String(fh));
+      orbit.style.left = '0';
+      orbit.style.top = '0';
+      arc.setAttribute('d', buildDayArcPath(cx, cy, rx, ry, arcStart, arcSweep, 72));
 
-      // Серые маркеры — центр точно на пунктире (те же точки, что Утро/Вечер у жёлтого)
-      var riseGeo = TIME_THETA.morning;
-      var setGeo = TIME_THETA.evening;
-      var pRise = pointOnEllipse(cx, cy, rx, ry, screenTheta(riseGeo));
-      var pSet = pointOnEllipse(cx, cy, rx, ry, screenTheta(setGeo));
+      // Маркеры — на точках восход/закат (на линии, не на концах дуги)
+      var pRise = pointOnEllipse(cx, cy, rx, ry, riseAng);
+      var pSet = pointOnEllipse(cx, cy, rx, ry, setAng);
 
       if (markerRise) {
         placeAt(markerRise, pRise.x, pRise.y);
+        markerRise.style.transform = 'translate(-50%, -50%)';
       }
       if (markerSet) {
         placeAt(markerSet, pSet.x, pSet.y);
+        markerSet.style.transform = 'translate(-50%, -50%)';
       }
 
-      // Подписи снаружи маркеров: центр текста дальше солнышка + якорь от центра
+      // Подписи снаружи концов дуги (не на линии)
       if (labelRise) {
-        var riseAng = screenTheta(riseGeo);
         var pr = pointOnEllipse(cx, cy, rx + labelOutset, ry + labelOutset, riseAng);
         placeAt(labelRise, pr.x, pr.y);
-        // сдвиг текста наружу от солнышка (по радиусу)
-        var riseRad = (riseAng * Math.PI) / 180;
-        var ox = Math.sin(riseRad) * markerClear;
-        var oy = -Math.cos(riseRad) * markerClear;
-        labelRise.style.transform = 'translate(calc(-50% + ' + ox.toFixed(1) + 'px), calc(-50% + ' + oy.toFixed(1) + 'px))';
+        labelRise.style.transform = 'translate(-50%, -50%)';
       }
       if (labelSet) {
-        var setAng = screenTheta(setGeo);
         var ps = pointOnEllipse(cx, cy, rx + labelOutset, ry + labelOutset, setAng);
         placeAt(labelSet, ps.x, ps.y);
-        var setRad = (setAng * Math.PI) / 180;
-        var ox2 = Math.sin(setRad) * markerClear;
-        var oy2 = -Math.cos(setRad) * markerClear;
-        labelSet.style.transform = 'translate(calc(-50% + ' + ox2.toFixed(1) + 'px), calc(-50% + ' + oy2.toFixed(1) + 'px))';
+        labelSet.style.transform = 'translate(-50%, -50%)';
       }
 
       applySun(state.theta);

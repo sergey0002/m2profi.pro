@@ -71,7 +71,7 @@ if( $_SESSION['sh_login'] || 1==1 )
 
     <link rel="stylesheet" href="/sahmatka/template/default/css/admin.css">
     <link rel="stylesheet" href="/sahmatka/template/default/css/iframe.css?v=5">
-    <link rel="stylesheet" href="/sahmatka/template/default/css/sun_path.css?v=16">
+    <link rel="stylesheet" href="/sahmatka/template/default/css/sun_path.css?v=18">
 
     <link rel="stylesheet" href="/wiget_rent.css">
 
@@ -114,7 +114,7 @@ if( $_SESSION['sh_login'] || 1==1 )
       </div>
     </center>
 
-    <script src="/sahmatka/template/default/js/sun_path.js?v=16"></script>
+    <script src="/sahmatka/template/default/js/sun_path.js?v=18"></script>
 
   </body>
 

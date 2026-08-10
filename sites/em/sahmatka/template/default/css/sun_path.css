@@ -63,21 +63,25 @@
   visibility: hidden;
 }
 
-/* Ellipse — пунктир поверх планировки */
-.sun-path__ellipse {
+/* Дуга восход→закат поверх планировки */
+.sun-path__orbit {
   position: absolute;
+  left: 0;
+  top: 0;
   z-index: 1;
   display: block;
-  width: 0;
-  height: 0;
-  max-width: none !important;
-  max-height: none !important;
-  object-fit: fill;
-  /* белый → серый #A8A8A8 */
-  filter: brightness(0) invert(70%);
-  opacity: 0.9;
+  overflow: visible;
   pointer-events: none !important;
   user-select: none;
+}
+
+.sun-path__arc {
+  fill: none;
+  stroke: #A8A8A8;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-dasharray: 5 5;
+  opacity: 0.9;
 }
 
 /* Подвижное солнце — жёлтое (Group.png белый → #E8B400) */

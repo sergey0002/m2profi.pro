@@ -24,7 +24,7 @@
    
   ?>
 
-  <link rel="stylesheet" href="/sahmatka/template/default/css/sun_path.css?v=16">
+  <link rel="stylesheet" href="/sahmatka/template/default/css/sun_path.css?v=18">
   
   
   <style>
@@ -1051,4 +1051,4 @@ document.getElementById('printButton').addEventListener('click', function(e) {
   
   
 </script>
-<script src="/sahmatka/template/default/js/sun_path.js?v=16"></script>
+<script src="/sahmatka/template/default/js/sun_path.js?v=18"></script>

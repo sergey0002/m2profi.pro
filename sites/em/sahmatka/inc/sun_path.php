@@ -78,7 +78,6 @@ if (!function_exists('render_plan_with_sun')) {
         ];
         $orientDeg = isset($orientDegMap[$orientCode]) ? (int)$orientDegMap[$orientCode] : 0;
         $base = '/sahmatka/images/sun/';
-        $ellipseSrc = $base . 'ellipse.png';
         $sunSrc = $base . 'sun.png';
 
         $toggleClass = 'sun-path__toggle' . ($toggleDefault ? ' is-on' : '');
@@ -111,8 +110,11 @@ if (!function_exists('render_plan_with_sun')) {
         $html .= $imgHtml;
 
         $html .= '<div class="sun-path__stage' . $stageOff . '" aria-hidden="' . ($toggleDefault ? 'false' : 'true') . '">';
-        $html .= '<img class="sun-path__ellipse" src="' . htmlspecialchars($ellipseSrc) . '" alt="" draggable="false" width="1" height="1">';
-        // серые маркеры — строго на линии орбиты (жёлтое солнце их перекрывает)
+        // дуга восход→закат (не полный эллипс)
+        $html .= '<svg class="sun-path__orbit" xmlns="http://www.w3.org/2000/svg" width="1" height="1" aria-hidden="true" focusable="false">';
+        $html .= '<path class="sun-path__arc" d="" fill="none" stroke="#A8A8A8" stroke-width="1.75" stroke-linecap="round" stroke-dasharray="5 5" opacity="0.9"></path>';
+        $html .= '</svg>';
+        // серые маркеры — строго на концах дуги
         $html .= '<img class="sun-path__marker sun-path__marker--rise" src="' . htmlspecialchars($sunSrc) . '"'
             . ' alt="" width="26" height="26" draggable="false">';
         $html .= '<img class="sun-path__marker sun-path__marker--set" src="' . htmlspecialchars($sunSrc) . '"'
