@@ -1,0 +1,3 @@
+﻿# Interactive genplan media (task 10)
+/genplans/*
+!/genplans/.gitkeep

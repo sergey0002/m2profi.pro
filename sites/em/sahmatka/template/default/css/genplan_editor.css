@@ -1,0 +1,555 @@
+﻿.genplan-editor {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+.genplan-editor__head,
+.genplan-editor__floor-panel,
+.genplan-editor__messages,
+.genplan-editor__title {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+/* Только карта без выделения — не трогаем текст форм */
+.genplan-editor__map,
+.genplan-editor__map * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.genplan-editor__head {
+    margin-bottom: 12px;
+}
+
+.genplan-editor__title {
+    margin: 0 0 6px;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.genplan-editor__map {
+    width: 100%;
+    height: 75vh;
+    min-height: 400px;
+    background: #f3f8f4;
+    border: 1px solid #ddd;
+}
+
+.genplan-editor__map.leaflet-container {
+    background: #f3f8f4;
+}
+
+/* Направляющая рисования: pane поверх ImageOverlay */
+.genplan-editor__map .leaflet-drawGuidePane {
+    z-index: 550;
+    pointer-events: none;
+}
+.genplan-editor__map .leaflet-draw-guides {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+}
+.genplan-editor__map .leaflet-draw-guide-dash {
+    width: 7px !important;
+    height: 7px !important;
+    opacity: 1 !important;
+    border-radius: 1px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);
+}
+.genplan-editor__map .genplan-draw-cursor-guide {
+    pointer-events: none;
+}
+
+/* Карточка формы: панель этажа + блок сообщений в одной рамке (единый визуальный блок) */
+.genplan-editor__panel-card {
+    margin-bottom: 10px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.genplan-editor__floor-panel {
+    padding: 10px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+    align-items: flex-end;
+}
+
+.genplan-editor__field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    margin: 0;
+    font-size: 14px;
+}
+
+.genplan-editor__field-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    line-height: 1.2;
+}
+
+.genplan-editor__field--label {
+    flex: 0 0 auto;
+    width: 148px;
+}
+
+.genplan-editor__upload-panel {
+    padding: 0 12px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.genplan-editor__btn--danger {
+    color: #c0392b;
+    border-color: #e7b4ac;
+    background: #fff;
+}
+
+.genplan-editor__btn--danger:hover:not(:disabled) {
+    background: #fdecea;
+}
+
+.genplan-editor__floor-panel select option.is-marked {
+    font-weight: bold;
+}
+
+.genplan-editor__dirty-actions {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    padding-bottom: 1px;
+}
+
+.genplan-editor__btn {
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.genplan-editor__btn--primary {
+    font-weight: 600;
+}
+
+.genplan-editor__btn:disabled,
+.genplan-editor__floor-panel select:disabled,
+.genplan-editor__floor-panel input:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.genplan-editor__floor-panel select,
+.genplan-editor__floor-panel input[type="text"] {
+    margin: 0;
+    padding: 7px 12px;
+    font-size: 14px;
+    line-height: 1.2;
+    min-width: 120px;
+    width: 100%;
+    height: 36px;
+    box-sizing: border-box;
+    color: #01112B;
+    background: #fff;
+    border: 2px solid #00CDAD;
+    border-radius: 15px;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.genplan-editor__field--label input[type="text"] {
+    width: 148px;
+    min-width: 0;
+}
+
+.genplan-editor__floor-panel select:focus,
+.genplan-editor__floor-panel input[type="text"]:focus {
+    outline: none;
+    border-color: #00CDAD;
+    box-shadow: 0 0 0 2px rgba(0, 205, 173, 0.25);
+}
+
+.genplan-editor__floor-panel select:disabled,
+.genplan-editor__floor-panel input[type="text"]:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    background: #f5f5f5;
+}
+
+.genplan-editor__floor-panel button {
+    padding: 6px 14px;
+    cursor: pointer;
+}
+
+/*
+ * Универсальный блок сообщений формы (замена отдельных floor-state/status).
+ * Всегда в одной рамке с панелью этажа, компактной полосой чуть ниже формы.
+ * Типы: info (нейтрально) / success (сохранено) / warning (есть правки) / error (ошибка).
+ */
+.genplan-editor__messages {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    background: #eef1f4;
+    color: #444;
+    border-top: 1px solid #e2e2e2;
+}
+
+.genplan-editor__messages:empty {
+    display: none;
+}
+
+.genplan-editor__demo {
+    margin: 0;
+    padding: 8px 12px 10px;
+    font-size: 13px;
+    line-height: 1.4;
+    border-top: 1px solid #e2e2e2;
+    background: #f8f9fa;
+}
+
+.genplan-editor__demo a {
+    color: #2f6f9f;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.genplan-editor__demo a:hover,
+.genplan-editor__demo a:focus-visible {
+    color: #1d4f73;
+}
+
+.genplan-editor__demo-hint {
+    display: inline-block;
+    margin-left: 8px;
+    color: #888;
+    font-size: 12px;
+}
+
+.genplan-editor__messages-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    background: #d7dde3;
+    color: #444;
+}
+
+.genplan-editor__messages-text {
+    flex: 1 1 auto;
+    word-break: break-word;
+}
+
+.genplan-editor__messages.is-info {
+    background: #eef4fb;
+    color: #1f4e79;
+    border-top-color: #cfe2f3;
+}
+
+.genplan-editor__messages.is-info .genplan-editor__messages-icon {
+    background: #cfe2f3;
+    color: #1f4e79;
+}
+
+.genplan-editor__messages.is-success {
+    background: #eaf7ee;
+    color: #1a7f37;
+    border-top-color: #c9ecd3;
+}
+
+.genplan-editor__messages.is-success .genplan-editor__messages-icon {
+    background: #c9ecd3;
+    color: #1a7f37;
+}
+
+.genplan-editor__messages.is-warning {
+    background: #fff6e9;
+    color: #b45309;
+    border-top-color: #ffe3b8;
+}
+
+.genplan-editor__messages.is-warning .genplan-editor__messages-icon {
+    background: #ffe3b8;
+    color: #b45309;
+}
+
+.genplan-editor__messages.is-error {
+    background: #fdecea;
+    color: #c0392b;
+    border-top-color: #f8cfc9;
+}
+
+.genplan-editor__messages.is-error .genplan-editor__messages-icon {
+    background: #f8cfc9;
+    color: #c0392b;
+}
+
+/* Без прямоугольной рамки фокуса/выделения браузера на полигонах */
+#genplan_map path.leaflet-interactive,
+#genplan_map .leaflet-interactive {
+    outline: none !important;
+}
+
+#genplan_map path:focus,
+#genplan_map .leaflet-interactive:focus {
+    outline: none !important;
+}
+
+/* Круглые и более мелкие точки вершин Leaflet.Draw */
+#genplan_map .leaflet-editing-icon,
+#genplan_map .facade-edit-vertex {
+    width: 8px !important;
+    height: 8px !important;
+    margin-left: -4px !important;
+    margin-top: -4px !important;
+    border-radius: 50% !important;
+    border: 2px solid #3388ff !important;
+    background: #fff !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
+#genplan_map .leaflet-editing-icon.leaflet-touch-icon,
+#genplan_map .facade-edit-vertex.leaflet-touch-icon {
+    width: 12px !important;
+    height: 12px !important;
+    margin-left: -6px !important;
+    margin-top: -6px !important;
+}
+
+/* Модалка подтверждения несохранённых изменений (Сохранить / Не сохранять / Остаться) */
+.genplan-editor__modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.genplan-editor__modal-box {
+    background: #fff;
+    border-radius: 6px;
+    padding: 18px 20px;
+    max-width: 420px;
+    width: calc(100% - 32px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.genplan-editor__modal-text {
+    margin: 0 0 16px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #222;
+    white-space: pre-line;
+}
+
+.genplan-editor__modal-field {
+    display: block;
+    margin: 0 0 16px;
+}
+.genplan-editor__modal-select {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+/* Кнопки «копировать» / «двигать» в тулбаре Leaflet.Draw */
+.genplan-editor__map .genplan-draw-extra .leaflet-draw-toolbar {
+    margin-top: 0;
+}
+.genplan-editor__map .genplan-tool-btn {
+    background-image: none !important;
+    text-indent: 0 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+    color: #333;
+    text-decoration: none;
+}
+.genplan-editor__map .genplan-tool-btn::before {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+}
+.genplan-editor__map .genplan-tool-pick::before {
+    content: '☝';
+}
+.genplan-editor__map .genplan-tool-copy::before {
+    content: '⧉';
+}
+.genplan-editor__map .genplan-tool-move::before {
+    content: '✥';
+}
+.genplan-editor__map .genplan-tool-pick.leaflet-draw-toolbar-button-enabled,
+.genplan-editor__map .genplan-tool-move.leaflet-draw-toolbar-button-enabled {
+    background-color: #fff;
+}
+.genplan-editor__map.is-pick-mode path.leaflet-interactive {
+    cursor: pointer;
+}
+.genplan-editor__map .leaflet-path-draggable {
+    cursor: move;
+}
+
+/* Режим «Подписи» — форма объекта */
+.genplan-editor__mode-toggle {
+    display: inline-flex;
+    gap: 6px;
+    margin-right: 10px;
+    align-items: center;
+}
+
+.genplan-editor__meta-panel {
+    display: block;
+    width: 100%;
+    padding: 12px 14px 14px;
+    box-sizing: border-box;
+    border-top: 1px solid #e2e2e2;
+    background: #fafbfc;
+}
+
+.genplan-editor__meta-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+    gap: 14px 18px;
+    align-items: stretch;
+}
+
+.genplan-editor__meta-side {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.genplan-editor__meta-panel .genplan-editor__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    min-width: 0;
+}
+
+.genplan-editor__meta-panel .genplan-editor__field-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: #44505c;
+}
+
+.genplan-editor__hint {
+    font-weight: 400;
+    color: #8a949e;
+    margin-left: 4px;
+}
+
+.genplan-editor__meta-panel textarea,
+.genplan-editor__meta-panel select,
+.genplan-editor__meta-panel input[type="text"] {
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.35;
+    color: #01112B;
+    background: #fff;
+    border: 2px solid #00CDAD;
+    border-radius: 12px;
+    padding: 8px 12px;
+}
+
+.genplan-editor__meta-panel textarea {
+    min-height: 92px;
+    height: 100%;
+    resize: vertical;
+    border-radius: 12px;
+}
+
+.genplan-editor__meta-panel select,
+.genplan-editor__meta-panel input[type="text"] {
+    height: 38px;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.genplan-editor__meta-panel textarea:focus,
+.genplan-editor__meta-panel select:focus,
+.genplan-editor__meta-panel input[type="text"]:focus {
+    outline: none;
+    border-color: #00CDAD;
+    box-shadow: 0 0 0 2px rgba(0, 205, 173, 0.25);
+}
+
+.genplan-editor__field--title {
+    height: 100%;
+}
+
+.genplan-editor__home-preview {
+    margin-top: 12px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #3d4a57;
+    background: #eef8f5;
+    border: 1px solid #b7e6da;
+    border-radius: 10px;
+}
+
+.genplan-editor__home-preview:empty,
+.genplan-editor__home-preview[style*="display: none"] {
+    display: none !important;
+}
+
+.genplan-editor__home-preview-title {
+    font-weight: 600;
+    color: #1a6b58;
+    margin-bottom: 4px;
+}
+
+.genplan-editor__home-preview-row {
+    color: #44505c;
+}
+
+@media (max-width: 720px) {
+    .genplan-editor__meta-grid {
+        grid-template-columns: 1fr;
+    }
+}

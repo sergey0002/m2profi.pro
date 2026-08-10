@@ -147,6 +147,53 @@ class ctr__homes_kvartal extends ctr__
 			<form action="<?=$r->acturl( $this->ctr , 'edit' );?>&id=<?=$id?>" method="POST" id="editform"  >
 			<br/><br/>
 			<?=$this->formpanel($r->acturl($this->ctr,'index'));?>
+
+			<?php if (!empty($id)): ?>
+			<style>
+				.he-markup-row { margin: 0 0 20px; }
+				.he-markup-card {
+					background: #f5f7f8;
+					border: 1px solid #d6dde2;
+					border-radius: 8px;
+					padding: 16px 18px 18px;
+					min-height: 100%;
+					box-sizing: border-box;
+				}
+				.he-markup-card h2 { margin: 0 0 12px; font-size: 18px; }
+				.he-markup-card .btn_2 {
+					padding: 7px;
+					font-size: 14px;
+					color: #01112B;
+					white-space: nowrap;
+					border-radius: 15px;
+					border: 2px solid #00CDAD;
+					background: none;
+					display: inline-block;
+					margin: 5px 8px 6px 0;
+					height: auto;
+					text-decoration: none;
+					line-height: normal;
+					box-sizing: border-box;
+				}
+				.he-markup-card .btn_2:hover { background: #00CDAD; color: #01112B; }
+				.he-markup-card .he-markup-fullscreen {
+					color: #01112B;
+					font-size: 14px;
+					text-decoration: underline;
+					margin-left: 4px;
+				}
+				.he-markup-card .he-markup-note { display: block; margin-top: 8px; font-size: 13px; }
+			</style>
+			<div class="row he-markup-row">
+				<div class="col-md-12">
+					<div class="he-markup-card">
+						<h2>Интерактивный план</h2>
+						<a href="/sahmatka/ctrind.php?ctr=genplans&amp;act=editor&amp;kvartal_id=<?= (int) $id ?>" class="btn_2">Открыть редактор интерактивного плана</a>
+						<a href="/sahmatka/iframe_router.php?ctr=genplans&amp;act=editor&amp;kvartal_id=<?= (int) $id ?>" class="he-markup-fullscreen" target="_blank" rel="noopener">полный экран</a>
+					</div>
+				</div>
+			</div>
+			<?php endif; ?>
 			
 			<div class="row">
 				<div class="col-md-6">

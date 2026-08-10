@@ -1,13 +1,13 @@
  <?
  
- if(trim($_POST[newprice]) &&  $_SESSION['sh_login'] == 'admin' )
+ if(trim($_POST['newprice']) &&  $_SESSION['sh_login'] == 'admin' )
  {
 		$_POST['newprice'] = str_replace(' ','',$_POST['newprice']); 
-		$query = 'UPDATE `apartaments` SET `price` = "'.$_POST[newprice].'" WHERE `home_id` = "'.$_GET[home].'"  AND  ( `apartment_num` = "100000"   ';
+		$query = 'UPDATE `apartaments` SET `price` = "'.$_POST['newprice'].'" WHERE `home_id` = "'.$_GET['home'].'"  AND  ( `apartment_num` = "100000"   ';
 
-		foreach($_POST[editapart][$_GET[home]] as $k=>$v )
+		foreach($_POST['editapart'][$_GET['home']] as $k=>$v )
 		{
-			//print 'Новая цена для квартиры '.$k.' : '.$_POST[newprice].' <br/>';
+			//print 'Новая цена для квартиры '.$k.' : '.$_POST['newprice'].' <br/>';
 			// формируем запрос на обновление цены по ид дома и хаты
 			$query.= ' OR `apartment_num` = "'.$k.'" ';
 		}
@@ -16,12 +16,12 @@
 		$result = mysqli_query($connection, $query) or die(  mysqli_error (  $connection ) ); // Отправляем переменную с запросом в базу данных 
 		 
  }
- if(trim($_POST[newplan]) &&  $_SESSION['sh_login'] == 'admin' ) // Массовая редактирование планироваок
+ if(trim($_POST['newplan']) &&  $_SESSION['sh_login'] == 'admin' ) // Массовая редактирование планироваок
  {
-		$query = 'UPDATE `apartaments` SET `image_pb` = "'.$_POST[newplan].'" WHERE `home_id` = "'.$_GET[home].'"  AND  ( `apartment_num` = "100000"   ';
-		foreach($_POST[editapart][$_GET[home]] as $k=>$v )
+		$query = 'UPDATE `apartaments` SET `image_pb` = "'.$_POST['newplan'].'" WHERE `home_id` = "'.$_GET['home'].'"  AND  ( `apartment_num` = "100000"   ';
+		foreach($_POST['editapart'][$_GET['home']] as $k=>$v )
 		{
-			print 'Новая планировка для квартиры '.$k.' : '.$_POST[newplan].' <br/>';
+			print 'Новая планировка для квартиры '.$k.' : '.$_POST['newplan'].' <br/>';
 			// формируем запрос на обновление цены по ид дома и хаты
 			$query.= ' OR `apartment_num` = "'.$k.'" ';
 		}
@@ -32,10 +32,10 @@
  
 if(trim($_POST['newplan_floor']) &&  $_SESSION['sh_login'] == 'admin' ) // Массовая редактирование планироваок
  {
-		$query = 'UPDATE `apartaments` SET `image_pb_plan` = "'.$_POST[newplan_floor].'" WHERE `home_id` = "'.$_GET[home].'"  AND  ( `apartment_num` = "100000"   ';
-		foreach($_POST[editapart][$_GET[home]] as $k=>$v )
+		$query = 'UPDATE `apartaments` SET `image_pb_plan` = "'.$_POST['newplan_floor'].'" WHERE `home_id` = "'.$_GET['home'].'"  AND  ( `apartment_num` = "100000"   ';
+		foreach($_POST['editapart'][$_GET['home']] as $k=>$v )
 		{
-			print 'Новая планировка для квартиры '.$k.' : '.$_POST[newplan].' <br/>';
+			print 'Новая планировка для квартиры '.$k.' : '.$_POST['newplan'].' <br/>';
 			// формируем запрос на обновление цены по ид дома и хаты
 			$query.= ' OR `apartment_num` = "'.$k.'" ';
 		}
@@ -46,12 +46,12 @@ if(trim($_POST['newplan_floor']) &&  $_SESSION['sh_login'] == 'admin' ) // Ма�
  
  
  
-  if(trim($_POST[newarea]) &&  $_SESSION['sh_login'] == 'admin' ) // Массовая редактирование планироваок
+  if(trim($_POST['newarea']) &&  $_SESSION['sh_login'] == 'admin' ) // Массовая редактирование планироваок
  {
-		$query = 'UPDATE `apartaments` SET `area` = "'.$_POST[newarea].'" WHERE `home_id` = "'.$_GET[home].'"  AND  ( `apartment_num` = "100000"   ';
-		foreach($_POST[editapart][$_GET[home]] as $k=>$v )
+		$query = 'UPDATE `apartaments` SET `area` = "'.$_POST['newarea'].'" WHERE `home_id` = "'.$_GET['home'].'"  AND  ( `apartment_num` = "100000"   ';
+		foreach($_POST['editapart'][$_GET['home']] as $k=>$v )
 		{
-			print 'Новая площадь  для квартиры '.$k.' : '.$_POST[newarea].' <br/>';
+			print 'Новая площадь  для квартиры '.$k.' : '.$_POST['newarea'].' <br/>';
 			// формируем запрос на обновление цены по ид дома и хаты
 			$query.= ' OR `apartment_num` = "'.$k.'" ';
 		}
@@ -60,12 +60,12 @@ if(trim($_POST['newplan_floor']) &&  $_SESSION['sh_login'] == 'admin' ) // Ма�
 			$result = mysqli_query($connection, $query) or die(  mysqli_error (  $connection ) ); // Отправляем переменную с запросом в базу данных 
 	
  }	 
- if(trim($_POST[newrooms]) &&  $_SESSION['sh_login'] == 'admin' ) // Массовая редактирование планироваок
+ if(trim($_POST['newrooms']) &&  $_SESSION['sh_login'] == 'admin' ) // Массовая редактирование планироваок
  {
-		$query = 'UPDATE `apartaments` SET `rooms` = "'.$_POST[newrooms].'" WHERE `home_id` = "'.$_GET[home].'"  AND  ( `apartment_num` = "100000"   ';
-		foreach($_POST[editapart][$_GET[home]] as $k=>$v )
+		$query = 'UPDATE `apartaments` SET `rooms` = "'.$_POST['newrooms'].'" WHERE `home_id` = "'.$_GET['home'].'"  AND  ( `apartment_num` = "100000"   ';
+		foreach($_POST['editapart'][$_GET['home']] as $k=>$v )
 		{
-			print 'Новое количество комнат для квартиры '.$k.' : '.$_POST[newrooms].' <br/>';
+			print 'Новое количество комнат для квартиры '.$k.' : '.$_POST['newrooms'].' <br/>';
 			// формируем запрос на обновление цены по ид дома и хаты
 			$query.= ' OR `apartment_num` = "'.$k.'" ';
 		}
@@ -97,12 +97,12 @@ if (
         add_log('Массовое изменение ориентации окон');
     }
 }
-  if(trim($_POST[newtext]) &&  $_SESSION['sh_login'] == 'admin' ) // Массовая редактирование планироваок
+  if(trim($_POST['newtext']) &&  $_SESSION['sh_login'] == 'admin' ) // Массовая редактирование планироваок
  {
-		$query = 'UPDATE `apartaments` SET `text` = "'.$_POST[newtext].'" WHERE `home_id` = "'.$_GET[home].'"  AND  ( `apartment_num` = "100000"   ';
-		foreach($_POST[editapart][$_GET[home]] as $k=>$v )
+		$query = 'UPDATE `apartaments` SET `text` = "'.$_POST['newtext'].'" WHERE `home_id` = "'.$_GET['home'].'"  AND  ( `apartment_num` = "100000"   ';
+		foreach($_POST['editapart'][$_GET['home']] as $k=>$v )
 		{
-			print 'Новое примечание для квартиры '.$k.' : '.$_POST[newtext].' <br/>';
+			print 'Новое примечание для квартиры '.$k.' : '.$_POST['newtext'].' <br/>';
 			// формируем запрос на обновление цены по ид дома и хаты
 			$query.= ' OR `apartment_num` = "'.$k.'" ';
 		}
@@ -111,25 +111,25 @@ if (
 			$result = mysqli_query($connection, $query) or die(  mysqli_error (  $connection ) ); // Отправляем переменную с запросом в базу данных 
 	
  }	
-if(trim($_POST[newstatus]) &&  $_SESSION['sh_login'] == 'admin' ) // Массовая редактирование Статуса
+if(trim($_POST['newstatus']) &&  $_SESSION['sh_login'] == 'admin' ) // Массовая редактирование Статуса
  {
  
  
-		foreach($_POST[editapart][$_GET[home]] as $k=>$v )
+		foreach($_POST['editapart'][$_GET['home']] as $k=>$v )
 		{
 			// print '<pre>';
 			//  print_r($_POST);
 			// print '</pre>';
 			 
-			$home_id=(int) $_GET[home];
-			$section_id=$_POST[editapart_section][$_GET[home]][$k];
-			$floor=$_POST[editapart_floor][$_GET[home]][$k];
-			$apartments=$_POST[editapart_apartaments][$_GET[home]][$k];
+			$home_id=(int) $_GET['home'];
+			$section_id=$_POST['editapart_section'][$_GET['home']][$k];
+			$floor=$_POST['editapart_floor'][$_GET['home']][$k];
+			$apartments=$_POST['editapart_apartaments'][$_GET['home']][$k];
  
 			$user_id=1;
-			$status=$_POST[newstatus];
+			$status=$_POST['newstatus'];
 			
-		// print 'Новый статус для квартиры '.$k.' : '.$_POST[newstatus].' <br/>';
+		// print 'Новый статус для квартиры '.$k.' : '.$_POST['newstatus'].' <br/>';
 			 			 
 		 
 			$bron_id = $sa->new_broni($home_id,$k,$status,0);
