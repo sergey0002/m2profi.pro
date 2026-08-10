@@ -1029,6 +1029,29 @@
 
     this._clearMeasureStyles(el);
     el.classList.remove('is-expanded');
+    // явно вернуть collapsed без transition — иначе следующий expand не анимируется
+    if (bodyWrap) {
+      bodyWrap.style.transition = 'none';
+      bodyWrap.style.gridTemplateRows = '0fr';
+      bodyWrap.style.maxWidth = '0';
+      bodyWrap.style.width = '';
+      bodyWrap.style.opacity = '0';
+    }
+    if (body) {
+      body.style.transition = 'none';
+      body.style.padding = '0 12px';
+    }
+    void el.offsetWidth;
+    if (bodyWrap) {
+      bodyWrap.style.transition = '';
+      bodyWrap.style.gridTemplateRows = '';
+      bodyWrap.style.maxWidth = '';
+      bodyWrap.style.opacity = '';
+    }
+    if (body) {
+      body.style.transition = '';
+      body.style.padding = '';
+    }
 
     if (below) el.classList.add('is-below');
     else el.classList.remove('is-below');
@@ -1099,19 +1122,39 @@
       var el = nodes[i];
       if (String(el.dataset.objectId) === String(objectId)) {
         if (expanded) {
-          if (el.classList.contains('is-expanded')) continue;
-          // сначала сторона/сдвиг, потом expand — без прыжка вверх→вниз
+          if (el.classList.contains('is-expanded') || el.dataset.expandPending === '1') continue;
+          // 1) выбрать сторону скрыто, остаться collapsed
           self._prepareExpandPlacement(el, viewport);
-          el.classList.add('is-expanded');
-          self._applyLabelPlacement(el, viewport);
-          // после анимации высоты только дожать в viewport, без смены стороны
-          if (el._gwClampTimer) clearTimeout(el._gwClampTimer);
-          el._gwClampTimer = setTimeout(function () {
-            el._gwClampTimer = null;
-            if (!el.classList.contains('is-expanded')) return;
-            self._nudgeExpandedIntoViewport(el, viewport);
-          }, 300);
+          // 2) зафиксировать collapsed как стартовый кадр анимации
+          void el.offsetWidth;
+          el.dataset.expandPending = '1';
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              el.dataset.expandPending = '0';
+              if (self.destroyed) return;
+              var stillHover = self._hoverObjectId != null
+                && String(self._hoverObjectId) === String(objectId);
+              var stillActive = self._activeObjectId != null
+                && String(self._activeObjectId) === String(objectId);
+              if (!stillHover && !stillActive) {
+                el.classList.remove('is-below');
+                el.dataset.shiftX = '0';
+                el.dataset.shiftY = '0';
+                self._applyLabelPlacement(el, viewport);
+                return;
+              }
+              el.classList.add('is-expanded');
+              self._applyLabelPlacement(el, viewport);
+              if (el._gwClampTimer) clearTimeout(el._gwClampTimer);
+              el._gwClampTimer = setTimeout(function () {
+                el._gwClampTimer = null;
+                if (!el.classList.contains('is-expanded')) return;
+                self._nudgeExpandedIntoViewport(el, viewport);
+              }, 320);
+            });
+          });
         } else {
+          el.dataset.expandPending = '0';
           el.classList.remove('is-expanded');
           el.classList.remove('is-below');
           el.dataset.shiftX = '0';
@@ -1125,6 +1168,7 @@
           self._applyLabelPlacement(el, viewport);
         }
       } else if (expanded) {
+        el.dataset.expandPending = '0';
         el.classList.remove('is-expanded');
         el.classList.remove('is-below');
         el.dataset.shiftX = '0';
@@ -1145,7 +1189,8 @@
     var root = this._labelsOverlayForStage(stage);
     if (!root) return;
     var viewport = this._viewportForStage(stage);
-    root.querySelectorAll('.gw-label.is-expanded').forEach(function (el) {
+    root.querySelectorAll('.gw-label.is-expanded, .gw-label[data-expand-pending="1"]').forEach(function (el) {
+      el.dataset.expandPending = '0';
       el.classList.remove('is-expanded');
       el.classList.remove('is-below');
       el.dataset.shiftX = '0';
@@ -1880,6 +1925,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.3.6'
+    version: '2.3.7'
   };
 })(typeof window !== 'undefined' ? window : this);
