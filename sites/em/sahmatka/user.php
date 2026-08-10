@@ -258,19 +258,6 @@ include('gantt.php');
 								?><option value="/sahmatka/user.php?action=objects&home=<?=$v['home_id']?>&sdan=<?=$_GET['sdan']?>" <? if($v['home_id']==$_GET['home']){ print ' selected="selected" ';}?>><?=$v['long_title']?></option><?
 							}
 							?>
-							<?
-							if($_SESSION['agency_id'] == "92" || $_SESSION['sh_login'] == 'admin'  || $_SESSION['sh_login'] == 'demo_admin')
-							{
-								if(isset($_GET['sdan']))
-								{
-								?>
-							 
-								<option value="/sahmatka/form_order_custom.php?custom_home_id=101&custom_appart_id=1">Свечникова, 4/1</option>
-								 
-								<?
-								}
-							}
-							?>
 							</select>
 							
 						</div>

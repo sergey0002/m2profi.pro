@@ -227,7 +227,6 @@ class ctr__objects
 								{
 								?>
 							 
-								<option value="/sahmatka/form_order_custom.php?custom_home_id=101&custom_appart_id=1">Свечникова, 4/1</option>
 								<option value="/sahmatka/form_order_custom.php?custom_home_id=102&custom_appart_id=1">Краузе 21/1 </option>
 								<?
 								}
