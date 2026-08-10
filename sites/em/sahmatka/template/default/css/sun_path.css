@@ -63,7 +63,7 @@
   visibility: hidden;
 }
 
-/* Ellipse 18.png — белый пунктир → светло-серый как на макете */
+/* Ellipse — пунктир поверх планировки */
 .sun-path__ellipse {
   position: absolute;
   z-index: 1;
@@ -75,7 +75,7 @@
   object-fit: fill;
   /* белый → серый #A8A8A8 */
   filter: brightness(0) invert(70%);
-  opacity: 0.85;
+  opacity: 0.9;
   pointer-events: none !important;
   user-select: none;
 }
@@ -118,7 +118,7 @@
 
 .sun-path__label {
   position: absolute;
-  z-index: 3;
+  z-index: 5;
   display: block;
   left: 0;
   top: 0;
@@ -131,6 +131,7 @@
   pointer-events: none !important;
   user-select: none;
   letter-spacing: 0.01em;
+  text-shadow: 0 0 3px #fff, 0 0 6px #fff;
 }
 
 /* Toggle — зеркало компаса: правый верхний угол контейнера плана */

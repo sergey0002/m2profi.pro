@@ -24,7 +24,7 @@
    
   ?>
 
-  <link rel="stylesheet" href="/sahmatka/template/default/css/sun_path.css?v=14">
+  <link rel="stylesheet" href="/sahmatka/template/default/css/sun_path.css?v=16">
   
   
   <style>
@@ -64,12 +64,13 @@
 .mdl {
   width: 100%;
   max-width: 1254px;
-  /* минимальные равные отступы сверху и слева */
-  padding: 12px;
+  /* равные минимальные отступы со всех сторон */
+  padding: 16px;
   background: #fff !important;
   box-sizing: border-box;
   height: auto !important;
   min-height: 0 !important;
+  overflow: visible;
 }
 @media (max-width: 1023.98px) {
   .mdl {
@@ -84,19 +85,19 @@
 .mdl-inner {
   display: -ms-grid;
   display: grid;
-  -ms-grid-columns: 370px 24px 1fr;
+  -ms-grid-columns: 370px 20px 1fr;
   grid-template-columns: 370px 1fr;
-  grid-column-gap: 24px;
-  /* высота ряда = высота колонки с планировкой */
+  grid-column-gap: 20px;
   align-items: stretch;
   height: auto !important;
   min-height: 0 !important;
+  overflow: visible;
 }
 /* типографика Exo 2: заголовок 24px, остальное пропорционально */
 .mdl {
   font-family: var(--mainfont);
 }
-/* серая плашка = высота планировки, форма прижата вниз */
+/* серая плашка: не обрезать текст согласия; расти по контенту при необходимости */
 .mdl-aside {
   -ms-grid-column: 1;
   grid-column: 1;
@@ -109,30 +110,32 @@
   gap: 0;
   min-width: 0;
   height: auto;
-  min-height: 0;
+  min-height: max-content;
   align-self: stretch;
   background: #F0F0F0;
   border-radius: 16px;
   padding: 16px;
   box-sizing: border-box;
+  overflow: visible;
   font-family: var(--mainfont);
   font-size: 16px;
   line-height: 1.4;
   color: var(--dark);
 }
-/* правая панель — без лишнего низа */
+/* правая панель */
 .mdl-body {
   -ms-grid-column: 3;
   grid-column: 2;
   -ms-grid-row: 1;
   grid-row: 1;
-  padding: 16px 28px 12px;
+  padding: 16px 20px;
   border-left: none;
   background: #fff;
   border-radius: 16px;
   box-sizing: border-box;
   min-width: 0;
   align-self: stretch;
+  overflow: visible;
 }
 @media (max-width: 1023.98px) {
   .mdl-inner {
@@ -407,12 +410,16 @@
   }
 }
 .mdl-form__accept {
-  margin-top: 12px;
+  margin-top: 10px;
+  margin-bottom: 0;
+  padding-bottom: 2px;
   font-family: var(--mainfont);
   font-size: 10px;
   font-weight: 300;
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--dark);
+  overflow: visible;
+  white-space: normal;
 }
 .mdl-form__accept a {
   text-decoration: underline;
@@ -1044,4 +1051,4 @@ document.getElementById('printButton').addEventListener('click', function(e) {
   
   
 </script>
-<script src="/sahmatka/template/default/js/sun_path.js?v=14"></script>
+<script src="/sahmatka/template/default/js/sun_path.js?v=16"></script>

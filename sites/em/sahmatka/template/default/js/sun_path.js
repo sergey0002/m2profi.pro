@@ -7,11 +7,13 @@
 (function (window, document) {
   'use strict';
 
-  /** Обхват вокруг плана — как на макете (дуга снаружи чертежа) */
-  var ELLIPSE_SCALE = 1.22;
-  /** Запас снаружи эллипса под подписи и солнце + зазор до радио */
-  var EDGE_PAD = 36;
-  var LABEL_OUTSET = 18;
+  /** Орбита поверх планировки (чуть внутри бокса картинки) */
+  var ELLIPSE_SCALE = 0.96;
+  /** Запас под подписи/солнце */
+  var EDGE_PAD = 22;
+  /** Вынос подписи от пунктира — больше радиуса солнышка, чтобы не перекрывать текст */
+  var LABEL_OUTSET = 34;
+  var MARKER_CLEAR = 16;
   var ANIM_MS = 400;
   var FADE_MS = 400;
   /** Локальные углы суток относительно севера (как у компаса) */
@@ -39,15 +41,17 @@
   function layoutParams() {
     if (isMobileLayout()) {
       return {
-        ellipseScale: 1.12,
-        edgePad: 22,
-        labelOutset: 10
+        ellipseScale: 0.94,
+        edgePad: 24,
+        labelOutset: 28,
+        markerClear: 14
       };
     }
     return {
       ellipseScale: ELLIPSE_SCALE,
       edgePad: EDGE_PAD,
-      labelOutset: LABEL_OUTSET
+      labelOutset: LABEL_OUTSET,
+      markerClear: MARKER_CLEAR
     };
   }
 
@@ -159,15 +163,17 @@
       var ellipseScale = params.ellipseScale;
       var edgePad = params.edgePad;
       var labelOutset = params.labelOutset;
+      var markerClear = params.markerClear || 16;
 
       // Полуоси по реальному размеру картинки (квадрат / вытянутая / широкая)
       var rx = (w * 0.5) * ellipseScale;
       var ry = (h * 0.5) * ellipseScale;
 
-      // Запас СНАРУЖИ frame (margin), чтобы дуга/подписи не наезжали на радио
-      // и не сжимали саму картинку (в отличие от padding)
-      var padX = Math.max(edgePad, rx - w * 0.5 + labelOutset + (isMobileLayout() ? 12 : 20));
-      var padY = Math.max(edgePad, ry - h * 0.5 + labelOutset + (isMobileLayout() ? 16 : 24));
+      // Запас под подписи; при scale≤1 орбита на плане — пад минимальный
+      var overhangX = Math.max(0, rx - w * 0.5) + labelOutset + (isMobileLayout() ? 8 : 12);
+      var overhangY = Math.max(0, ry - h * 0.5) + labelOutset + (isMobileLayout() ? 10 : 14);
+      var padX = Math.max(edgePad, overhangX);
+      var padY = Math.max(edgePad, overhangY);
 
       root.style.paddingLeft = padX + 'px';
       root.style.paddingRight = padX + 'px';
@@ -213,14 +219,25 @@
         placeAt(markerSet, pSet.x, pSet.y);
       }
 
-      // Подписи чуть снаружи маркеров
+      // Подписи снаружи маркеров: центр текста дальше солнышка + якорь от центра
       if (labelRise) {
-        var pr = pointOnEllipse(cx, cy, rx + labelOutset, ry + labelOutset, screenTheta(riseGeo));
+        var riseAng = screenTheta(riseGeo);
+        var pr = pointOnEllipse(cx, cy, rx + labelOutset, ry + labelOutset, riseAng);
         placeAt(labelRise, pr.x, pr.y);
+        // сдвиг текста наружу от солнышка (по радиусу)
+        var riseRad = (riseAng * Math.PI) / 180;
+        var ox = Math.sin(riseRad) * markerClear;
+        var oy = -Math.cos(riseRad) * markerClear;
+        labelRise.style.transform = 'translate(calc(-50% + ' + ox.toFixed(1) + 'px), calc(-50% + ' + oy.toFixed(1) + 'px))';
       }
       if (labelSet) {
-        var ps = pointOnEllipse(cx, cy, rx + labelOutset, ry + labelOutset, screenTheta(setGeo));
+        var setAng = screenTheta(setGeo);
+        var ps = pointOnEllipse(cx, cy, rx + labelOutset, ry + labelOutset, setAng);
         placeAt(labelSet, ps.x, ps.y);
+        var setRad = (setAng * Math.PI) / 180;
+        var ox2 = Math.sin(setRad) * markerClear;
+        var oy2 = -Math.cos(setRad) * markerClear;
+        labelSet.style.transform = 'translate(calc(-50% + ' + ox2.toFixed(1) + 'px), calc(-50% + ' + oy2.toFixed(1) + 'px))';
       }
 
       applySun(state.theta);
