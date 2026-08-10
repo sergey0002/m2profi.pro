@@ -867,6 +867,7 @@ class ctr__genplans extends ctr__
         $show_title_mobile = $this->post_flag('show_title_mobile', 1);
         $show_apt_links = $home_id > 0 ? $this->post_flag('show_apt_links', 0) : 0;
 
+        $link_url = trim((string) ($_POST['link_url'] ?? ''));
         $data = [
             'kvartal_id' => $kvartal_id,
             'title' => $title,
@@ -874,7 +875,7 @@ class ctr__genplans extends ctr__
             'show_title_desktop' => $show_title_desktop,
             'show_title_mobile' => $show_title_mobile,
             'show_apt_links' => $show_apt_links,
-            'link_url' => trim((string) ($_POST['link_url'] ?? '')),
+            'link_url' => $link_url,
             'points' => json_encode($points),
             'sort_order' => (int) ($_POST['sort_order'] ?? 0),
             'del' => 0,
@@ -899,7 +900,16 @@ class ctr__genplans extends ctr__
             $data['home_id'] = $home_id > 0 ? $home_id : null;
             $data['label_x'] = $label_x;
             $data['label_y'] = $label_y;
+            // update_for_key: '' → NULL; title NOT NULL — пустой title пишем отдельным SQL
+            if ($title === '') {
+                unset($data['title']);
+            }
             $mysql->update_for_key('genplan_polygons', 'genplan_polygon_id', $id, $data);
+            if ($title === '') {
+                $mysql->sql(
+                    'UPDATE genplan_polygons SET `title`="" WHERE `genplan_polygon_id`="' . (int) $id . '"'
+                );
+            }
         } else {
             $id = $mysql->insert('genplan_polygons', $data);
         }
