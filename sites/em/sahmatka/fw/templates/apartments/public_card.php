@@ -24,7 +24,7 @@
    
   ?>
 
-  <link rel="stylesheet" href="/sahmatka/template/default/css/sun_path.css?v=1">
+  <link rel="stylesheet" href="/sahmatka/template/default/css/sun_path.css?v=14">
   
   
   <style>
@@ -43,8 +43,8 @@
     --placeholder: #666;
     --fontsize: 16px;
     --lineheight: 1.3;
-    --mainfont: "Exo2", sans-serif;
-    --secfont: "Inter", sans-serif;
+    --mainfont: "Exo 2", "Exo2", sans-serif;
+    --secfont: "Exo 2", "Exo2", sans-serif;
     --systemfont: -apple-system, BlinkMacSystemFont, Arial, sans-serif;
     --anim100: .10s ease-out;
     --anim150: .15s ease-out;
@@ -64,25 +64,75 @@
 .mdl {
   width: 100%;
   max-width: 1254px;
-  padding: 32px;
+  /* минимальные равные отступы сверху и слева */
+  padding: 12px;
   background: #fff !important;
+  box-sizing: border-box;
+  height: auto !important;
+  min-height: 0 !important;
 }
 @media (max-width: 1023.98px) {
   .mdl {
-    padding: 40px 48px 77px;
+    padding: 12px;
   }
 }
 @media (max-width: 767.98px) {
   .mdl {
-    padding: 15px 16px;
+    padding: 10px;
   }
 }
 .mdl-inner {
   display: -ms-grid;
   display: grid;
-  -ms-grid-columns: 370px 25px 1fr;
+  -ms-grid-columns: 370px 24px 1fr;
   grid-template-columns: 370px 1fr;
-  grid-column-gap: 25px;
+  grid-column-gap: 24px;
+  /* высота ряда = высота колонки с планировкой */
+  align-items: stretch;
+  height: auto !important;
+  min-height: 0 !important;
+}
+/* типографика Exo 2: заголовок 24px, остальное пропорционально */
+.mdl {
+  font-family: var(--mainfont);
+}
+/* серая плашка = высота планировки, форма прижата вниз */
+.mdl-aside {
+  -ms-grid-column: 1;
+  grid-column: 1;
+  -ms-grid-row: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 0;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  align-self: stretch;
+  background: #F0F0F0;
+  border-radius: 16px;
+  padding: 16px;
+  box-sizing: border-box;
+  font-family: var(--mainfont);
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--dark);
+}
+/* правая панель — без лишнего низа */
+.mdl-body {
+  -ms-grid-column: 3;
+  grid-column: 2;
+  -ms-grid-row: 1;
+  grid-row: 1;
+  padding: 16px 28px 12px;
+  border-left: none;
+  background: #fff;
+  border-radius: 16px;
+  box-sizing: border-box;
+  min-width: 0;
+  align-self: stretch;
 }
 @media (max-width: 1023.98px) {
   .mdl-inner {
@@ -93,16 +143,55 @@
     -webkit-box-direction: normal;
         -ms-flex-direction: column;
             flex-direction: column;
-    gap: 34px;
+    gap: 16px;
+  }
+  /* мобилка: заголовок → планировка → форма (десктоп без изменений) */
+  .mdl-aside {
+    display: contents;
+  }
+  .mdl-head {
+    -webkit-box-ordinal-group: 2;
+        -ms-flex-order: 1;
+            order: 1;
+    padding: 0;
+    background: transparent;
+  }
+  .mdl-body {
+    -webkit-box-ordinal-group: 3;
+        -ms-flex-order: 2;
+            order: 2;
+    -ms-grid-column: 1;
+    grid-column: auto;
+    grid-row: auto;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .mdl-foot {
+    -webkit-box-ordinal-group: 4;
+        -ms-flex-order: 3;
+            order: 3;
+    margin-top: 0 !important;
+    padding: 16px;
+    background: #F0F0F0;
+    border-radius: 14px;
   }
 }
 @media (max-width: 767.98px) {
   .mdl-inner {
-    gap: 29px;
+    gap: 14px;
+  }
+  .mdl-foot {
+    padding: 12px;
+    border-radius: 12px;
   }
 }
 .mdl-head {
-  margin-bottom: 16px;
+  margin-bottom: 0;
+  background: transparent;
+  border-radius: 0;
+  padding: 0 0 8px;
+  flex: 0 0 auto;
 }
 @media (max-width: 767.98px) {
   .mdl-head {
@@ -172,7 +261,8 @@
           justify-content: center;
   width: 235px;
   height: 31px;
-  font-size: 16px;
+  font-family: var(--mainfont);
+  font-size: 14px;
   font-weight: 600;
   line-height: 1;
   text-align: center;
@@ -185,7 +275,7 @@
   .mdl-back {
     width: 180px;
     height: 24px;
-    font-size: 13px;
+    font-size: 12px;
   }
 }
 .mdl-dnd {
@@ -217,23 +307,31 @@
 }
 .mdl-title {
   margin-bottom: 10px;
+  font-family: var(--mainfont);
   font-size: 24px;
   font-weight: 600;
-  line-height: 1.41667;
+  line-height: 1.35;
   color: var(--dark);
 }
 @media (max-width: 767.98px) {
   .mdl-title {
     max-width: 300px;
-    margin-bottom: 22px;
+    margin-bottom: 16px;
     font-size: 20px;
-    line-height: 1.2;
+    line-height: 1.25;
   }
 }
 .mdl-prm {
-  font-size: 32px;
+  font-family: var(--mainfont);
+  font-size: 30px;
   font-weight: 600;
+  line-height: 1.2;
   color: var(--dark);
+}
+@media (max-width: 767.98px) {
+  .mdl-prm {
+    font-size: 26px;
+  }
 }
 .mdl-form {
   margin-top: 9px;
@@ -265,33 +363,34 @@
 .mdl-form-field textarea {
   display: block;
   width: 100%;
-  padding: 5px 8px;
-  font-size: 12px;
-  font-weight: 300;
+  padding: 8px 12px;
+  font-family: var(--mainfont);
+  font-size: 14px;
+  font-weight: 400;
   color: var(--dark);
   border: 1px solid #E30613;
   border-radius: 10px;
-  background: none;
+  background: #fff !important;
 }
 .mdl-form-field input:focus,
 .mdl-form-field textarea:focus {
   outline: none;
 }
 .mdl-form-field input {
-  height: 32px;
+  height: 36px;
 }
 .mdl-form-field textarea {
-  height: 80px;
-  padding-top: 12px;
+  height: 88px;
+  padding-top: 10px;
 }
 @media (max-width: 1023.98px) {
   .mdl-form-field textarea {
-    height: 72px;
+    height: 80px;
   }
 }
 @media (max-width: 767.98px) {
   .mdl-form-field textarea {
-    height: 80px;
+    height: 88px;
   }
 }
 .mdl-form__btn {
@@ -308,9 +407,11 @@
   }
 }
 .mdl-form__accept {
-  margin-top: 32px;
+  margin-top: 12px;
+  font-family: var(--mainfont);
   font-size: 10px;
   font-weight: 300;
+  line-height: 1.35;
   color: var(--dark);
 }
 .mdl-form__accept a {
@@ -322,18 +423,13 @@
   text-decoration: none;
   color: var(--accent);
 }
-.mdl-body {
-  -ms-grid-column: 2;
-  grid-column: 2/2;
-  -ms-grid-row: 1;
-  -ms-grid-row-span: 3;
-  grid-row: 1/4;
-  padding-left: 29px;
-  border-left: 1px solid ;
-}
 @media (max-width: 1023.98px) {
   .mdl-body {
-    padding-left: 0;
+    -ms-grid-column: 1;
+    grid-column: auto;
+    -ms-grid-row: auto;
+    -ms-grid-row-span: 1;
+    grid-row: auto;
     border: none;
   }
 }
@@ -348,7 +444,7 @@
       -ms-flex-pack: justify;
           justify-content: space-between;
   gap: 15px;
-  margin-bottom: 30px;
+  margin-bottom: 16px;
 }
 @media (max-width: 1199.98px) {
   .mdl-body-top {
@@ -396,10 +492,12 @@
   line-height: 1;
   text-align: center;
   color: #000;
+  font-family: var(--mainfont);
   -webkit-transition: background var(--anim100), border-color var(--anim100);
   transition: background var(--anim100), border-color var(--anim100);
-  border: 2px solid #e30613;
+  border: 1px solid #e30613;
   border-radius: 15px;
+  background: #fff;
 }
 @media (max-width: 767.98px) {
   .mdl-tabs__item {
@@ -408,9 +506,11 @@
     font-size: 14px;
   }
 }
+/* макет: активный — светло-розовый фон, красная рамка как у остальных */
 .mdl-tabs__item.active {
-background: #E30613;
-    color: #FFF;
+  background: var(--lpink);
+  color: #000;
+  border-color: #e30613;
 }
 @media (max-width: 1023.98px) {
   .mdl-logo {
@@ -433,16 +533,16 @@ background: #E30613;
 }
 .mdl-main {
   position: relative;
-  padding-bottom: 30px;
+  padding-bottom: 8px;
 }
 @media (max-width: 1023.98px) {
   .mdl-main {
-    padding: 70px 0 34px;
+    padding: 70px 0 16px;
   }
 }
 @media (max-width: 767.98px) {
   .mdl-main {
-    padding: 60px 0 68px;
+    padding: 60px 0 16px;
   }
 }
 .mdl-compas {
@@ -521,8 +621,12 @@ background: #E30613;
   height: 100% !important;
 }
 .mdl-desc {
+  margin-top: 8px;
   margin-bottom: 12px;
-  font: 600 16px/1.4375 var(--mainfont);
+  font-family: var(--mainfont);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
   color: var(--dark);
 }
 .mdl-desc p {
@@ -533,9 +637,20 @@ background: #E30613;
   font-family: inherit;
 }
 .mdl-price {
-  font-size: 32px;
+  font-family: var(--mainfont);
+  font-size: 30px;
   font-weight: 600;
   color: var(--dark);
+}
+.mdl-status {
+  font-family: var(--mainfont);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  padding: 6px 8px;
+  text-align: center;
+  /* на десктопе статус+форма внизу, инфо (Дом/Секция…) остаётся сверху */
+  margin-top: auto;
 }
 .mdl-cnt {
   display: none;
@@ -587,15 +702,15 @@ background: #E30613;
   -webkit-box-pack: center;
       -ms-flex-pack: center;
           justify-content: center;
-  height: 55px;
+  height: 48px;
   padding: 3px 15px 5px;
   -webkit-transition: color var(--anim150), background var(--anim150);
   transition: color var(--anim150), background var(--anim150);
-  font-size: 20px;
+  font-family: var(--mainfont);
+  font-size: 18px;
   font-weight: 600;
   text-align: center;
   color: var(--white);
-  text-align: center; 
   cursor: pointer;
   white-space: nowrap;
   border: none;
@@ -642,18 +757,30 @@ background: #E30613;
 
 
 
-.mdl-tabs__item.active {
-    border-color: #E30613;
- 
- 
+.mdl-foot {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  margin-top: 0 !important;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
-
-
+@media (max-width: 1023.98px) {
+  .mdl-foot {
+    flex: 0 0 auto;
+  }
+  .mdl-status {
+    margin-top: 8px;
+  }
+}
 
   </style>
   
   <div class="mdl" id="modal-sale">
   <div class="mdl-inner" id="printableArea">
+    <div class="mdl-aside">
     <div class="mdl-head">
       <div class="mdl-logo-print">
         <img src="images/logo.svg" alt="" />
@@ -676,74 +803,6 @@ background: #E30613;
       </div>
       <div class="mdl-title no-print">Заявка на бронирование квартиры</div>
       <div class="mdl-prm"><?=$data['data']['rooms']?> | <?=$data['data']['area']?> м<sup>2</sup></div>
-    </div>
-    <div class="mdl-body" data-tabs="mdl">
-      <div class="mdl-body-top no-print">
-        <div class="mdl-tabs" data-tabs-nav>
-          <div class="mdl-tabs__item active" data-tabs-target="tab-1">Планировка</div>
-          <div style="<? if(!$data['data']['image_pb_plan']){?>display:none;<?}?>" class="mdl-tabs__item" data-tabs-target="tab-2">На этаже</div>
-          <div style="display:none;" class="mdl-tabs__item" data-tabs-target="tab-3">На карте</div>
-        </div>
-        <div class="mdl-logo">
-          <img style=" display: none;" class="lazy" data-src="https://m2profi.pro/images/logo.svg" src="https://m2profi.pro/images/logo.svg" alt="" />
-        </div>
-      </div>
-	  
-	  
-      <div class="mdl-content open" data-tabs-content="tab-1">
-        <div class="mdl-main">
-          <?php if ($html_compass): ?>
-          <div class="mdl-compas">
-            <?= $html_compass ?>
-          </div>
-          <?php endif; ?>
-          <div class="mdl-pln">
-            <div class="mdl-pln__top"><?=$data['data']['homes_kvartal_title']?>  </div>
-            <?php if (sun_path_should_show($o1, $o2)): ?>
-            <div class="plan-with-sun"
-                 data-sun-path
-                 data-orient-1="<?= (int)$o1 ?>"
-                 data-orient-2="<?= (int)$o2 ?>"
-                 data-sun-default="day"
-                 data-toggle-default="1">
-              <img class="plan-with-sun__img" style="max-height: 80vh;" src="<?=$data['data']['image_pb']?>" alt="" />
-              <?= render_sun_path_overlay($o1, $o2) ?>
-            </div>
-            <?php else: ?>
-            <img style="max-height: 80vh;" src="<?=$data['data']['image_pb']?>" alt="" />
-            <?php endif; ?>
-            <div class="mdl-pln__bottom"><?=$data['data']['adress']?> </div>
-          </div>
-        </div>
-      </div> 
-	  
-	  
-      <div class="mdl-content" data-tabs-content="tab-2">
-        <div class="mdl-main">
-          <?php if ($html_compass): ?>
-          <div class="mdl-compas">
-            <?= $html_compass ?>
-          </div>
-          <?php endif; ?>
-          <div class="mdl-pln">
-            <div class="mdl-pln__top"><?=$data['data']['homes_kvartal_title']?></div>
-            <img class="lazy" data-src="<?=$data['data']['image_pb_plan']?>" src="<?=$data['data']['image_pb_plan']?>" data-srcset="<?=$data['data']['image_pb_plan']?>" alt="" />
-            <div class="mdl-pln__bottom"><?=$data['data']['adress']?>    </div>
-          </div>
-        </div>
-      </div>
-	  
-	  
-      <div class="mdl-content" data-tabs-content="tab-3">
-        <div class="mdl-main">
-          <div class="mdl-map">Карта 
-            <script type="text/javascript" charset="utf-8" async
-              src="https://api-maps.yandex.ru/services/constructor/1.0/js/?um=constructor%3A6c7e8976042bdf485f0e95adb683c87f3b44ec85d858b5593ec196ae3a8233be&amp;width=100%25&amp;height=400&amp;lang=ru_RU&amp;scroll=true"></script>
-          </div>
-        </div>
-      </div>
-	  
-	  
     </div>
     <div class="mdl-foot">
       <div class="mdl-desc">
@@ -776,7 +835,7 @@ background: #E30613;
 	
 		
 		?>
-	  <div style="font-weight:bold; padding: 5px; background:<?=$GLOBALS['status_color_arr'][$status];?>">Статус: <?=$GLOBALS['status_arr'][$status];?></div>
+	  <div class="mdl-status" style="background:<?=$GLOBALS['status_color_arr'][$status];?>">Статус: <?=$GLOBALS['status_arr'][$status];?></div>
  
 	 
 	  <?
@@ -833,6 +892,68 @@ background: #E30613;
 		  <?
 	  }
 	  ?>
+	  
+	  
+    </div>
+    </div>
+    <div class="mdl-body" data-tabs="mdl">
+      <div class="mdl-body-top no-print">
+        <div class="mdl-tabs" data-tabs-nav>
+          <div class="mdl-tabs__item active" data-tabs-target="tab-1">Планировка</div>
+          <div style="<? if(!$data['data']['image_pb_plan']){?>display:none;<?}?>" class="mdl-tabs__item" data-tabs-target="tab-2">На этаже</div>
+          <div style="display:none;" class="mdl-tabs__item" data-tabs-target="tab-3">На карте</div>
+        </div>
+        <div class="mdl-logo">
+          <img style=" display: none;" class="lazy" data-src="https://m2profi.pro/images/logo.svg" src="https://m2profi.pro/images/logo.svg" alt="" />
+        </div>
+      </div>
+	  
+	  
+      <div class="mdl-content open" data-tabs-content="tab-1">
+        <div class="mdl-main">
+          <?php if ($html_compass): ?>
+          <div class="mdl-compas">
+            <?= $html_compass ?>
+          </div>
+          <?php endif; ?>
+          <div class="mdl-pln">
+            <div class="mdl-pln__top"><?=$data['data']['homes_kvartal_title']?>  </div>
+            <?= render_plan_with_sun(
+                $data['data']['image_pb'] ?? '',
+                $o1,
+                $o2,
+                ['img_style' => 'max-height:80vh;max-width:100%;width:100%;height:auto;']
+            ) ?>
+            <div class="mdl-pln__bottom"><?=$data['data']['adress']?> </div>
+          </div>
+        </div>
+      </div> 
+	  
+	  
+      <div class="mdl-content" data-tabs-content="tab-2">
+        <div class="mdl-main">
+          <?php if ($html_compass): ?>
+          <div class="mdl-compas">
+            <?= $html_compass ?>
+          </div>
+          <?php endif; ?>
+          <div class="mdl-pln">
+            <div class="mdl-pln__top"><?=$data['data']['homes_kvartal_title']?></div>
+            <img class="lazy" data-src="<?=$data['data']['image_pb_plan']?>" src="<?=$data['data']['image_pb_plan']?>" data-srcset="<?=$data['data']['image_pb_plan']?>" alt="" />
+            <div class="mdl-pln__bottom"><?=$data['data']['adress']?>    </div>
+          </div>
+        </div>
+      </div>
+	  
+	  
+      <div class="mdl-content" data-tabs-content="tab-3">
+        <div class="mdl-main">
+          <div class="mdl-map">Карта 
+            <script type="text/javascript" charset="utf-8" async
+              src="https://api-maps.yandex.ru/services/constructor/1.0/js/?um=constructor%3A6c7e8976042bdf485f0e95adb683c87f3b44ec85d858b5593ec196ae3a8233be&amp;width=100%25&amp;height=400&amp;lang=ru_RU&amp;scroll=true"></script>
+          </div>
+        </div>
+      </div>
 	  
 	  
     </div>
@@ -923,4 +1044,4 @@ document.getElementById('printButton').addEventListener('click', function(e) {
   
   
 </script>
-<script src="/sahmatka/template/default/js/sun_path.js?v=1"></script>
+<script src="/sahmatka/template/default/js/sun_path.js?v=14"></script>

@@ -100,20 +100,20 @@ if ($visibleHomeIds) {
 				
 				<div class="col-sm-6 col-md-6 col-lg-4 col-xl-3">
 					<div class="object">
-						<div class="object__title"><?=$v[long_title]?></div>
+						<div class="object__title"><?=$v['long_title']?></div>
 						<div class="object__pict">
-							<img src="render/<?=$v[home_id]?>.jpg" alt="">
+							<img src="render/<?=$v['home_id']?>.jpg" alt="">
 							<div class="object__info">
 							<?
 							// Не выводим адрес!
-							if($v[adress333])
+							if($v['adress333'])
 							{
 								?>
-								<div class="object__location"><?=$v[adress]?></div>
+								<div class="object__location"><?=$v['adress']?></div>
 								<?
 							}
 							?>
-							<div class="object__status object__status_sale"><?=$v[complite_text]?></div>
+							<div class="object__status object__status_sale"><?=$v['complite_text']?></div>
 							</div>
 						</div>
 						<?
@@ -164,7 +164,7 @@ if ($visibleHomeIds) {
 							}
 						}
 						?>
-						<a href="user.php?action=objects&home=<?=$v[home_id]?>&sdan=<?=$v['complite']?>" class="object__btn btn btn_arrow">К объекту<i></i></a>
+						<a href="user.php?action=objects&home=<?=$v['home_id']?>&sdan=<?=$v['complite']?>" class="object__btn btn btn_arrow">К объекту<i></i></a>
 					</div>
 				</div>
 					 <?

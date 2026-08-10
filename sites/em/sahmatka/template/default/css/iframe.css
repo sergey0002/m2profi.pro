@@ -4,6 +4,75 @@
 .apartment-plan-col {
     position: relative;
     text-align: center;
+    background: transparent;
+    padding: 8px 4px 12px;
+    box-sizing: border-box;
+    border-radius: 4px;
+}
+.apartment-info-col {
+    background: #F0F0F0;
+    border-radius: 8px;
+    padding: 16px 16px 18px;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+}
+.apartment-info-stats {
+    margin-bottom: 14px;
+    font-size: 16px;
+    line-height: 1.55;
+    color: #333;
+}
+.apartment-info-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0 0 4px;
+}
+.apartment-info-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.apartment-info-field__label {
+    display: block;
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #6b7a88;
+}
+.apartment-info-field select,
+.apartment-info-field input[type="text"],
+.apartment-info-field input[type="file"],
+.apartment-info-field textarea {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    border: 1px solid #d0d5d8;
+    border-radius: 6px;
+    padding: 9px 11px;
+    font-size: 14px;
+    background: #fff;
+}
+.apartment-info-form__submit {
+    align-self: flex-start;
+    background-color: #00CDAD;
+    color: #fff;
+    padding: 10px 28px;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+}
+.apartment-info-form__submit:hover {
+    background-color: #00b89a;
+}
+.apartment-order-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
 }
 .apartment-plan-col .plan-with-sun {
     margin-top: 4px;
@@ -16,6 +85,32 @@
     z-index: 5;
     width: auto;
     max-width: 240px;
+}
+/* toggle солнца — зеркало компаса справа (кнопка внутри .plan-with-sun) */
+.apartment-plan-col > .plan-with-sun > .sun-path__toggle,
+.apartment-plan-col .sun-path__toggle {
+    top: 8px;
+    right: 8px;
+    z-index: 6;
+}
+@media (max-width: 767.98px) {
+    .mdl-compas,
+    .apartment-compas {
+        top: 4px;
+        left: 4px;
+        width: 88px;
+        max-width: 36vw;
+    }
+    .window-compass-img {
+        width: 80px;
+    }
+    .apartment-plan-col {
+        padding: 12px 8px 16px;
+    }
+    .apartment-plan-col .sun-path__toggle {
+        top: 4px;
+        right: 4px;
+    }
 }
 .window-compass-list {
     display: flex;

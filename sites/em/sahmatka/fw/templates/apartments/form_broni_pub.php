@@ -11,7 +11,7 @@ $curr_apart_status = isset($apartment['status2']) ? (int)$apartment['status2'] :
 $o1 = (int)($apartment['window_orient_1'] ?? 0);
 $o2 = (int)($apartment['window_orient_2'] ?? 0);
 
-if($_GET[dev1])
+if (!empty($_GET['dev1']))
 {
 	print '<pre>';
 	print_r($data);
@@ -49,52 +49,37 @@ input, select {
     <?php } elseif ($data['err_m']) { ?>
         <div class="alert alert-danger"><?=implode('<br>', $data['err_m'])?></div>
     <?php } ?>
-    <div class="row">
-        <div class="col-md-6 col-xs-12 apartment-plan-col" style="text-align:center;">
-            <?php if ($html_compass = render_window_compass_images($o1, $o2, 110)): ?>
-            <div class="mdl-compas apartment-compas">
-                <?= $html_compass ?>
+    <div class="row apartment-order-row">
+        <div class="col-md-5 col-xs-12 apartment-info-col xxx" style="text-align:left;">
+            <div class="apartment-info-stats">
+                Количество комнат — <b><?=$apartment['rooms'];?></b><br>
+                Площадь — <b><?=$apartment['area'];?></b> м<sup>2</sup><br>
+                Цена — <b><?=number_format($data['apartment']['price'], 0, '.', ' ')?> руб.</b>
             </div>
-            <?php endif; ?>
-            <?php if (sun_path_should_show($o1, $o2)): ?>
-            <div class="plan-with-sun"
-                 data-sun-path
-                 data-orient-1="<?= (int)$o1 ?>"
-                 data-orient-2="<?= (int)$o2 ?>"
-                 data-sun-default="day"
-                 data-toggle-default="1">
-                <img class="plan-with-sun__img" src="<?=$apartment['image_pb'];?>?x=178" style="max-height:400px; max-width:100%" alt="">
-                <?= render_sun_path_overlay($o1, $o2) ?>
-            </div>
-            <?php else: ?>
-            <img src="<?=$apartment['image_pb'];?>?x=178" style="max-height:400px; max-width:100%" alt="">
-            <?php endif; ?>
-            <?php if ($o1 || $o2): ?>
-            <div class="window-compass__label apartment-compas-caption">
-                Окна: <?= htmlspecialchars(window_orient_labels($o1, $o2)) ?>
-                <?php if ($codes = window_orient_codes($o1, $o2)): ?>(<?= htmlspecialchars($codes) ?>)<?php endif; ?>
-            </div>
-            <?php endif; ?>
-        </div>
-        <div class="col-md-6 col-xs-12 xxx" style="text-align:left; font-size:16px;">
-		
-		Количество комнат -  <b><?=$apartment['rooms'];?></b><br/>
-		Площадь - <b><?=$apartment['area'];?></b> м<sup>2</sup><br/>
-		Цена - <b ><?=number_format($data['apartment']['price'], 0, '.', ' ')?> руб.</b>  <br/> <br/>
             <?php if (!empty($data['is_manual_mode'])) { ?>
                 <div class="alert alert-warning" style="text-align:left; margin:10px 0; padding:12px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; color:#856404; font-size:15px; line-height:1.5;">
                     <?= $data['manual_message_html'] ?? nl2br(htmlspecialchars($data['manual_message'] ?? 'Обратитесь в отдел продаж.', ENT_QUOTES, 'UTF-8')) ?>
                 </div>
             <?php } elseif (($curr_apart_status=="2" || !$curr_apart_status) && ($data['show_form'] ?? true)) { ?>
-                <form action="?ctr=apartments&act=order&home_id=<?=$home_id?>&apartment_num=<?=$apartment_num?>&apartments=<?=$apartments?>" method="post" enctype="multipart/form-data">
-                    <h2 style="font-size:16px;">Данные покупателя</h2>
-                    Скан паспорта страницы с фото: <input type="file" name="passport_scan" accept="image/*;capture=camera"><br/><br/>
-                    Скан паспорта страницы с пропиской: <input type="file" name="passport_scan2" accept="image/*;capture=camera"><br/>
-                    Форма №2 бронь: <input type="file" name="anket" accept="image/*;capture=camera"><br/> 
-                    <span style="font-size:12px; color:#ff0000;">Дни приема актов: понедельник, вторник, четверг с 9.30 до 14.00</span><br/><br/>
-                    <input type="checkbox" id="checkbox" name="checkbox" style="width:auto;" onchange="document.getElementById('submit').disabled = !this.checked;">
-                    <span style="font-size:12px;">Подтверждаю согласие с <a target="_blank" style="font-size:12px;" href="http://em-nsk.ru/sahmatka/reglament.php">регламентом</a></span><br/><br/>
-                    <input type="submit" id="submit" disabled="disabled" value="ЗАБРОНИРОВАТЬ" class="stat-top-btn btn btn_arrow-long" style="margin-left:0;">
+                <form class="apartment-info-form" action="?ctr=apartments&act=order&home_id=<?=$home_id?>&apartment_num=<?=$apartment_num?>&apartments=<?=$apartments?>" method="post" enctype="multipart/form-data">
+                    <div class="apartment-info-field">
+                        <label class="apartment-info-field__label">Скан паспорта (фото)</label>
+                        <input type="file" name="passport_scan" accept="image/*;capture=camera">
+                    </div>
+                    <div class="apartment-info-field">
+                        <label class="apartment-info-field__label">Скан паспорта (прописка)</label>
+                        <input type="file" name="passport_scan2" accept="image/*;capture=camera">
+                    </div>
+                    <div class="apartment-info-field">
+                        <label class="apartment-info-field__label">Форма №2 бронь</label>
+                        <input type="file" name="anket" accept="image/*;capture=camera">
+                    </div>
+                    <span style="font-size:12px; color:#ff0000;">Дни приема актов: понедельник, вторник, четверг с 9.30 до 14.00</span>
+                    <div style="margin-top:4px;">
+                        <input type="checkbox" id="checkbox" name="checkbox" style="width:auto;" onchange="document.getElementById('submit').disabled = !this.checked;">
+                        <span style="font-size:12px;">Подтверждаю согласие с <a target="_blank" style="font-size:12px;" href="http://em-nsk.ru/sahmatka/reglament.php">регламентом</a></span>
+                    </div>
+                    <input type="submit" id="submit" disabled="disabled" value="ЗАБРОНИРОВАТЬ" class="apartment-info-form__submit" style="margin-left:0;">
                 </form>
             <?php } ?>
 
@@ -103,6 +88,19 @@ input, select {
                 include __DIR__ . '/compred_block.php';
             }
             ?>
+        </div>
+        <div class="col-md-7 col-xs-12 apartment-plan-col" style="text-align:center;">
+            <?php if ($html_compass = render_window_compass_images($o1, $o2, 110)): ?>
+            <div class="mdl-compas apartment-compas">
+                <?= $html_compass ?>
+            </div>
+            <?php endif; ?>
+            <?= render_plan_with_sun($apartment['image_pb'] ?? '', $o1, $o2) ?>
+            <?php if ($o1 || $o2): ?>
+            <div class="window-compass__label apartment-compas-caption">
+                Окна: <?= htmlspecialchars(window_orient_labels($o1, $o2)) ?>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>

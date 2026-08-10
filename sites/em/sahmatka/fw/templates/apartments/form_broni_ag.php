@@ -29,68 +29,36 @@ $window_orient = $GLOBALS['window_orient'] ?? [];
     <?php } elseif ($data['err_m']) { ?>
         <div class="alert alert-danger"><?=implode('<br>', $data['err_m'])?></div>
     <?php } ?>
-    <div class="row">
-        <div class="col-md-6 col-xs-12 apartment-plan-col">
-            <?php if ($html_compass = render_window_compass_images($o1, $o2, 110)): ?>
-            <div class="mdl-compas apartment-compas">
-                <?= $html_compass ?>
+    <div class="row apartment-order-row">
+        <div class="col-md-5 col-xs-12 apartment-info-col" style="text-align:left;">
+            <div class="apartment-info-stats">
+                Количество комнат — <b><?=$apartment['rooms'];?></b><br>
+                Площадь — <b><?=$apartment['area'];?></b> м<sup>2</sup><br>
+                Цена — <b><?= number_format((int)($apartment['price'] ?? 0), 0, '.', ' ') ?> руб.</b>
             </div>
-            <?php endif; ?>
-            <?php if (sun_path_should_show($o1, $o2)): ?>
-            <div class="plan-with-sun"
-                 data-sun-path
-                 data-orient-1="<?= (int)$o1 ?>"
-                 data-orient-2="<?= (int)$o2 ?>"
-                 data-sun-default="day"
-                 data-toggle-default="1">
-                <img class="plan-with-sun__img" src="<?=$apartment['image_pb'];?>?x=178" style="max-height:400px; max-width:100%" alt="">
-                <?= render_sun_path_overlay($o1, $o2) ?>
-            </div>
-            <?php else: ?>
-            <img src="<?=$apartment['image_pb'];?>?x=178" style="max-height:400px; max-width:100%" alt="">
-            <?php endif; ?>
-            <?php if ($o1 || $o2): ?>
-            <div class="window-compass__label apartment-compas-caption">
-                Окна: <?= htmlspecialchars(window_orient_labels($o1, $o2)) ?>
-                <?php if ($codes = window_orient_codes($o1, $o2)): ?>(<?= htmlspecialchars($codes) ?>)<?php endif; ?>
-            </div>
-            <?php endif; ?>
-        </div>
-        <div class="col-md-6 col-xs-12" style="text-align:left; font-size:18px;">
-            Количество комнат — <b><?=$apartment['rooms'];?></b><br>
-            Площадь — <b><?=$apartment['area'];?></b> м<sup>2</sup><br>
-            Цена — <b><?= number_format((int)($apartment['price'] ?? 0), 0, '.', ' ') ?> руб.</b><br><br>
-            <form action="?ctr=apartments&act=order&home_id=<?=$home_id?>&apartment_num=<?=$apartment_num?>&apartments=<?=$apartments?>" method="post" enctype="multipart/form-data">
-                Статус —
-                <select name="status" style="font-size:16px;">
-                    <option value="0"<?=($curr_apart_status==0?' selected':'')?>>Не задан</option>
-                    <option value="2"<?=($curr_apart_status==2?' selected':'')?>>Свободна</option>
-                    <option value="4"<?=($curr_apart_status==4?' selected':'')?>>Забронирована</option>
-                    <option value="3"<?=($curr_apart_status==3?' selected':'')?>>Продана</option>
-                    <option value="5"<?=($curr_apart_status==5?' selected':'')?>>Забронирована застройщиком</option>
-                    <option value="6"<?=($curr_apart_status==6?' selected':'')?>>Квартира подрядчика</option>
-                </select>
-                <br><br>
-                Ориентация окон<br>
-                Направление 1
-                <select name="window_orient_1" style="font-size:16px; width:95%;">
-                    <option value="0">Не задано</option>
-                    <?php foreach ($window_orient as $code => $label): ?>
-                    <option value="<?= (int)$code ?>"<?=($o1 === (int)$code ? ' selected' : '')?>><?= (int)$code ?>. <?= htmlspecialchars($label) ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <br>
-                <?php /* Направление 2 — отключено
-                Направление 2
-                <select name="window_orient_2" style="font-size:16px; width:95%;">
-                    <option value="0">Не задано</option>
-                    <?php foreach ($window_orient as $code => $label): ?>
-                    <option value="<?= (int)$code ?>"<?=($o2 === (int)$code ? ' selected' : '')?>><?= (int)$code ?>. <?= htmlspecialchars($label) ?></option>
-                    <?php endforeach; ?>
-                </select>
-                */ ?>
-                <br><br>
-                <input type="submit" value="Сохранить" style="background-color:#00CDAD; color:#FFF; padding:10px 40px; font-size:16px; font-weight:bold; border-radius:7px;">
+            <form class="apartment-info-form" action="?ctr=apartments&act=order&home_id=<?=$home_id?>&apartment_num=<?=$apartment_num?>&apartments=<?=$apartments?>" method="post" enctype="multipart/form-data">
+                <div class="apartment-info-field">
+                    <label class="apartment-info-field__label" for="apt-status">Статус</label>
+                    <select id="apt-status" name="status">
+                        <option value="0"<?=($curr_apart_status==0?' selected':'')?>>Не задан</option>
+                        <option value="2"<?=($curr_apart_status==2?' selected':'')?>>Свободна</option>
+                        <option value="4"<?=($curr_apart_status==4?' selected':'')?>>Забронирована</option>
+                        <option value="3"<?=($curr_apart_status==3?' selected':'')?>>Продана</option>
+                        <option value="5"<?=($curr_apart_status==5?' selected':'')?>>Забронирована застройщиком</option>
+                        <option value="6"<?=($curr_apart_status==6?' selected':'')?>>Квартира подрядчика</option>
+                    </select>
+                </div>
+                <div class="apartment-info-field">
+                    <label class="apartment-info-field__label" for="apt-orient-1">Ориентация окон</label>
+                    <select id="apt-orient-1" name="window_orient_1">
+                        <option value="0">Не задано</option>
+                        <?php foreach ($window_orient as $code => $label): ?>
+                        <option value="<?= (int)$code ?>"<?=($o1 === (int)$code ? ' selected' : '')?>><?= (int)$code ?>. <?= htmlspecialchars($label) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php /* Направление 2 — отключено */ ?>
+                <button type="submit" class="apartment-info-form__submit">Сохранить</button>
             </form>
 
             <?php
@@ -98,6 +66,19 @@ $window_orient = $GLOBALS['window_orient'] ?? [];
                 include __DIR__ . '/compred_block.php';
             }
             ?>
+        </div>
+        <div class="col-md-7 col-xs-12 apartment-plan-col">
+            <?php if ($html_compass = render_window_compass_images($o1, $o2, 110)): ?>
+            <div class="mdl-compas apartment-compas">
+                <?= $html_compass ?>
+            </div>
+            <?php endif; ?>
+            <?= render_plan_with_sun($apartment['image_pb'] ?? '', $o1, $o2) ?>
+            <?php if ($o1 || $o2): ?>
+            <div class="window-compass__label apartment-compas-caption">
+                Окна: <?= htmlspecialchars(window_orient_labels($o1, $o2)) ?>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>

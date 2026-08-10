@@ -307,6 +307,10 @@ width: 28px;
 .apartment-plan-col {
     position: relative;
     text-align: center;
+    background: #F0F0F0;
+    padding: 16px 12px 20px;
+    box-sizing: border-box;
+    border-radius: 4px;
 }
 .mdl-compas,
 .apartment-compas {

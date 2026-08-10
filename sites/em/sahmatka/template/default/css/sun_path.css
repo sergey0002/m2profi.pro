@@ -1,148 +1,245 @@
-/* Sun path overlay on apartment plan — task 11 */
+/* Sun path — визуал по макету booking-form / design-canon
+   светло-серая пунктирная орбита, серые солнца, обхват вокруг плана */
 
 .plan-with-sun {
-  position: relative;
-  display: inline-block;
+  display: block;
+  width: 100%;
   max-width: 100%;
-  vertical-align: top;
-  padding-bottom: 52px;
   box-sizing: border-box;
+  text-align: center;
+}
+
+.plan-with-sun__frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  line-height: 0;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 .plan-with-sun__img {
-  position: relative;
-  z-index: 0;
-  display: block;
-  max-width: 100%;
-  height: auto;
+  position: relative !important;
+  z-index: 0 !important; /* картинка под орбитой */
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: 400px !important;
+  margin: 0 auto;
+  visibility: visible !important;
+  opacity: 1 !important;
+  object-fit: contain;
+  object-position: center;
+}
+
+.mdl-pln .plan-with-sun__img {
+  max-height: 70vh !important;
 }
 
 .sun-path__stage {
   position: absolute;
   left: 0;
   top: 0;
-  right: 0;
-  bottom: 52px;
-  z-index: 1;
-  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  z-index: 5 !important; /* орбита поверх планировки */
+  pointer-events: none !important;
   overflow: visible;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
 }
 
-.sun-path__stage.is-off,
-.sun-path__controls.is-off {
-  display: none !important;
+.sun-path__stage.is-ready.is-visible {
+  opacity: 1;
+  visibility: visible;
 }
 
+.sun-path__stage.is-off {
+  opacity: 0 !important;
+  visibility: hidden;
+}
+
+/* Ellipse 18.png — белый пунктир → светло-серый как на макете */
 .sun-path__ellipse {
   position: absolute;
+  z-index: 1;
   display: block;
-  max-width: none;
-  opacity: 0.9;
-  pointer-events: none;
+  width: 0;
+  height: 0;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: fill;
+  /* белый → серый #A8A8A8 */
+  filter: brightness(0) invert(70%);
+  opacity: 0.85;
+  pointer-events: none !important;
   user-select: none;
 }
 
+/* Подвижное солнце — жёлтое (Group.png белый → #E8B400) */
 .sun-path__sun {
   position: absolute;
-  z-index: 2;
-  width: 28px;
-  height: 28px;
+  z-index: 4;
+  width: 26px !important;
+  height: 26px !important;
+  max-width: none !important;
+  max-height: none !important;
   margin: 0;
+  left: 0;
+  top: 0;
   transform: translate(-50%, -50%);
-  pointer-events: none;
+  filter: brightness(0) saturate(100%) invert(77%) sepia(78%) saturate(1800%) hue-rotate(359deg) brightness(1.05);
+  opacity: 1;
+  pointer-events: none !important;
+  user-select: none;
+}
+
+/* Серые солнышки Восход/Закат — центр на пунктире */
+.sun-path__marker {
+  position: absolute;
+  z-index: 3;
+  width: 26px !important;
+  height: 26px !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  filter: brightness(0) invert(65%);
+  opacity: 0.9;
+  pointer-events: none !important;
   user-select: none;
 }
 
 .sun-path__label {
   position: absolute;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  z-index: 3;
+  display: block;
+  left: 0;
+  top: 0;
   transform: translate(-50%, -50%);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   line-height: 1.2;
-  color: #8a8a8a;
+  color: #9a9a9a;
   white-space: nowrap;
-  pointer-events: none;
+  pointer-events: none !important;
   user-select: none;
+  letter-spacing: 0.01em;
 }
 
-.sun-path__label-icon {
-  width: 18px;
-  height: 18px;
-  display: block;
-  flex-shrink: 0;
-}
-
+/* Toggle — зеркало компаса: правый верхний угол контейнера плана */
 .sun-path__toggle {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  z-index: 4;
-  width: 36px;
-  height: 36px;
-  padding: 6px;
-  border: 1px solid #d0d0d0;
+  top: 8px;
+  right: 8px;
+  z-index: 6;
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  border: 1px solid #ddd;
   border-radius: 50%;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   opacity: 0.55;
-  transition: opacity 0.15s ease-out, border-color 0.15s ease-out;
+  line-height: normal;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .sun-path__toggle img {
   display: block;
-  width: 20px;
-  height: 20px;
-  filter: brightness(0) saturate(100%);
-  opacity: 0.55;
+  width: 20px !important;
+  height: 20px !important;
+  max-width: none !important;
+  max-height: none !important;
+  filter: brightness(0) invert(55%);
+  opacity: 0.85;
 }
 
 .sun-path__toggle.is-on {
   opacity: 1;
-  border-color: #ffb800;
+  border-color: #e0a800;
 }
 
 .sun-path__toggle.is-on img {
-  filter: none;
+  filter: brightness(0) saturate(100%) invert(77%) sepia(78%) saturate(1800%) hue-rotate(359deg) brightness(1.05);
   opacity: 1;
 }
 
-.sun-path__toggle:focus-visible {
-  outline: 2px solid #ffb800;
-  outline-offset: 2px;
-}
-
+/* Радио Утро/День/Вечер — ниже всей орбиты (не на макете public, но в каноне task) */
 .sun-path__controls {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  z-index: 3;
-  transform: translateX(-50%);
+  position: relative;
+  z-index: 6;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  width: min(280px, 100%);
-  padding: 8px 4px 0;
+  width: min(260px, 92%);
+  margin: 4px auto 0;
+  padding: 10px 4px 4px;
   box-sizing: border-box;
-  pointer-events: auto;
+  pointer-events: auto !important;
+  line-height: normal;
+  background: transparent;
+  opacity: 0;
+  visibility: hidden;
+  max-height: 0;
+  overflow: hidden;
+  transition:
+    opacity 0.4s ease,
+    visibility 0.4s ease,
+    max-height 0.4s ease,
+    margin 0.4s ease,
+    padding 0.4s ease;
+}
+
+.sun-path__controls.is-visible {
+  opacity: 1;
+  visibility: visible;
+  max-height: 100px;
+  overflow: visible;
+  pointer-events: auto !important;
+}
+
+.sun-path__controls.is-off {
+  opacity: 0 !important;
+  visibility: hidden;
+  max-height: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sun-path__stage,
+  .sun-path__controls {
+    transition: none;
+  }
 }
 
 .sun-path__controls::before {
   content: "";
   position: absolute;
-  left: 12%;
-  right: 12%;
+  left: 14%;
+  right: 14%;
   top: 18px;
   height: 1px;
-  background: #c8c8c8;
+  background: #d0d0d0;
   z-index: 0;
+  pointer-events: none;
 }
 
 .sun-path__radio {
@@ -153,45 +250,115 @@
   align-items: center;
   gap: 6px;
   margin: 0;
+  padding: 4px 10px;
   cursor: pointer;
+  font: inherit;
   font-weight: 400;
   color: #333;
+  user-select: none;
+  pointer-events: auto !important;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.sun-path__radio input {
-  position: absolute;
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-  margin: 0;
-  pointer-events: none;
+.sun-path__radio:focus {
+  outline: none;
+}
+
+.sun-path__radio:focus-visible .sun-path__radio-dot {
+  outline: 2px solid #00CDAD;
+  outline-offset: 2px;
 }
 
 .sun-path__radio-dot {
   display: block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid #333;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid #555;
   border-radius: 50%;
   background: #fff;
   box-sizing: border-box;
-  transition: border-color 0.15s ease-out, background 0.15s ease-out, box-shadow 0.15s ease-out;
+  pointer-events: none;
+  box-shadow: none;
 }
 
-.sun-path__radio input:checked + .sun-path__radio-dot {
-  border-color: #ffb800;
-  box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 7px #ffb800;
+.sun-path__radio.is-active .sun-path__radio-dot {
+  border-color: #e0a800;
+  box-shadow: inset 0 0 0 2.5px #fff, inset 0 0 0 6px #e0a800;
 }
 
 .sun-path__radio-text {
   font-size: 13px;
   line-height: 1.2;
-  color: #333;
+  color: #444;
+  pointer-events: none;
 }
 
-.sun-path__radio input:focus-visible + .sun-path__radio-dot {
-  outline: 2px solid #ffb800;
-  outline-offset: 2px;
+/* Мобилка: компас слева / toggle справа, компактная орбита и тапы */
+@media (max-width: 1023.98px) {
+  .mdl-main .sun-path__toggle {
+    top: 20px;
+    right: 8px;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .sun-path__toggle {
+    top: 4px;
+    right: 4px;
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+  }
+
+  .mdl-main .sun-path__toggle {
+    top: -8px;
+    right: 0;
+  }
+
+  .sun-path__sun,
+  .sun-path__marker {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .sun-path__label {
+    font-size: 12px;
+  }
+
+  .plan-with-sun__img {
+    max-height: 260px !important;
+  }
+
+  .mdl-pln .plan-with-sun__img {
+    max-height: 55vh !important;
+  }
+
+  .sun-path__controls {
+    width: min(280px, 100%);
+    margin-top: 2px;
+    padding: 8px 0 2px;
+  }
+
+  .sun-path__radio {
+    padding: 10px 14px;
+    min-width: 56px;
+  }
+
+  .sun-path__radio-text {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .sun-path__label span {
+    /* на очень узких — короче, меньше наезд на край */
+    font-size: 11px;
+  }
 }
 
 @media print {
@@ -199,9 +366,5 @@
   .sun-path__controls,
   .sun-path__toggle {
     display: none !important;
-  }
-
-  .plan-with-sun {
-    padding-bottom: 0;
   }
 }

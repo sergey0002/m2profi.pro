@@ -216,7 +216,7 @@ function booking_guard_sync_auto(array $stats)
 			);
 
 			if ($existing && ($existing['source'] ?? '') === 'manual') {
-				$mysql->get_arr(
+				$mysql->sql(
 					"UPDATE booking_guard_room SET
 						free_percent = " . number_format($percent, 2, '.', '') . ",
 						free_count = {$free},
@@ -229,7 +229,7 @@ function booking_guard_sync_auto(array $stats)
 			}
 
 			if ($existing) {
-				$mysql->get_arr(
+				$mysql->sql(
 					"UPDATE booking_guard_room SET
 						is_manual_mode = {$wantManual},
 						source = 'auto',
@@ -242,7 +242,7 @@ function booking_guard_sync_auto(array $stats)
 					 WHERE booking_guard_room_id = " . (int)$existing['booking_guard_room_id']
 				);
 			} else {
-				$mysql->get_arr(
+				$mysql->sql(
 					"INSERT INTO booking_guard_room
 						(home_id, rooms, is_manual_mode, source, free_percent, free_count, total_count, threshold_percent, created_at, updated_at)
 					 VALUES
@@ -336,7 +336,7 @@ function booking_guard_set_manual($homeId, $rooms, $enabled, $userId = null, $no
 		1
 	);
 	if ($existing) {
-		$mysql->get_arr(
+		$mysql->sql(
 			"UPDATE booking_guard_room SET
 				is_manual_mode = {$enabled},
 				source = 'manual',
@@ -346,7 +346,7 @@ function booking_guard_set_manual($homeId, $rooms, $enabled, $userId = null, $no
 			 WHERE booking_guard_room_id = " . (int)$existing['booking_guard_room_id']
 		);
 	} else {
-		$mysql->get_arr(
+		$mysql->sql(
 			"INSERT INTO booking_guard_room
 				(home_id, rooms, is_manual_mode, source, set_by_user_id, note, created_at, updated_at)
 			 VALUES
@@ -368,7 +368,7 @@ function booking_guard_set_auto($homeId, $rooms)
 		return false;
 	}
 	$roomsEsc = booking_guard_escape($rooms);
-	$mysql->get_arr(
+	$mysql->sql(
 		"UPDATE booking_guard_room SET source = 'auto', set_by_user_id = NULL, note = NULL, updated_at = NOW()
 		 WHERE home_id = {$homeId} AND rooms = '{$roomsEsc}'"
 	);

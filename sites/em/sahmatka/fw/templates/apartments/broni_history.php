@@ -114,12 +114,12 @@ if ($show_bron_info && $last_bron_price !== null && $curr_price != $last_bron_pr
     </div>
 <?php } ?>
 
-<h3 style="margin:10px 0 8px 0;">История бронирования</h3>
-
 <?php if (!$rows) { ?>
-    <div style="padding:10px;"><b>История бронирования отсутствует</b></div>
+    <div style="margin:10px 0 8px 0;"><b>История бронирования отсутствует</b></div>
     <?php return;
 } ?>
+
+<h3 style="margin:10px 0 8px 0;">История бронирования</h3>
 
 <table class="broni-history-table">
     <tr>

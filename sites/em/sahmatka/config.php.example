@@ -162,7 +162,7 @@ function fw_check_access( $params )
 	
 $status_arr=array();
 $status_arr[0] = 'Не задан (свободно)';
-$status_arr[2] = 'Свободо';
+$status_arr[2] = 'Свободна';
 $status_arr[3] = 'Продано';
 $status_arr[4] = 'Бронь';
 $status_arr[5] = 'Бронь застройщика';

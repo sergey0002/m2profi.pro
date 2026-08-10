@@ -644,7 +644,7 @@ elseif($_GET['action']=='contact')
 		{
  		 include('actions/agadmin_object.php');
  		}
-		elseif(!$_GET[apartments])
+		elseif(!$_GET['apartments'])
 		{
 			include('actions/objects_index.php');
 		}

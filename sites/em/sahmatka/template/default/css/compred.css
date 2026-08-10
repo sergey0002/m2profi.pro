@@ -1061,9 +1061,91 @@ body:has(.cp-public) {
 }
 
 .cp-block {
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 2px solid var(--cp-accent);
+    margin-top: 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.cp-block__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0;
+    padding: 12px 14px;
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cp-text);
+    background: #e8eef2;
+    border: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.cp-block__summary::-webkit-details-marker {
+    display: none;
+}
+
+.cp-block__summary::marker {
+    content: "";
+}
+
+.cp-block__summary-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.cp-block__chevron {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #667788;
+    border-bottom: 2px solid #667788;
+    transform: rotate(45deg);
+    transition: transform .18s ease;
+    margin-top: -4px;
+}
+
+.cp-block[open] > .cp-block__summary {
+    background: #dfe8ee;
+    border-bottom: 1px solid #d0d8de;
+}
+
+.cp-block[open] > .cp-block__summary .cp-block__chevron {
+    transform: rotate(225deg);
+    margin-top: 4px;
+}
+
+.cp-block__panel {
+    padding: 14px;
+    background: #f7f9fb;
+}
+
+.cp-block__form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cp-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 0;
+}
+
+.cp-field__label {
+    display: block;
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    color: #6b7a88;
 }
 
 .cp-block__title {
@@ -1078,11 +1160,27 @@ body:has(.cp-public) {
 .cp-block textarea {
     width: 100%;
     box-sizing: border-box;
-    margin-bottom: 10px;
-    border: 1px solid var(--cp-border);
+    margin: 0;
+    border: 1px solid #d5dde0;
     border-radius: 6px;
-    padding: 8px 10px;
+    padding: 9px 11px;
     font-size: 14px;
+    line-height: 1.35;
+    background: #fff;
+    color: var(--cp-text);
+}
+
+.cp-block__select:focus,
+.cp-block input:focus,
+.cp-block textarea:focus {
+    outline: none;
+    border-color: var(--cp-accent);
+    box-shadow: 0 0 0 2px rgba(0, 205, 173, 0.18);
+}
+
+.cp-block textarea {
+    resize: vertical;
+    min-height: 64px;
 }
 
 .cp-block__view-link {
@@ -1094,7 +1192,7 @@ body:has(.cp-public) {
     flex-wrap: wrap;
     gap: 10px;
     align-items: center;
-    margin-top: 4px;
+    margin-top: 2px;
 }
 
 .cp-block__actions .cp-btn {
