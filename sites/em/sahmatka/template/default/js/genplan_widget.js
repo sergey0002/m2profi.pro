@@ -246,7 +246,9 @@
     '.gw-root.is-explore .gw-explore-inner .gw-stage.is-dragging { cursor: grabbing; }',
     '.gw-root.is-coarse:not(.is-explore) .gw-viewport { touch-action: manipulation; cursor: default; }',
     '.gw-stage img { display: block; width: 100%; height: auto; border: 0; max-width: none; pointer-events: none; -webkit-user-drag: none; vertical-align: top; }',
-    '.gw-stage svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }',
+    '.gw-light-overlay { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }',
+    '.gw-life-layer { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: hidden; }',
+    '.gw-stage svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; z-index: 3; }',
     /* pointer-events:all — иначе при idle fill-opacity:0 клик «пролетает» сквозь polygon (SVG visiblePainted) */
     '.gw-poly { fill: var(--gw-hl-color, ' + HL + '); fill-opacity: var(--gw-idle-opacity, 0); stroke: var(--gw-hl-color, ' + HL + '); stroke-width: 2; stroke-opacity: 0; cursor: pointer; pointer-events: all; transition: fill-opacity 0.18s ease, stroke-opacity 0.18s ease, stroke-width 0.18s ease; outline: none; }',
     '.gw-poly.is-hover, .gw-poly.is-active, .gw-poly.is-showcase, .gw-poly:focus-visible { fill: var(--gw-hl-color, ' + HL + ') !important; stroke: var(--gw-hl-color, ' + HL + ') !important; fill-opacity: var(--gw-hl-opacity, 0.58); stroke-opacity: var(--gw-stroke-opacity, 0.4); stroke-width: 2; }',
@@ -259,17 +261,17 @@
     '.gw-label { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: visible; pointer-events: auto; z-index: 5; cursor: pointer; -webkit-tap-highlight-color: transparent; }',
     '.gw-label.is-expanded { z-index: 200; }',
     '.gw-labels-overlay.has-expanded .gw-label:not(.is-expanded) { pointer-events: none !important; }',
-    '.gw-label__box { position: absolute; left: 0; bottom: 0; top: auto; display: flex; flex-direction: column; width: fit-content; max-width: 220px; text-align: left; background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); overflow: hidden; transform: translate(-50%, 0); transform-origin: center bottom; transition: border-radius 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, width 0.12s ease, min-width 0.12s ease; }',
+    '.gw-label__box { position: absolute; left: 0; bottom: 0; top: auto; display: flex; flex-direction: column; width: fit-content; max-width: 220px; text-align: left; background: rgba(255,255,255,0.96); border: 1px solid rgba(30,40,50,0.2); border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.14), 0 5px 16px rgba(0,0,0,0.22); overflow: hidden; transform: translate(-50%, 0); transform-origin: center bottom; transition: border-radius 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, border-color 0.12s ease, width 0.12s ease, min-width 0.12s ease; }',
     /* раскрытие вверх: низ заголовка на якоре, контент растёт вверх */
     '.gw-label.is-expanded:not(.is-below) .gw-label__box { flex-direction: column-reverse; transform-origin: center bottom; }',
     /* раскрытие вниз: позицию низа заголовка держит JS (translateY -headH) */
     '.gw-label.is-below .gw-label__box { top: 0; bottom: auto; transform-origin: center top; }',
-    '.gw-label.is-expanded .gw-label__box { background: rgba(255,255,255,0.9); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
+    '.gw-label.is-expanded .gw-label__box { background: rgba(255,255,255,0.94); border: 1px solid rgba(30,40,50,0.24); border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.12), 0 10px 28px rgba(0,0,0,0.26), 0 18px 44px rgba(0,0,0,0.1); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
     '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; flex: 0 0 auto; transition: padding 0.12s ease; }',
     '.gw-label.is-compact .gw-label__head { padding: 4px 6px; }',
     '.gw-label.is-expanded .gw-label__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 12px 8px 9px; white-space: normal; width: 100%; max-width: none; box-sizing: border-box; }',
-    '.gw-label.is-expanded.is-below .gw-label__head { border-bottom: 1px solid #000; }',
-    '.gw-label.is-expanded:not(.is-below) .gw-label__head { border-top: 1px solid #000; }',
+    '.gw-label.is-expanded.is-below .gw-label__head { border-bottom: 1px solid rgba(30,40,50,0.14); }',
+    '.gw-label.is-expanded:not(.is-below) .gw-label__head { border-top: 1px solid rgba(30,40,50,0.14); }',
     '.gw-label__tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid #9aa0a6; flex: 0 0 auto; }',
     '.gw-label__text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }',
     '.gw-label.is-expanded .gw-label__text { overflow: visible; text-overflow: unset; white-space: normal; flex: 1 1 auto; min-width: 0; }',
@@ -341,6 +343,32 @@
     this.openLinksInNewTab = options.openLinksInNewTab !== false;
     this.idleHighlight = options.idleHighlight !== false;
     this._highlight = normalizeHighlightOpts(options.highlight, HL_DEFAULT);
+    this.lifeEnabled = options.life !== false;
+    this._lifeFlags = {
+      life: this.lifeEnabled,
+      lifeCars: options.lifeCars !== false,
+      lifePeople: options.lifePeople !== false,
+      lifeDogs: options.lifeDogs !== false,
+      lifeBirds: options.lifeBirds !== false,
+      lifeClouds: options.lifeClouds !== false,
+      lifeLight: options.lifeLight !== false,
+      lifeLightMode: options.lifeLightMode || null,
+      lifeDensity: options.lifeDensity || 'auto',
+      // null → берём значения из настроек квартала
+      lifeBirdFlockSize: options.lifeBirdFlockSize != null ? options.lifeBirdFlockSize : null,
+      lifeBirdFlockPeriodMs: options.lifeBirdFlockPeriodMs != null ? options.lifeBirdFlockPeriodMs : null,
+      lifeBirdSingles: options.lifeBirdSingles != null ? options.lifeBirdSingles : null,
+      lifeBirdSinglePeriodMs: options.lifeBirdSinglePeriodMs != null ? options.lifeBirdSinglePeriodMs : null,
+      lifeCloudCount: options.lifeCloudCount != null ? options.lifeCloudCount : null,
+      lifeCloudOpacity: options.lifeCloudOpacity != null ? options.lifeCloudOpacity : null,
+      lifeCloudShade: options.lifeCloudShade != null ? options.lifeCloudShade : null,
+      lifeCloudSpeed: options.lifeCloudSpeed != null ? options.lifeCloudSpeed : null,
+      lifeLightFromDeg: options.lifeLightFromDeg != null ? options.lifeLightFromDeg : null,
+      lifeShadowLen: options.lifeShadowLen != null ? options.lifeShadowLen : null,
+      lifeShadowOpacity: options.lifeShadowOpacity != null ? options.lifeShadowOpacity : null
+    };
+    this._lifeInline = null;
+    this._lifeExplore = null;
 
     this._fitScale = 1;
     this._stageW = 0;
@@ -425,6 +453,7 @@
   GenplanWidgetInstance.prototype.destroy = function () {
     if (this.destroyed) return;
     this.destroyed = true;
+    this._stopLifeAll();
     this._cancelHoverClear();
     this._stopIdleHighlight();
     if (this.exploring) {
@@ -693,6 +722,58 @@
     this._syncCoarseClass();
     this._layoutFit();
     this._startIdleHighlight();
+    this._startLifeOnStage(stage, 'inline');
+  };
+
+  GenplanWidgetInstance.prototype._stopLife = function (which) {
+    var key = which === 'explore' ? '_lifeExplore' : '_lifeInline';
+    if (this[key] && typeof this[key].destroy === 'function') {
+      try { this[key].destroy(); } catch (e) { /* ignore */ }
+    }
+    this[key] = null;
+  };
+
+  GenplanWidgetInstance.prototype._stopLifeAll = function () {
+    this._stopLife('inline');
+    this._stopLife('explore');
+  };
+
+  GenplanWidgetInstance.prototype._lifeMountFlags = function () {
+    return Object.assign({}, this._lifeFlags, { life: this.lifeEnabled && this._lifeFlags.life !== false });
+  };
+
+  GenplanWidgetInstance.prototype._startLifeOnStage = function (stage, which) {
+    this._stopLife(which);
+    if (!this.lifeEnabled || this.destroyed || !stage) return;
+    if (typeof global.GenplanLife === 'undefined' || !global.GenplanLife.create) return;
+    var lifeData = (this.data && this.data.life) || { enabled: false, tracks: [], agents: [], settings: {} };
+    var light = document.createElement('div');
+    light.className = 'gw-light-overlay';
+    var layer = document.createElement('div');
+    layer.className = 'gw-life-layer';
+    layer.style.overflow = 'hidden';
+    var img = stage.querySelector('img');
+    var svg = stage.querySelector('svg');
+    if (img && img.nextSibling) {
+      stage.insertBefore(light, img.nextSibling);
+      stage.insertBefore(layer, light.nextSibling);
+    } else if (svg) {
+      stage.insertBefore(light, svg);
+      stage.insertBefore(layer, svg);
+    } else {
+      stage.appendChild(light);
+      stage.appendChild(layer);
+    }
+    var inst = global.GenplanLife.create({
+      layerEl: layer,
+      lightEl: light,
+      imageWidth: this._imgW || (this.data && this.data.imageWidth) || 0,
+      imageHeight: this._imgH || (this.data && this.data.imageHeight) || 0,
+      lifeData: lifeData,
+      flags: this._lifeMountFlags()
+    });
+    if (which === 'explore') this._lifeExplore = inst;
+    else this._lifeInline = inst;
   };
 
   GenplanWidgetInstance.prototype._buildMapStage = function (storeEls) {
@@ -1807,6 +1888,7 @@
     this._activeObjectId = null;
     this._hoverObjectId = null;
     this._applyExploreTransform();
+    this._startLifeOnStage(stage, 'explore');
   };
 
   GenplanWidgetInstance.prototype._enterExplore = function () {
@@ -1818,6 +1900,7 @@
     // сбрасываем выбор на inline до клона, чтобы не тащить expanded в компакт
     if (this._els.stage) this._clearSelection(this._els.stage);
     if (this._els.labels) this._els.labels.classList.remove('has-expanded');
+    if (this._lifeInline && this._lifeInline.pause) this._lifeInline.pause();
     this.exploring = true;
     this._els.root.classList.add('is-explore');
     this._els.exploreLayer.setAttribute('aria-hidden', 'false');
@@ -1846,6 +1929,7 @@
     if (!this.exploring) return;
     this.exploring = false;
     this._resetInteractionState();
+    this._stopLife('explore');
     if (this._els.root) this._els.root.classList.remove('is-explore');
     if (this._els.exploreLayer) this._els.exploreLayer.setAttribute('aria-hidden', 'true');
     if (this._els.exploreViewport) this._els.exploreViewport.innerHTML = '';
@@ -1862,6 +1946,8 @@
       this._restoreInlineCamera();
       this._layoutFit();
       this._syncIdleHighlight();
+      if (this._lifeInline && this._lifeInline.resume) this._lifeInline.resume();
+      else if (this._els.stage) this._startLifeOnStage(this._els.stage, 'inline');
     } else {
       this._inlineSnap = null;
     }
@@ -2065,6 +2151,13 @@
     if (options.exploreFullscreen == null) options.exploreFullscreen = true;
     if (options.openLinksInNewTab == null) options.openLinksInNewTab = true;
     if (options.idleHighlight == null) options.idleHighlight = true;
+    if (options.life == null) options.life = true;
+    if (options.lifeCars == null) options.lifeCars = true;
+    if (options.lifePeople == null) options.lifePeople = true;
+    if (options.lifeDogs == null) options.lifeDogs = true;
+    if (options.lifeBirds == null) options.lifeBirds = true;
+    if (options.lifeClouds == null) options.lifeClouds = true;
+    if (options.lifeLight == null) options.lifeLight = true;
     var inst = new GenplanWidgetInstance(host, options);
     inst.mount();
     return inst;
@@ -2072,6 +2165,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.4.11'
+    version: '2.5.1'
   };
 })(typeof window !== 'undefined' ? window : this);

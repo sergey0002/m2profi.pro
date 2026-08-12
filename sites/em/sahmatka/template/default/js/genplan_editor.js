@@ -86,6 +86,46 @@
     var cancelBtn = document.getElementById('genplan_cancel');
     var modePolyBtn = document.getElementById('genplan_mode_poly');
     var modeLabelsBtn = document.getElementById('genplan_mode_labels');
+    var modeLifeBtn = document.getElementById('genplan_mode_life');
+    var lifeToolsEl = document.getElementById('genplan_life_tools');
+    var lifeCarBtn = document.getElementById('genplan_life_car');
+    var lifePersonBtn = document.getElementById('genplan_life_person');
+    var lifePerspBtn = document.getElementById('genplan_life_persp');
+    var lifePanel = document.getElementById('genplan_life_panel');
+    var lifeSpeedInput = document.getElementById('genplan_life_speed');
+    var lifePeriodInput = document.getElementById('genplan_life_period');
+    var lifeSpriteSelect = document.getElementById('genplan_life_sprite');
+    var lifeDirectionSelect = document.getElementById('genplan_life_direction');
+    var lifeRotateVariantsInput = document.getElementById('genplan_life_rotate_variants');
+    var lifeRotateWrap = document.getElementById('genplan_life_rotate_wrap');
+    var lifeApplyBtn = document.getElementById('genplan_life_apply');
+    var lifeDeleteBtn = document.getElementById('genplan_life_delete');
+    var lifeListEl = document.getElementById('genplan_life_list');
+    var lifePerspFields = document.getElementById('genplan_life_persp_fields');
+    var lifeScaleNearInput = document.getElementById('genplan_life_scale_near');
+    var lifeScaleFarInput = document.getElementById('genplan_life_scale_far');
+    var lifePerspClearBtn = document.getElementById('genplan_life_persp_clear');
+    var groundPitchInput = document.getElementById('genplan_life_ground_pitch');
+    var groundSkewInput = document.getElementById('genplan_life_ground_skew');
+    var personBillboardInput = document.getElementById('genplan_life_person_billboard');
+    var groundSaveBtn = document.getElementById('genplan_life_ground_save');
+    var recalcPerspectiveBtn = document.getElementById('genplan_life_recalc_from_homes');
+    var birdFlockInput = document.getElementById('genplan_life_bird_flock');
+    var birdFlockPeriodInput = document.getElementById('genplan_life_bird_flock_period');
+    var birdSinglesInput = document.getElementById('genplan_life_bird_singles');
+    var birdSinglePeriodInput = document.getElementById('genplan_life_bird_single_period');
+    var birdsSaveBtn = document.getElementById('genplan_life_birds_save');
+    var cloudsOnInput = document.getElementById('genplan_life_clouds_on');
+    var cloudCountInput = document.getElementById('genplan_life_cloud_count');
+    var cloudOpacityInput = document.getElementById('genplan_life_cloud_opacity');
+    var cloudShadeInput = document.getElementById('genplan_life_cloud_shade');
+    var cloudSpeedInput = document.getElementById('genplan_life_cloud_speed');
+    var cloudsSaveBtn = document.getElementById('genplan_life_clouds_save');
+    var lightFromInput = document.getElementById('genplan_life_light_from');
+    var shadowLenInput = document.getElementById('genplan_life_shadow_len');
+    var shadowOpacityInput = document.getElementById('genplan_life_shadow_opacity');
+    var sunPreviewEl = document.getElementById('genplan_life_sun_preview');
+    var sunSaveBtn = document.getElementById('genplan_life_sun_save');
     var uploadInput = document.getElementById('genplan_upload_input');
     var uploadBtn = document.getElementById('genplan_upload_btn');
     var clearAllBtn = document.getElementById('genplan_clear_all');
@@ -102,6 +142,25 @@
 
     var hasImage = !!(cfg.imageUrl && cfg.imageWidth && cfg.imageHeight);
     var currentOverlay = null;
+
+    // Separate button: recalc tilt & perspective using outlined "houses" polygons.
+    // We used to anchor it to "Сохранить наклон" button; now that button is removed,
+    // anchor via the ground panel container instead.
+    if (!recalcPerspectiveBtn) {
+        var groundPanel = null;
+        try {
+            if (groundSaveBtn && groundSaveBtn.parentNode) groundPanel = groundSaveBtn.parentNode;
+            else if (groundPitchInput && groundPitchInput.closest) groundPanel = groundPitchInput.closest('.genplan-editor__life-ground');
+        } catch (e) { /* ignore */ }
+        if (groundPanel && groundPanel.appendChild) {
+            recalcPerspectiveBtn = document.createElement('button');
+            recalcPerspectiveBtn.id = 'genplan_life_recalc_from_homes';
+            recalcPerspectiveBtn.type = 'button';
+            recalcPerspectiveBtn.textContent = 'Пересчитать наклон+перспективу';
+            recalcPerspectiveBtn.className = 'genplan-editor__btn genplan-life-recalc-btn';
+            groundPanel.appendChild(recalcPerspectiveBtn);
+        }
+    }
     var pendingDeletes = {};
     var flushingDeletes = false;
     var savingGeometry = false;
@@ -112,12 +171,56 @@
     var deleteModeActive = false;
     var geometryDirty = false;
     var metaDirty = false;
-    var editorMode = 'poly'; // 'poly' | 'labels'
+    var editorMode = 'poly'; // 'poly' | 'labels' | 'life'
     var addPointMode = false;
     var selectedLayer = null;
     var labelMarker = null;
     var suppressMetaSync = false;
     var homesLoaded = false;
+    var lifeDrawer = null;
+    var lifeDrawSpecies = null; // 'car' | 'person'
+    var lifeSaving = false;
+    var selectedLifeLayer = null;
+    var lifeDraft = null; // { layer, species, points } pending apply
+    var lifeTracksCache = [];
+    var lifeAgentsCache = [];
+    var lifePerspective = null;
+    var perspMarkers = [];
+    var perspPoly = null;
+    var perspSaving = false;
+    var COLOR_VARIANTS = {
+        // светлые кузова, как машины на рендерах генплана
+        car: [
+            { id: 'white', label: 'Белый', sprite: 'car_c', color: '#e4e8ec' },
+            { id: 'gray', label: 'Серебристый', sprite: 'car_a', color: '#c3c9d0' },
+            { id: 'graphite', label: 'Графитовый', sprite: 'car_b', color: '#8b939c' },
+            { id: 'blue', label: 'Синий', sprite: 'car_b', color: '#7d97b4' },
+            { id: 'red', label: 'Красный', sprite: 'car_a', color: '#a84a4a' },
+            { id: 'dark', label: 'Тёмный', sprite: 'car_b', color: '#5c636b' },
+            { id: 'green', label: 'Зелёный', sprite: 'car_c', color: '#8aa294' }
+        ],
+        person: [
+            { id: 'm_navy', label: 'М / поло тёмное', sprite: 'person_m1', color: '#2f5a8a' },
+            { id: 'm_white', label: 'М / поло светлое', sprite: 'person_m1', color: '#e6e0d4' },
+            { id: 'm_teal', label: 'М / рубашка бирюза', sprite: 'person_m2', color: '#2f9a96' },
+            { id: 'm_sand', label: 'М / рубашка песок', sprite: 'person_m2', color: '#c9a66b' },
+            { id: 'w_coral', label: 'Ж / платье коралл', sprite: 'person_w1', color: '#e07068' },
+            { id: 'w_mint', label: 'Ж / платье мята', sprite: 'person_w1', color: '#6cbc98' },
+            { id: 'w_lilac', label: 'Ж / топ + шорты', sprite: 'person_w2', color: '#9a78b8' },
+            { id: 'w_sky', label: 'Ж / топ + шорты голубой', sprite: 'person_w2', color: '#5aa8d8' },
+            { id: 'w_sun', label: 'Ж / сарафан жёлтый', sprite: 'person_w3', color: '#e8c040' },
+            { id: 'w_rose', label: 'Ж / сарафан розовый', sprite: 'person_w3', color: '#d87898' },
+            { id: 'k_red', label: 'Ребёнок / футболка красная', sprite: 'person_k1', color: '#e04848' },
+            { id: 'k_blue', label: 'Ребёнок / футболка синяя', sprite: 'person_k1', color: '#3f8ad8' },
+            { id: 'k_lime', label: 'Ребёнок / зелёный', sprite: 'person_k2', color: '#6ec050' },
+            { id: 'k_orange', label: 'Ребёнок / оранжевый', sprite: 'person_k2', color: '#ef9038' }
+        ]
+    };
+    var LIFE_STYLE = {
+        road: { color: '#2f80ed', weight: 3, opacity: 0.95 },
+        walk: { color: '#28a745', weight: 3, opacity: 0.95 },
+        dog: { color: '#fb8c00', weight: 3, opacity: 0.95 }
+    };
 
     var STYLE_DEFAULT = {
         color: '#7eb6e8',
@@ -291,7 +394,7 @@
     }
 
     function isBusy() {
-        return savingGeometry || flushingDeletes || reverting || uploadInProgress || clearingMarkup;
+        return savingGeometry || flushingDeletes || reverting || uploadInProgress || clearingMarkup || lifeSaving;
     }
 
     function setControlsBusy(busy) {
@@ -302,6 +405,39 @@
         if (clearAllBtn) clearAllBtn.disabled = busy;
         if (modePolyBtn) modePolyBtn.disabled = busy;
         if (modeLabelsBtn) modeLabelsBtn.disabled = busy;
+        if (modeLifeBtn) modeLifeBtn.disabled = busy;
+        if (lifeCarBtn) lifeCarBtn.disabled = busy;
+        if (lifePersonBtn) lifePersonBtn.disabled = busy;
+        if (lifePerspBtn) lifePerspBtn.disabled = busy;
+        if (lifeApplyBtn) lifeApplyBtn.disabled = busy;
+        if (lifeDeleteBtn) lifeDeleteBtn.disabled = busy || !selectedLifeLayer;
+        if (lifeSpeedInput) lifeSpeedInput.disabled = busy;
+        if (lifePeriodInput) lifePeriodInput.disabled = busy;
+        if (lifeSpriteSelect) lifeSpriteSelect.disabled = busy;
+        if (lifeDirectionSelect) lifeDirectionSelect.disabled = busy;
+        if (lifeRotateVariantsInput) lifeRotateVariantsInput.disabled = busy;
+        if (lifeScaleNearInput) lifeScaleNearInput.disabled = busy;
+        if (lifeScaleFarInput) lifeScaleFarInput.disabled = busy;
+        if (lifePerspClearBtn) lifePerspClearBtn.disabled = busy;
+        if (birdFlockInput) birdFlockInput.disabled = busy;
+        if (birdFlockPeriodInput) birdFlockPeriodInput.disabled = busy;
+        if (birdSinglesInput) birdSinglesInput.disabled = busy;
+        if (birdSinglePeriodInput) birdSinglePeriodInput.disabled = busy;
+        if (birdsSaveBtn) birdsSaveBtn.disabled = busy;
+        if (cloudsOnInput) cloudsOnInput.disabled = busy;
+        if (cloudCountInput) cloudCountInput.disabled = busy;
+        if (cloudOpacityInput) cloudOpacityInput.disabled = busy;
+        if (cloudShadeInput) cloudShadeInput.disabled = busy;
+        if (cloudSpeedInput) cloudSpeedInput.disabled = busy;
+        if (cloudsSaveBtn) cloudsSaveBtn.disabled = busy;
+        if (lightFromInput) lightFromInput.disabled = busy;
+        if (shadowLenInput) shadowLenInput.disabled = busy;
+        if (shadowOpacityInput) shadowOpacityInput.disabled = busy;
+        if (sunSaveBtn) sunSaveBtn.disabled = busy;
+        if (groundPitchInput) groundPitchInput.disabled = busy;
+        if (groundSkewInput) groundSkewInput.disabled = busy;
+        if (personBillboardInput) personBillboardInput.disabled = busy;
+        if (groundSaveBtn) groundSaveBtn.disabled = busy;
         if (titleInput) titleInput.disabled = busy;
         if (contentInput) contentInput.disabled = busy;
         if (homeSelect) homeSelect.disabled = busy;
@@ -408,10 +544,14 @@
     var pointLayers = new L.FeatureGroup();
     var editableLayers = new L.FeatureGroup();
     var labelGroup = new L.FeatureGroup();
+    var lifeLayers = new L.FeatureGroup();
+    var perspectiveGroup = new L.FeatureGroup();
     map.addLayer(polygons);
     map.addLayer(pointLayers);
     map.addLayer(editableLayers);
     map.addLayer(labelGroup);
+    map.addLayer(lifeLayers);
+    map.addLayer(perspectiveGroup);
 
     var vertexIcon = new L.DivIcon({
         iconSize: new L.Point(8, 8),
@@ -560,9 +700,24 @@
                 try { handler.disable(); } catch (e2) { /* ignore */ }
             });
         }
-        drawToolActive = false;
+        if (editorMode !== 'life') {
+            drawToolActive = false;
+        }
         deleteModeActive = false;
         restorePageTextSelection();
+    }
+
+    function disableLifeDrawer() {
+        if (lifeDrawer) {
+            try { lifeDrawer.disable(); } catch (e) { /* ignore */ }
+            lifeDrawer = null;
+        }
+        lifeDrawSpecies = null;
+        if (lifeCarBtn) lifeCarBtn.classList.remove('is-active');
+        if (lifePersonBtn) lifePersonBtn.classList.remove('is-active');
+        if (editorMode === 'life') {
+            drawToolActive = false;
+        }
     }
 
     function setDrawControlVisible(visible) {
@@ -577,7 +732,10 @@
         if (!allowDraw) {
             forceExitVertexEdit();
         }
-        if (!hasImage) {
+        if (editorMode !== 'life') {
+            disableLifeDrawer();
+        }
+        if (!hasImage && editorMode !== 'life') {
             showMessage('Вначале загрузите файл плана', 'info');
         }
     }
@@ -790,6 +948,1167 @@
         metaPanel.style.display = show ? '' : 'none';
     }
 
+    function updateLifePanelVisibility() {
+        if (!lifePanel) return;
+        lifePanel.style.display = editorMode === 'life' ? '' : 'none';
+    }
+
+    // ─── Life tracks (task 12) ───────────────────────────────
+
+    function lifeRoleForSpecies(species) {
+        return species === 'person' ? 'walk' : 'road';
+    }
+
+    function lifeDefaultsForSpecies(species) {
+        if (species === 'person') {
+            return { speed: 7, periodSec: 20, colorId: 'gray' };
+        }
+        return { speed: 34, periodSec: 14, colorId: 'gray' };
+    }
+
+    function colorVariantsFor(species) {
+        return COLOR_VARIANTS[species === 'person' ? 'person' : 'car'] || COLOR_VARIANTS.car;
+    }
+
+    function findColorVariant(species, colorId, sprite, color) {
+        var list = colorVariantsFor(species);
+        var i;
+        if (colorId) {
+            for (i = 0; i < list.length; i++) {
+                if (list[i].id === colorId) return list[i];
+            }
+        }
+        if (color) {
+            for (i = 0; i < list.length; i++) {
+                if (String(list[i].color).toLowerCase() === String(color).toLowerCase()) return list[i];
+            }
+        }
+        if (sprite) {
+            for (i = 0; i < list.length; i++) {
+                if (list[i].sprite === sprite) return list[i];
+            }
+        }
+        return list[0];
+    }
+
+    function fillLifeSpriteOptions(species, selectedId) {
+        if (!lifeSpriteSelect) return;
+        var list = colorVariantsFor(species || 'car');
+        var pick = selectedId || (list[0] && list[0].id);
+        lifeSpriteSelect.innerHTML = '';
+        list.forEach(function (v) {
+            var o = document.createElement('option');
+            o.value = v.id;
+            o.textContent = v.label;
+            o.setAttribute('data-sprite', v.sprite);
+            o.setAttribute('data-color', v.color);
+            lifeSpriteSelect.appendChild(o);
+        });
+        lifeSpriteSelect.value = pick;
+        if (lifeSpriteSelect.value !== pick && list[0]) {
+            lifeSpriteSelect.value = list[0].id;
+        }
+    }
+
+    function setLifeFormDefaults(species) {
+        var d = lifeDefaultsForSpecies(species || 'car');
+        fillLifeSpriteOptions(species || 'car', d.colorId);
+        if (lifeSpeedInput) lifeSpeedInput.value = String(d.speed);
+        if (lifePeriodInput) lifePeriodInput.value = String(d.periodSec);
+        if (lifeDirectionSelect) lifeDirectionSelect.value = '1';
+        if (lifeRotateVariantsInput) lifeRotateVariantsInput.checked = true;
+        if (lifeRotateWrap) {
+            lifeRotateWrap.style.display = (species === 'car' || species === 'person') ? '' : 'none';
+        }
+    }
+
+    function selectedColorVariant(species) {
+        var id = lifeSpriteSelect ? lifeSpriteSelect.value : '';
+        return findColorVariant(species || 'car', id);
+    }
+
+    function syncLifeDirectionUi(species, params) {
+        params = params || {};
+        var dir = params.direction === -1 ? '-1' : '1';
+        if (lifeDirectionSelect) lifeDirectionSelect.value = dir;
+        if (lifeRotateVariantsInput) {
+            lifeRotateVariantsInput.checked = (species === 'car' || species === 'person')
+                ? params.rotateVariants !== false
+                : false;
+        }
+        if (lifeRotateWrap) {
+            lifeRotateWrap.style.display = (species === 'car' || species === 'person') ? '' : 'none';
+        }
+    }
+
+    function discardLifeDraft() {
+        if (lifeDraft && lifeDraft.layer) {
+            try { lifeLayers.removeLayer(lifeDraft.layer); } catch (e) { /* ignore */ }
+            try { map.removeLayer(lifeDraft.layer); } catch (e2) { /* ignore */ }
+        }
+        lifeDraft = null;
+    }
+
+    function disableLifeLayerEdit(layer) {
+        if (!layer) return;
+        if (layer.editing && layer.editing.enabled && layer.editing.enabled()) {
+            try { layer.editing.disable(); } catch (e) { /* ignore */ }
+        }
+    }
+
+    function enableLifeLayerEdit(layer) {
+        if (!layer || !layer.editing || !layer.editing.enable) return;
+        try {
+            layer.editing.enable();
+        } catch (e) { /* ignore */ }
+    }
+
+    function lifeLayerPoints(layer) {
+        if (!layer || !layer.getLatLngs) return null;
+        var latlngs = layer.getLatLngs();
+        if (!latlngs || !latlngs.length) return null;
+        // Leaflet may nest rings for Polygon; Polyline is flat
+        if (latlngs[0] && latlngs[0].lat == null && Array.isArray(latlngs[0])) {
+            latlngs = latlngs[0];
+        }
+        return latlngs.map(function (ll) {
+            return [Math.round(ll.lng), Math.round(ll.lat)];
+        });
+    }
+
+    function clearLifeSelection() {
+        if (selectedLifeLayer) {
+            disableLifeLayerEdit(selectedLifeLayer);
+            var role = (selectedLifeLayer.lifeData && selectedLifeLayer.lifeData.role) || 'road';
+            var st = LIFE_STYLE[role] || LIFE_STYLE.road;
+            selectedLifeLayer.setStyle(st);
+        }
+        selectedLifeLayer = null;
+        if (lifeDeleteBtn) lifeDeleteBtn.disabled = true;
+        renderLifeListActive();
+    }
+
+    function selectLifeLayer(layer) {
+        clearLifeSelection();
+        if (!layer || !layer.lifeData) return;
+        selectedLifeLayer = layer;
+        layer.setStyle({
+            color: '#111',
+            weight: 4,
+            opacity: 1
+        });
+        if (layer.bringToFront) layer.bringToFront();
+        enableLifeLayerEdit(layer);
+        var agent = layer.lifeData.agent || null;
+        var species = (agent && agent.species) || (layer.lifeData.role === 'walk' ? 'person' : 'car');
+        var params = (agent && agent.params) || {};
+        var variant = findColorVariant(species, params.colorId, agent && agent.spriteKey, params.color);
+        fillLifeSpriteOptions(species, variant.id);
+        if (lifeSpeedInput) lifeSpeedInput.value = String((agent && agent.speed) || lifeDefaultsForSpecies(species).speed);
+        if (lifePeriodInput) {
+            var ms = (agent && agent.periodMs) || (lifeDefaultsForSpecies(species).periodSec * 1000);
+            lifePeriodInput.value = String(Math.max(1, Math.round(ms / 1000)));
+        }
+        syncLifeDirectionUi(species, params);
+        if (lifeDeleteBtn) lifeDeleteBtn.disabled = !layer.lifeData.id;
+        renderLifeListActive();
+        showMessage('Трек выбран — тащите углы линии, правьте скорость/направление/цвет и «Применить». «Удалить» — убрать путь.', 'info');
+    }
+
+    function agentForTrack(trackId) {
+        var i;
+        for (i = 0; i < lifeAgentsCache.length; i++) {
+            if (String(lifeAgentsCache[i].trackId) === String(trackId)) {
+                return lifeAgentsCache[i];
+            }
+        }
+        return null;
+    }
+
+    function pointsToLatLngs(points) {
+        return (points || []).map(function (p) {
+            return L.latLng(p[1], p[0]);
+        });
+    }
+
+    function addLifeTrackLayer(track, agent) {
+        if (!track || !track.points || track.points.length < 2) return null;
+        var role = track.role || 'road';
+        var st = LIFE_STYLE[role] || LIFE_STYLE.road;
+        var layer = L.polyline(pointsToLatLngs(track.points), {
+            color: st.color,
+            weight: st.weight,
+            opacity: st.opacity,
+            interactive: true
+        });
+        layer.lifeData = {
+            id: track.id,
+            role: role,
+            title: track.title || '',
+            points: clonePoints(track.points),
+            agent: agent || null
+        };
+        layer.on('click', function (e) {
+            if (editorMode !== 'life') return;
+            if (drawToolActive) return;
+            if (e.originalEvent) L.DomEvent.stopPropagation(e.originalEvent);
+            discardLifeDraft();
+            selectLifeLayer(layer);
+        });
+        lifeLayers.addLayer(layer);
+        return layer;
+    }
+
+    function rebuildLifeLayers() {
+        if (selectedLifeLayer) disableLifeLayerEdit(selectedLifeLayer);
+        lifeLayers.clearLayers();
+        selectedLifeLayer = null;
+        lifeTracksCache.forEach(function (track) {
+            addLifeTrackLayer(track, agentForTrack(track.id));
+        });
+        renderLifeList();
+        if (lifeDeleteBtn) lifeDeleteBtn.disabled = true;
+    }
+
+    function renderLifeListActive() {
+        if (!lifeListEl) return;
+        var items = lifeListEl.querySelectorAll('li');
+        var selId = selectedLifeLayer && selectedLifeLayer.lifeData ? String(selectedLifeLayer.lifeData.id) : '';
+        Array.prototype.forEach.call(items, function (li) {
+            if (li.getAttribute('data-id') === selId) li.classList.add('is-active');
+            else li.classList.remove('is-active');
+        });
+    }
+
+    function renderLifeList() {
+        if (!lifeListEl) return;
+        lifeListEl.innerHTML = '';
+        if (!lifeTracksCache.length) {
+            var empty = document.createElement('li');
+            empty.textContent = 'Пока нет треков';
+            empty.style.cursor = 'default';
+            lifeListEl.appendChild(empty);
+            return;
+        }
+        lifeTracksCache.forEach(function (track) {
+            var agent = agentForTrack(track.id);
+            var li = document.createElement('li');
+            li.setAttribute('data-id', String(track.id));
+            var role = track.role || 'road';
+            var label = (role === 'walk' ? 'Человек' : 'Машина') + ' #' + track.id;
+            if (agent) {
+                var dir = (agent.params && agent.params.direction === -1) ? '←' : '→';
+                label += ' · ' + dir + ' · ' + Math.round(agent.speed) + 'px/s · ' + Math.round(agent.periodMs / 1000) + 'с';
+            }
+            var span = document.createElement('span');
+            span.className = 'role-' + role;
+            span.textContent = label;
+            li.appendChild(span);
+            li.addEventListener('click', function () {
+                var found = null;
+                lifeLayers.eachLayer(function (layer) {
+                    if (layer.lifeData && String(layer.lifeData.id) === String(track.id)) found = layer;
+                });
+                if (found) selectLifeLayer(found);
+            });
+            lifeListEl.appendChild(li);
+        });
+        renderLifeListActive();
+    }
+
+    function loadLifeList() {
+        return fetch(cfg.ajaxBase + '&act=life_list&kvartal_id=' + encodeURIComponent(cfg.kvartalId), {
+            credentials: 'same-origin'
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (!res || !res.success) {
+                    showMessage((res && res.message) || 'Не удалось загрузить жизнь', 'error');
+                    return;
+                }
+                lifeTracksCache = Array.isArray(res.tracks) ? res.tracks : [];
+                lifeAgentsCache = Array.isArray(res.agents) ? res.agents : [];
+                lifePerspective = res.perspective || (res.settings && res.settings.perspective) || null;
+                fillBirdSettings(res.settings);
+                fillCloudSettings(res.settings);
+                fillSunSettings(res.settings);
+                fillGroundSettings(res.settings);
+                rebuildLifeLayers();
+                if (editorMode === 'life') {
+                    if (lifePerspective && lifePerspective.enabled && lifePerspective.points) {
+                        mountPerspectiveUi(lifePerspective, false);
+                    } else {
+                        clearPerspectiveUi();
+                        updatePerspFieldsVisibility();
+                    }
+                }
+            })
+            .catch(function () {
+                showMessage('Ошибка сети при загрузке жизни', 'error');
+            });
+    }
+
+    function fillBirdSettings(settings) {
+        var s = settings || {};
+        if (birdFlockInput && s.birdFlockSize != null) birdFlockInput.value = String(s.birdFlockSize);
+        if (birdFlockPeriodInput && s.birdFlockPeriodMs != null) {
+            birdFlockPeriodInput.value = String(Math.round(Number(s.birdFlockPeriodMs) / 1000));
+        }
+        if (birdSinglesInput && s.birdSingles != null) birdSinglesInput.value = String(s.birdSingles);
+        if (birdSinglePeriodInput && s.birdSinglePeriodMs != null) {
+            birdSinglePeriodInput.value = String(Math.round(Number(s.birdSinglePeriodMs) / 1000));
+        }
+    }
+
+    function fillCloudSettings(settings) {
+        var s = settings || {};
+        if (cloudsOnInput) cloudsOnInput.checked = s.clouds !== false;
+        if (cloudCountInput && s.cloudCount != null) cloudCountInput.value = String(s.cloudCount);
+        if (cloudOpacityInput && s.cloudOpacity != null) cloudOpacityInput.value = String(s.cloudOpacity);
+        if (cloudShadeInput && s.cloudShade != null) cloudShadeInput.value = String(s.cloudShade);
+        if (cloudSpeedInput && s.cloudSpeed != null) cloudSpeedInput.value = String(s.cloudSpeed);
+    }
+
+    function updateSunPreview() {
+        if (!sunPreviewEl) return;
+        var deg = parseFloat(lightFromInput ? lightFromInput.value : 48);
+        var len = parseFloat(shadowLenInput ? shadowLenInput.value : 7);
+        if (!isFinite(deg)) deg = 48;
+        if (!isFinite(len)) len = 7;
+        var rad = (deg * Math.PI) / 180;
+        var dx = Math.sin(rad) * len;
+        var dy = Math.cos(rad) * len;
+        sunPreviewEl.style.setProperty('--sun-dx', dx.toFixed(1) + 'px');
+        sunPreviewEl.style.setProperty('--sun-dy', dy.toFixed(1) + 'px');
+    }
+
+    function fillSunSettings(settings) {
+        var s = settings || {};
+        if (lightFromInput && s.lightFromDeg != null) lightFromInput.value = String(Math.round(Number(s.lightFromDeg)));
+        if (shadowLenInput && s.shadowLen != null) shadowLenInput.value = String(s.shadowLen);
+        if (shadowOpacityInput && s.shadowOpacity != null) shadowOpacityInput.value = String(s.shadowOpacity);
+        updateSunPreview();
+    }
+
+    function fillGroundSettings(settings) {
+        var s = settings || {};
+        if (groundPitchInput && s.groundPitch != null) groundPitchInput.value = String(s.groundPitch);
+        if (groundSkewInput && s.groundSkew != null) groundSkewInput.value = String(s.groundSkew);
+        if (personBillboardInput) personBillboardInput.checked = s.personBillboard !== false;
+    }
+
+    function saveGroundSettings() {
+        if (isBusy()) return;
+        var body = new FormData();
+        body.append('kvartal_id', cfg.kvartalId);
+        body.append('groundPitch', String(parseFloat(groundPitchInput ? groundPitchInput.value : 0.32) || 0));
+        body.append('groundSkew', String(parseFloat(groundSkewInput ? groundSkewInput.value : 0.22) || 0));
+        body.append('personBillboard', personBillboardInput && personBillboardInput.checked ? '1' : '0');
+
+        lifeSaving = true;
+        setControlsBusy(true);
+        fetch(cfg.ajaxBase + '&act=life_save_settings', {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: body
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                lifeSaving = false;
+                setControlsBusy(false);
+                if (!res || !res.success) {
+                    showMessage((res && res.message) || 'Не удалось сохранить наклон', 'error');
+                    return;
+                }
+                fillBirdSettings(res.settings);
+                fillCloudSettings(res.settings);
+                fillSunSettings(res.settings);
+                fillGroundSettings(res.settings);
+                showMessage('Наклон рендера сохранён', 'success');
+            })
+            .catch(function () {
+                lifeSaving = false;
+                setControlsBusy(false);
+                showMessage('Ошибка сети при сохранении наклона', 'error');
+            });
+    }
+
+    function saveBirdSettings() {
+        if (isBusy()) return;
+        var body = new FormData();
+        body.append('kvartal_id', cfg.kvartalId);
+        body.append('birdFlockSize', String(parseInt(birdFlockInput ? birdFlockInput.value : 5, 10) || 0));
+        body.append('birdFlockPeriodMs', String((parseInt(birdFlockPeriodInput ? birdFlockPeriodInput.value : 26, 10) || 26) * 1000));
+        body.append('birdSingles', String(parseInt(birdSinglesInput ? birdSinglesInput.value : 2, 10) || 0));
+        body.append('birdSinglePeriodMs', String((parseInt(birdSinglePeriodInput ? birdSinglePeriodInput.value : 15, 10) || 15) * 1000));
+
+        lifeSaving = true;
+        setControlsBusy(true);
+        fetch(cfg.ajaxBase + '&act=life_save_settings', {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: body
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                lifeSaving = false;
+                setControlsBusy(false);
+                if (!res || !res.success) {
+                    showMessage((res && res.message) || 'Не удалось сохранить настройки птиц', 'error');
+                    return;
+                }
+                fillBirdSettings(res.settings);
+                fillCloudSettings(res.settings);
+                fillSunSettings(res.settings);
+                fillGroundSettings(res.settings);
+                showMessage('Настройки птиц сохранены', 'success');
+            })
+            .catch(function () {
+                lifeSaving = false;
+                setControlsBusy(false);
+                showMessage('Ошибка сети при сохранении настроек птиц', 'error');
+            });
+    }
+
+    function saveCloudSettings() {
+        if (isBusy()) return;
+        var body = new FormData();
+        body.append('kvartal_id', cfg.kvartalId);
+        body.append('clouds', cloudsOnInput && cloudsOnInput.checked ? '1' : '0');
+        body.append('cloudCount', String(parseInt(cloudCountInput ? cloudCountInput.value : 2, 10) || 0));
+        body.append('cloudOpacity', String(parseFloat(cloudOpacityInput ? cloudOpacityInput.value : 0.42) || 0.42));
+        body.append('cloudShade', String(parseFloat(cloudShadeInput ? cloudShadeInput.value : 0.18) || 0));
+        body.append('cloudSpeed', String(parseFloat(cloudSpeedInput ? cloudSpeedInput.value : 3.5) || 3.5));
+
+        lifeSaving = true;
+        setControlsBusy(true);
+        fetch(cfg.ajaxBase + '&act=life_save_settings', {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: body
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                lifeSaving = false;
+                setControlsBusy(false);
+                if (!res || !res.success) {
+                    showMessage((res && res.message) || 'Не удалось сохранить настройки облаков', 'error');
+                    return;
+                }
+                fillBirdSettings(res.settings);
+                fillCloudSettings(res.settings);
+                fillSunSettings(res.settings);
+                fillGroundSettings(res.settings);
+                showMessage('Настройки облаков сохранены', 'success');
+            })
+            .catch(function () {
+                lifeSaving = false;
+                setControlsBusy(false);
+                showMessage('Ошибка сети при сохранении настроек облаков', 'error');
+            });
+    }
+
+    function saveSunSettings() {
+        if (isBusy()) return;
+        var body = new FormData();
+        body.append('kvartal_id', cfg.kvartalId);
+        body.append('lightFromDeg', String(parseFloat(lightFromInput ? lightFromInput.value : 48) || 48));
+        body.append('shadowLen', String(parseFloat(shadowLenInput ? shadowLenInput.value : 7) || 0));
+        body.append('shadowOpacity', String(parseFloat(shadowOpacityInput ? shadowOpacityInput.value : 0.34) || 0));
+
+        lifeSaving = true;
+        setControlsBusy(true);
+        fetch(cfg.ajaxBase + '&act=life_save_settings', {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: body
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                lifeSaving = false;
+                setControlsBusy(false);
+                if (!res || !res.success) {
+                    showMessage((res && res.message) || 'Не удалось сохранить освещение', 'error');
+                    return;
+                }
+                fillBirdSettings(res.settings);
+                fillCloudSettings(res.settings);
+                fillSunSettings(res.settings);
+                fillGroundSettings(res.settings);
+                showMessage('Освещение сохранено', 'success');
+            })
+            .catch(function () {
+                lifeSaving = false;
+                setControlsBusy(false);
+                showMessage('Ошибка сети при сохранении освещения', 'error');
+            });
+    }
+
+    function defaultPerspectivePoints() {
+        var w = cfg.imageWidth || 1000;
+        var h = cfg.imageHeight || 1000;
+        return [
+            [Math.round(w * 0.5), Math.round(h * 0.78)],
+            [Math.round(w * 0.12), Math.round(h * 0.12)],
+            [Math.round(w * 0.88), Math.round(h * 0.12)]
+        ];
+    }
+
+    function clamp(n, a, b) {
+        if (!isFinite(n)) return a;
+        if (n < a) return a;
+        if (n > b) return b;
+        return n;
+    }
+
+    /**
+     * Auto default groundPitch/groundSkew from outlined "houses" polygons.
+     * Uses only what is already mounted on the map (polygons FeatureGroup).
+     */
+    function autoGroundFromHomesPolygons(persp) {
+        if (!persp || !(persp.points && persp.points.length >= 3)) return null;
+
+        var V = persp.points[0];
+        var L = persp.points[1];
+        var R = persp.points[2];
+
+        var yFar = Number(V[1]);
+        var yNear = (Number(L[1]) + Number(R[1])) / 2;
+        if (!isFinite(yFar) || !isFinite(yNear)) return null;
+
+        var denom = Math.abs(yNear - yFar);
+        if (!(denom > 0)) denom = 1;
+
+        var houses = [];
+        polygons.eachLayer(function (layer) {
+            try {
+                if (!layer || !layer.genplanData) return;
+                if (layer.genplanData.kind !== 'polygon') return;
+                // Houses come from DB polygons where home_id is set.
+                if (layer.genplanData.homeId == null) return;
+                if (Number(layer.genplanData.homeId) <= 0) return;
+                var pts = layer.genplanData.points || [];
+                if (!Array.isArray(pts) || pts.length < 3) return;
+                var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                for (var i = 0; i < pts.length; i++) {
+                    var x = Number(pts[i][0]);
+                    var y = Number(pts[i][1]);
+                    if (!isFinite(x) || !isFinite(y)) continue;
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+                if (!(isFinite(minX) && isFinite(maxX) && isFinite(minY) && isFinite(maxY))) return;
+                var cx = (minX + maxX) / 2;
+                var cy = (minY + maxY) / 2;
+                houses.push({ cx: cx, cy: cy });
+            } catch (e) { /* ignore */ }
+        });
+
+        if (!houses.length) return null;
+
+        var yMin = Infinity, yMax = -Infinity, xSum = 0;
+        for (var hI = 0; hI < houses.length; hI++) {
+            if (houses[hI].cy < yMin) yMin = houses[hI].cy;
+            if (houses[hI].cy > yMax) yMax = houses[hI].cy;
+            xSum += houses[hI].cx;
+        }
+        var xAvg = xSum / houses.length;
+        if (!isFinite(yMin) || !isFinite(yMax)) return null;
+
+        // How much houses span in depth relative to the perspective triangle.
+        var spread = (yMax - yMin) / denom; // ~0..+
+        spread = clamp(spread, 0, 1);
+
+        // Map spread → pitch:
+        // 0 = сверху (слишком "вид сверху"),
+        // 1 = сильно oblique.
+        // Для наших сцен обычно нужен ощутимый oblique, поэтому нижняя граница выше.
+        var groundPitch = clamp(0.45 + 0.45 * spread, 0.25, 0.95);
+
+        // Skew strength from lateral offset of houses vs the vanishing X.
+        var vanX = Number(V[0]);
+        var nearSpanX = Math.abs(Number(R[0]) - Number(L[0]));
+        nearSpanX = Math.max(80, nearSpanX * 0.55); // stable scale
+        var avgDx = 0;
+        for (var dI = 0; dI < houses.length; dI++) {
+            avgDx += Math.abs(houses[dI].cx - vanX);
+        }
+        avgDx = avgDx / houses.length;
+        var skewAmt = clamp(avgDx / nearSpanX, 0, 1);
+
+        var groundSkew = clamp(0.08 + 0.48 * skewAmt * (0.45 + 0.55 * spread), 0, 0.95);
+
+        return { groundPitch: groundPitch, groundSkew: groundSkew };
+    }
+
+    function collectHomesBoundsFromPolygons() {
+        var minX = Infinity,
+            maxX = -Infinity,
+            minY = Infinity,
+            maxY = -Infinity,
+            sumX = 0,
+            count = 0;
+        polygons.eachLayer(function (layer) {
+            try {
+                if (!layer || !layer.genplanData) return;
+                if (layer.genplanData.kind !== 'polygon') return;
+                if (layer.genplanData.homeId == null) return;
+                if (Number(layer.genplanData.homeId) <= 0) return;
+                var pts = layer.genplanData.points || [];
+                if (!Array.isArray(pts) || pts.length < 3) return;
+                var localMinX = Infinity,
+                    localMaxX = -Infinity,
+                    localMinY = Infinity,
+                    localMaxY = -Infinity;
+                for (var i = 0; i < pts.length; i++) {
+                    var x = Number(pts[i][0]);
+                    var y = Number(pts[i][1]);
+                    if (!isFinite(x) || !isFinite(y)) continue;
+                    if (x < localMinX) localMinX = x;
+                    if (x > localMaxX) localMaxX = x;
+                    if (y < localMinY) localMinY = y;
+                    if (y > localMaxY) localMaxY = y;
+                }
+                if (!(isFinite(localMinX) && isFinite(localMaxX) && isFinite(localMinY) && isFinite(localMaxY))) return;
+                var cx = (localMinX + localMaxX) / 2;
+                minX = Math.min(minX, localMinX);
+                maxX = Math.max(maxX, localMaxX);
+                minY = Math.min(minY, localMinY);
+                maxY = Math.max(maxY, localMaxY);
+                sumX += cx;
+                count += 1;
+            } catch (e) { /* ignore */ }
+        });
+
+        if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY) || count <= 0) return null;
+
+        return {
+            minX: minX,
+            maxX: maxX,
+            minY: minY,
+            maxY: maxY,
+            xAvg: sumX / count,
+            count: count
+        };
+    }
+
+    function autoPerspectiveFromHomesPolygons() {
+        var bounds = collectHomesBoundsFromPolygons();
+        if (!bounds) return null;
+
+        var imgW = cfg.imageWidth || 1000;
+        var imgH = cfg.imageHeight || 1000;
+
+        // CRS: y=0 у низа, чем больше y — тем выше по плану.
+        var yNear = bounds.minY;
+        var yFar = bounds.maxY;
+        if (!(isFinite(yNear) && isFinite(yFar))) return null;
+
+        var ySpan = Math.max(1, yFar - yNear);
+
+        // Чуть расширяем треугольник по Y, чтобы масштаб "садился" на дома.
+        yFar = clamp(yFar + ySpan * 0.25, 0, imgH * 2);
+        yNear = clamp(yNear - ySpan * 0.05, -imgH * 0.2, imgH * 2);
+
+        var spanX = Math.max(80, bounds.maxX - bounds.minX);
+        var xLeft = clamp(bounds.minX - spanX * 0.35, -imgW * 0.5, imgW * 1.5);
+        var xRight = clamp(bounds.maxX + spanX * 0.35, -imgW * 0.5, imgW * 1.5);
+
+        var xVan = bounds.xAvg;
+
+        return {
+            points: [
+                [xVan, yFar], // vanishing (far)
+                [xLeft, yNear], // left near
+                [xRight, yNear] // right near
+            ]
+        };
+    }
+
+    function perspCornerIcon(label) {
+        return L.divIcon({
+            className: 'genplan-persp-vertex',
+            html: '<span>' + label + '</span>',
+            iconSize: [22, 22],
+            iconAnchor: [11, 11]
+        });
+    }
+
+    function clearPerspectiveUi() {
+        perspMarkers.forEach(function (m) {
+            try { perspectiveGroup.removeLayer(m); } catch (e) { /* ignore */ }
+        });
+        perspMarkers = [];
+        if (perspPoly) {
+            try { perspectiveGroup.removeLayer(perspPoly); } catch (e2) { /* ignore */ }
+            perspPoly = null;
+        }
+        if (lifePerspBtn) lifePerspBtn.classList.remove('is-active');
+    }
+
+    function readPerspectivePointsFromUi() {
+        if (perspMarkers.length < 3) return null;
+        return perspMarkers.map(function (m) {
+            var ll = m.getLatLng();
+            return [Math.round(ll.lng), Math.round(ll.lat)];
+        });
+    }
+
+    function syncPerspectivePolyFromMarkers() {
+        var pts = readPerspectivePointsFromUi();
+        if (!pts || !perspPoly) return;
+        perspPoly.setLatLngs(pointsToLatLngs(pts));
+    }
+
+    function updatePerspFieldsVisibility() {
+        var show = !!(lifePerspective && lifePerspective.enabled && editorMode === 'life');
+        if (lifePerspFields) lifePerspFields.style.display = show ? '' : 'none';
+        if (show) {
+            if (lifeScaleNearInput) lifeScaleNearInput.value = String(lifePerspective.scaleNear != null ? lifePerspective.scaleNear : 1);
+            if (lifeScaleFarInput) lifeScaleFarInput.value = String(lifePerspective.scaleFar != null ? lifePerspective.scaleFar : 0.35);
+        }
+        if (lifePerspBtn) {
+            if (show) lifePerspBtn.classList.add('is-active');
+            else lifePerspBtn.classList.remove('is-active');
+        }
+    }
+
+    function mountPerspectiveUi(persp, doSave) {
+        if (!hasImage) {
+            showMessage('Вначале загрузите файл плана', 'info');
+            return;
+        }
+        clearPerspectiveUi();
+        var points = (persp && persp.points && persp.points.length >= 3)
+            ? persp.points.slice(0, 3)
+            : defaultPerspectivePoints();
+        var scaleNear = persp && persp.scaleNear != null ? persp.scaleNear : 1;
+        var scaleFar = persp && persp.scaleFar != null ? persp.scaleFar : 0.35;
+        lifePerspective = {
+            enabled: true,
+            points: points,
+            scaleNear: scaleNear,
+            scaleFar: scaleFar
+        };
+        perspPoly = L.polygon(pointsToLatLngs(points), {
+            color: '#e67e22',
+            weight: 2,
+            opacity: 0.95,
+            fillColor: '#e67e22',
+            fillOpacity: 0.08,
+            dashArray: '6 4',
+            interactive: false,
+            className: 'genplan-persp-triangle'
+        });
+        perspectiveGroup.addLayer(perspPoly);
+        var labels = ['V', 'L', 'R'];
+        points.forEach(function (p, idx) {
+            var marker = L.marker(L.latLng(p[1], p[0]), {
+                draggable: true,
+                icon: perspCornerIcon(labels[idx] || String(idx + 1)),
+                zIndexOffset: 800
+            });
+            marker.on('drag', function () {
+                syncPerspectivePolyFromMarkers();
+            });
+            marker.on('dragend', function () {
+                savePerspectiveFromUi();
+            });
+            perspectiveGroup.addLayer(marker);
+            perspMarkers.push(marker);
+        });
+        updatePerspFieldsVisibility();
+        if (doSave) savePerspectiveFromUi();
+        showMessage('Перспектива: тащите углы V (сход) / L / R (основание). Масштаб — в панели.', 'info');
+    }
+
+    function savePerspectiveFromUi() {
+        if (perspSaving || editorMode !== 'life') return;
+        var points = readPerspectivePointsFromUi();
+        if (!points || points.length < 3) return;
+        var scaleNear = lifeScaleNearInput ? parseFloat(lifeScaleNearInput.value) : 1;
+        var scaleFar = lifeScaleFarInput ? parseFloat(lifeScaleFarInput.value) : 0.35;
+        if (!(scaleNear > 0) || !(scaleFar > 0)) {
+            showMessage('Масштабы перспективы должны быть > 0', 'error');
+            return;
+        }
+        lifePerspective = {
+            enabled: true,
+            points: points,
+            scaleNear: scaleNear,
+            scaleFar: scaleFar
+        };
+        perspSaving = true;
+        var body = new URLSearchParams({
+            kvartal_id: String(cfg.kvartalId),
+            enabled: '1',
+            points: JSON.stringify(points),
+            scaleNear: String(scaleNear),
+            scaleFar: String(scaleFar)
+        });
+        fetch(cfg.ajaxBase + '&act=life_save_perspective', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: body.toString()
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                perspSaving = false;
+                if (!res || !res.success) {
+                    showMessage((res && res.message) || 'Не удалось сохранить перспективу', 'error');
+                    return;
+                }
+                lifePerspective = res.perspective || lifePerspective;
+                updatePerspFieldsVisibility();
+
+                // Auto default ground tilt based on outlined houses (DB polygons mounted on map).
+                try {
+                    var auto = autoGroundFromHomesPolygons(lifePerspective);
+                    if (auto && groundPitchInput && groundSkewInput) {
+                        groundPitchInput.value = String(auto.groundPitch.toFixed(3)).replace(/\.?0+$/, '');
+                        groundSkewInput.value = String(auto.groundSkew.toFixed(3)).replace(/\.?0+$/, '');
+                        // Persist as new defaults.
+                        saveGroundSettings();
+                    }
+                } catch (e2) { /* ignore */ }
+
+                // Remove perspective triangle/lines overlay after saving (keep stored values).
+                try { clearPerspectiveUi(); } catch (e3) { /* ignore */ }
+                try { updatePerspFieldsVisibility(); } catch (e4) { /* ignore */ }
+            })
+            .catch(function () {
+                perspSaving = false;
+                showMessage('Ошибка сети при сохранении перспективы', 'error');
+            });
+    }
+
+    function startPerspectiveTool() {
+        if (!hasImage || editorMode !== 'life' || isBusy()) return;
+        disableLifeDrawer();
+        discardLifeDraft();
+        clearLifeSelection();
+        if (lifePerspective && lifePerspective.enabled && lifePerspective.points) {
+            mountPerspectiveUi(lifePerspective, false);
+        } else {
+            mountPerspectiveUi(null, true);
+        }
+    }
+
+    function clearPerspective() {
+        if (isBusy() || perspSaving) return;
+        if (!confirmDialog('Сбросить перспективу?')) return;
+        clearPerspectiveUi();
+        lifePerspective = null;
+        updatePerspFieldsVisibility();
+        perspSaving = true;
+        var body = new URLSearchParams({
+            kvartal_id: String(cfg.kvartalId),
+            enabled: '0'
+        });
+        fetch(cfg.ajaxBase + '&act=life_save_perspective', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: body.toString()
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                perspSaving = false;
+                if (!res || !res.success) {
+                    showMessage((res && res.message) || 'Не удалось сбросить', 'error');
+                    return;
+                }
+                showMessage('Перспектива сброшена', 'success');
+            })
+            .catch(function () {
+                perspSaving = false;
+                showMessage('Ошибка сети', 'error');
+            });
+    }
+
+    function startLifeDraw(species) {
+        if (!hasImage || editorMode !== 'life' || isBusy() || lifeSaving) return;
+        forceExitVertexEdit();
+        disableLifeDrawer();
+        discardLifeDraft();
+        clearLifeSelection();
+        lifeDrawSpecies = species === 'person' ? 'person' : 'car';
+        setLifeFormDefaults(lifeDrawSpecies);
+        var role = lifeRoleForSpecies(lifeDrawSpecies);
+        var st = LIFE_STYLE[role] || LIFE_STYLE.road;
+        lifeDrawer = new L.Draw.Polyline(map, {
+            allowIntersection: true,
+            showLength: false,
+            guidelineDistance: 12,
+            shapeOptions: {
+                color: st.color,
+                weight: st.weight,
+                opacity: st.opacity
+            }
+        });
+        attachDrawCursorGuide(lifeDrawer);
+        lifeDrawer.enable();
+        drawToolActive = true;
+        if (lifeCarBtn) {
+            if (lifeDrawSpecies === 'car') lifeCarBtn.classList.add('is-active');
+            else lifeCarBtn.classList.remove('is-active');
+        }
+        if (lifePersonBtn) {
+            if (lifeDrawSpecies === 'person') lifePersonBtn.classList.add('is-active');
+            else lifePersonBtn.classList.remove('is-active');
+        }
+        showMessage((lifeDrawSpecies === 'person' ? 'Человек' : 'Машина') + ': клики по вершинам, ≥2 точки, без замыкания', 'info');
+    }
+
+    function handleLifeCreated(layer) {
+        var species = lifeDrawSpecies || 'car';
+        disableLifeDrawer();
+        drawToolActive = false;
+        var points = layerToPoints(layer);
+        if (points.length < 2) {
+            showMessage('Нужно минимум 2 точки линии', 'warning');
+            return;
+        }
+        var role = lifeRoleForSpecies(species);
+        var st = LIFE_STYLE[role] || LIFE_STYLE.road;
+        var poly = L.polyline(pointsToLatLngs(points), {
+            color: st.color,
+            weight: st.weight,
+            opacity: st.opacity,
+            dashArray: '6 4',
+            interactive: true
+        });
+        poly.lifeData = {
+            id: null,
+            role: role,
+            title: '',
+            points: clonePoints(points),
+            agent: null,
+            isDraft: true,
+            species: species
+        };
+        lifeLayers.addLayer(poly);
+        lifeDraft = { layer: poly, species: species, points: clonePoints(points) };
+        setLifeFormDefaults(species);
+        selectedLifeLayer = poly;
+        poly.setStyle({ color: '#111', weight: 4, opacity: 1, dashArray: '6 4' });
+        if (lifeDeleteBtn) lifeDeleteBtn.disabled = true;
+        showMessage('Черновик пути — укажите скорость/период и нажмите «Применить»', 'warning');
+    }
+
+    function readLifeForm() {
+        var species = (lifeDraft && lifeDraft.species)
+            || (selectedLifeLayer && selectedLifeLayer.lifeData && selectedLifeLayer.lifeData.agent && selectedLifeLayer.lifeData.agent.species)
+            || (selectedLifeLayer && selectedLifeLayer.lifeData && selectedLifeLayer.lifeData.role === 'walk' ? 'person' : 'car');
+        var variant = selectedColorVariant(species);
+        var speed = lifeSpeedInput ? parseFloat(lifeSpeedInput.value) : 0;
+        var periodSec = lifePeriodInput ? parseFloat(lifePeriodInput.value) : 0;
+        var direction = lifeDirectionSelect && lifeDirectionSelect.value === '-1' ? -1 : 1;
+        var rotateVariants = (species === 'car' || species === 'person')
+            ? !!(lifeRotateVariantsInput && lifeRotateVariantsInput.checked)
+            : false;
+        return {
+            species: species,
+            speed: speed,
+            periodMs: Math.round(periodSec * 1000),
+            sprite: variant.sprite,
+            color: variant.color,
+            colorId: variant.id,
+            direction: direction,
+            rotateVariants: rotateVariants
+        };
+    }
+
+    function applyLifeForm() {
+        if (isBusy() || lifeSaving || editorMode !== 'life') return;
+        var form = readLifeForm();
+        if (!(form.speed > 0) || form.periodMs < 1000) {
+            showMessage('Укажите скорость (>0) и периодичность (≥1 с)', 'error');
+            return;
+        }
+
+        if (lifeDraft && lifeDraft.layer) {
+            lifeSaving = true;
+            setControlsBusy(true);
+            var body = new URLSearchParams({
+                kvartal_id: String(cfg.kvartalId),
+                species: lifeDraft.species,
+                points: JSON.stringify(lifeDraft.points),
+                speed: String(form.speed),
+                period_ms: String(form.periodMs),
+                sprite_key: form.sprite,
+                color: form.color,
+                direction: String(form.direction),
+                rotate_variants: form.rotateVariants ? '1' : '0'
+            });
+            // color_id for UI restore
+            body.set('color_id', form.colorId);
+            fetch(cfg.ajaxBase + '&act=life_save_path_agent', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: body.toString()
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    lifeSaving = false;
+                    setControlsBusy(false);
+                    if (!res || !res.success) {
+                        showMessage((res && res.message) || 'Не удалось сохранить путь', 'error');
+                        return;
+                    }
+                    discardLifeDraft();
+                    showMessage('Путь сохранён', 'success');
+                    loadLifeList().then(function () {
+                        if (res.track && res.track.id) {
+                            var found = null;
+                            lifeLayers.eachLayer(function (layer) {
+                                if (layer.lifeData && String(layer.lifeData.id) === String(res.track.id)) found = layer;
+                            });
+                            if (found) selectLifeLayer(found);
+                        }
+                    });
+                })
+                .catch(function () {
+                    lifeSaving = false;
+                    setControlsBusy(false);
+                    showMessage('Ошибка сети при сохранении пути', 'error');
+                });
+            return;
+        }
+
+        if (!selectedLifeLayer || !selectedLifeLayer.lifeData || !selectedLifeLayer.lifeData.id) {
+            showMessage('Сначала нарисуйте путь (Машина / Человек)', 'warning');
+            return;
+        }
+        var agent = selectedLifeLayer.lifeData.agent;
+        if (!agent || !agent.id) {
+            showMessage('У трека нет агента', 'error');
+            return;
+        }
+        var editedPoints = lifeLayerPoints(selectedLifeLayer);
+        if (!editedPoints || editedPoints.length < 2) {
+            showMessage('У линии должно быть минимум 2 точки', 'error');
+            return;
+        }
+        var nextParams = Object.assign({}, agent.params || {}, {
+            color: form.color,
+            colorId: form.colorId,
+            direction: form.direction,
+            rotateVariants: form.rotateVariants
+        });
+        lifeSaving = true;
+        setControlsBusy(true);
+        var keepId = selectedLifeLayer.lifeData.id;
+        var role = selectedLifeLayer.lifeData.role || (agent.species === 'person' ? 'walk' : 'road');
+
+        // сначала геометрия трека (углы можно править), потом параметры агента
+        var trackBody = new URLSearchParams({
+            kvartal_id: String(cfg.kvartalId),
+            track_id: String(keepId),
+            role: role,
+            points: JSON.stringify(editedPoints)
+        });
+        fetch(cfg.ajaxBase + '&act=life_save_track', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: trackBody.toString()
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (trackRes) {
+                if (!trackRes || !trackRes.success) {
+                    throw new Error((trackRes && trackRes.message) || 'Не удалось сохранить линию');
+                }
+                var upd = new URLSearchParams({
+                    kvartal_id: String(cfg.kvartalId),
+                    agent_id: String(agent.id),
+                    track_id: String(keepId),
+                    species: agent.species || (role === 'walk' ? 'person' : 'car'),
+                    speed: String(form.speed),
+                    period_ms: String(form.periodMs),
+                    sprite_key: form.sprite,
+                    enabled: '1',
+                    params_json: JSON.stringify(nextParams)
+                });
+                return fetch(cfg.ajaxBase + '&act=life_save_agent', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: upd.toString()
+                }).then(function (r2) { return r2.json(); });
+            })
+            .then(function (res) {
+                lifeSaving = false;
+                setControlsBusy(false);
+                if (!res || !res.success) {
+                    showMessage((res && res.message) || 'Не удалось обновить агента', 'error');
+                    return;
+                }
+                showMessage('Путь и параметры сохранены', 'success');
+                loadLifeList().then(function () {
+                    var found = null;
+                    lifeLayers.eachLayer(function (layer) {
+                        if (layer.lifeData && String(layer.lifeData.id) === String(keepId)) found = layer;
+                    });
+                    if (found) selectLifeLayer(found);
+                });
+            })
+            .catch(function (err) {
+                lifeSaving = false;
+                setControlsBusy(false);
+                showMessage((err && err.message) || 'Ошибка сети при сохранении', 'error');
+            });
+    }
+
+    function deleteSelectedLife() {
+        if (isBusy() || lifeSaving || editorMode !== 'life') return;
+        if (lifeDraft) {
+            discardLifeDraft();
+            clearLifeSelection();
+            showMessage('Черновик удалён', 'info');
+            return;
+        }
+        if (!selectedLifeLayer || !selectedLifeLayer.lifeData || !selectedLifeLayer.lifeData.id) {
+            showMessage('Выберите сохранённый трек', 'warning');
+            return;
+        }
+        if (!confirmDialog('Удалить этот путь и агента?')) return;
+        var trackId = selectedLifeLayer.lifeData.id;
+        lifeSaving = true;
+        setControlsBusy(true);
+        var body = new URLSearchParams({
+            kvartal_id: String(cfg.kvartalId),
+            track_id: String(trackId)
+        });
+        fetch(cfg.ajaxBase + '&act=life_delete_track', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: body.toString()
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                lifeSaving = false;
+                setControlsBusy(false);
+                if (!res || !res.success) {
+                    showMessage((res && res.message) || 'Не удалось удалить', 'error');
+                    return;
+                }
+                clearLifeSelection();
+                showMessage('Путь удалён', 'success');
+                loadLifeList();
+            })
+            .catch(function () {
+                lifeSaving = false;
+                setControlsBusy(false);
+                showMessage('Ошибка сети при удалении', 'error');
+            });
+    }
+
     function bindObjectClick(layer) {
         layer.on('click', function (e) {
             if (editorMode !== 'labels') return;
@@ -946,14 +2265,25 @@
     // ─── Modes ───────────────────────────────────────────────
 
     function setMode(mode) {
-        mode = mode === 'labels' ? 'labels' : 'poly';
+        if (mode !== 'labels' && mode !== 'life') mode = 'poly';
         if (editorMode === mode) {
             updateModeUi();
             return;
         }
+        if (editorMode === 'life') {
+            disableLifeDrawer();
+            discardLifeDraft();
+            clearLifeSelection();
+            clearPerspectiveUi();
+        }
         if (mode === 'labels') {
             forceExitVertexEdit();
             syncMetaFromFormToLayer();
+        } else if (mode === 'life') {
+            forceExitVertexEdit();
+            syncMetaFromFormToLayer();
+            clearLabelMarker();
+            selectLayer(null);
         } else {
             syncMetaFromFormToLayer();
             clearLabelMarker();
@@ -972,6 +2302,13 @@
                 updateLabelMarkerFromSelection();
             }
             showMessage('Режим подписей: клик по объекту — форма; «Точка» — маркер без полигона', 'info');
+        } else if (mode === 'life') {
+            if (!hasImage) {
+                showMessage('Вначале загрузите файл плана', 'info');
+            } else {
+                showMessage('Режим «Жизнь»: Машина / Человек — open-линия (≥2 точки). Сохраняется сразу.', 'info');
+            }
+            loadLifeList();
         } else {
             if (!hasImage) {
                 showMessage('Вначале загрузите файл плана', 'info');
@@ -990,13 +2327,28 @@
             if (editorMode === 'labels') modeLabelsBtn.classList.add('is-active');
             else modeLabelsBtn.classList.remove('is-active');
         }
+        if (modeLifeBtn) {
+            if (editorMode === 'life') modeLifeBtn.classList.add('is-active');
+            else modeLifeBtn.classList.remove('is-active');
+        }
+        if (lifeToolsEl) {
+            lifeToolsEl.style.display = editorMode === 'life' ? '' : 'none';
+        }
         updateMetaPanelVisibility();
+        updateLifePanelVisibility();
         updateAddPointUi();
         refreshAllStyles();
         var el = map.getContainer();
         if (el) {
             if (editorMode === 'labels') L.DomUtil.addClass(el, 'is-pick-mode');
             else L.DomUtil.removeClass(el, 'is-pick-mode');
+            if (editorMode === 'life') L.DomUtil.addClass(el, 'is-life-mode');
+            else L.DomUtil.removeClass(el, 'is-life-mode');
+        }
+        if (editorMode === 'life') {
+            lifeLayers.eachLayer(function (layer) {
+                if (layer.bringToFront) layer.bringToFront();
+            });
         }
     }
 
@@ -1577,6 +2929,10 @@
 
     map.on(L.Draw.Event.CREATED, function (e) {
         var layer = e.layer;
+        if (editorMode === 'life' || e.layerType === 'polyline') {
+            handleLifeCreated(layer);
+            return;
+        }
         var points = layerToPoints(layer);
         var c = centroidOfPoints(points);
 
@@ -1635,6 +2991,149 @@
         modeLabelsBtn.addEventListener('click', function () {
             if (isBusy()) return;
             setMode('labels');
+        });
+    }
+    if (modeLifeBtn) {
+        modeLifeBtn.addEventListener('click', function () {
+            if (isBusy()) return;
+            setMode('life');
+        });
+    }
+    if (lifeCarBtn) {
+        lifeCarBtn.addEventListener('click', function () {
+            if (isBusy()) return;
+            startLifeDraw('car');
+        });
+    }
+    if (lifePersonBtn) {
+        lifePersonBtn.addEventListener('click', function () {
+            if (isBusy()) return;
+            startLifeDraw('person');
+        });
+    }
+    if (lifePerspBtn) {
+        lifePerspBtn.addEventListener('click', function () {
+            if (isBusy()) return;
+            startPerspectiveTool();
+        });
+    }
+    if (lifePerspClearBtn) {
+        // User wants: only auto recalculation, no "reset perspective".
+        // Hide button and do not bind click handler.
+        try { lifePerspClearBtn.style.display = 'none'; } catch (e) { /* ignore */ }
+    }
+    if (lifeScaleNearInput) {
+        // Keep values for autosave logic, but prevent manual "save perspective".
+        try { lifeScaleNearInput.disabled = true; } catch (e) { /* ignore */ }
+    }
+    if (lifeScaleFarInput) {
+        // Keep values for autosave logic, but prevent manual "save perspective".
+        try { lifeScaleFarInput.disabled = true; } catch (e) { /* ignore */ }
+    }
+    if (birdsSaveBtn) {
+        birdsSaveBtn.addEventListener('click', function () {
+            saveBirdSettings();
+        });
+    }
+    if (cloudsSaveBtn) {
+        cloudsSaveBtn.addEventListener('click', function () {
+            saveCloudSettings();
+        });
+    }
+    if (sunSaveBtn) {
+        sunSaveBtn.addEventListener('click', function () {
+            saveSunSettings();
+        });
+    }
+    if (recalcPerspectiveBtn) {
+        recalcPerspectiveBtn.addEventListener('click', function () {
+            if (isBusy() || editorMode !== 'life') return;
+            if (!cfg.imageWidth || !cfg.imageHeight) return;
+            if (!confirmDialog('Пересчитать наклон и перспективу по домам?')) return;
+
+            var autoPersp = autoPerspectiveFromHomesPolygons();
+            if (!autoPersp || !autoPersp.points) {
+                showMessage('Не удалось найти дома для автоподбора перспективы', 'error');
+                return;
+            }
+
+            // Keep scale values from UI (so editor user controls "how strong").
+            var scaleNear = lifeScaleNearInput ? parseFloat(lifeScaleNearInput.value) : 1;
+            var scaleFar = lifeScaleFarInput ? parseFloat(lifeScaleFarInput.value) : 0.35;
+            if (!(scaleNear > 0) || !(scaleFar > 0)) {
+                showMessage('Масштабы перспективы должны быть > 0', 'error');
+                return;
+            }
+
+            lifePerspective = {
+                enabled: true,
+                points: autoPersp.points,
+                scaleNear: scaleNear,
+                scaleFar: scaleFar
+            };
+
+            perspSaving = true;
+            var body = new URLSearchParams({
+                kvartal_id: String(cfg.kvartalId),
+                enabled: '1',
+                points: JSON.stringify(autoPersp.points),
+                scaleNear: String(scaleNear),
+                scaleFar: String(scaleFar)
+            });
+
+            fetch(cfg.ajaxBase + '&act=life_save_perspective', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: body.toString()
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    perspSaving = false;
+                    if (!res || !res.success) {
+                        showMessage((res && res.message) || 'Не удалось пересчитать перспективу', 'error');
+                        return;
+                    }
+                    lifePerspective = res.perspective || lifePerspective;
+
+                    // Hide the triangle/lines overlay; we keep the saved values.
+                    clearPerspectiveUi();
+                    updatePerspFieldsVisibility();
+
+                    // Recompute and persist ground defaults.
+                    var auto = autoGroundFromHomesPolygons(lifePerspective);
+                    if (auto && groundPitchInput && groundSkewInput) {
+                        groundPitchInput.value = String(auto.groundPitch.toFixed(3)).replace(/\.?0+$/, '');
+                        groundSkewInput.value = String(auto.groundSkew.toFixed(3)).replace(/\.?0+$/, '');
+                        saveGroundSettings();
+                    } else {
+                        showMessage('Перспектива пересчитана, но наклон не найден по домам', 'warning');
+                    }
+                    showMessage('Пересчёт выполнен', 'success');
+                })
+                .catch(function () {
+                    perspSaving = false;
+                    showMessage('Ошибка сети при пересчёте', 'error');
+                });
+        });
+    }
+    if (lightFromInput) {
+        lightFromInput.addEventListener('input', updateSunPreview);
+        lightFromInput.addEventListener('change', updateSunPreview);
+    }
+    if (shadowLenInput) {
+        shadowLenInput.addEventListener('input', updateSunPreview);
+        shadowLenInput.addEventListener('change', updateSunPreview);
+    }
+    updateSunPreview();
+    if (lifeApplyBtn) {
+        lifeApplyBtn.addEventListener('click', function () {
+            applyLifeForm();
+        });
+    }
+    if (lifeDeleteBtn) {
+        lifeDeleteBtn.addEventListener('click', function () {
+            deleteSelectedLife();
         });
     }
 
@@ -1781,5 +3280,6 @@
     updateAddPointUi();
     syncDrawAvailability();
     ensureHomesOptions();
+    fillLifeSpriteOptions('car', 'gray');
     loadPolygons();
 })();

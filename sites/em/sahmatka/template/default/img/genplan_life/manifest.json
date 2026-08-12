@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "notes": "Raster walk sheets: src = facing right, srcLeft = facing left. Trimmed to opaque alpha.",
+  "people": {
+    "person_m1": {
+      "sheet": {
+        "src": "person_m1_walk.png",
+        "srcLeft": "person_m1_walk_left.png",
+        "frames": 9,
+        "cols": 9
+      }
+    },
+    "person_m2": {
+      "sheet": {
+        "src": "person_m2_walk.png",
+        "srcLeft": "person_m2_walk_left.png",
+        "frames": 9,
+        "cols": 9
+      }
+    },
+    "person_w1": {
+      "sheet": {
+        "src": "person_w1_walk.png",
+        "srcLeft": "person_w1_walk_left.png",
+        "frames": 9,
+        "cols": 9
+      }
+    },
+    "person_w2": {
+      "sheet": {
+        "src": "person_w2_walk.png",
+        "srcLeft": "person_w2_walk_left.png",
+        "frames": 9,
+        "cols": 9
+      }
+    },
+    "person_w3": {
+      "sheet": {
+        "src": "person_w3_walk.png",
+        "srcLeft": "person_w3_walk_left.png",
+        "frames": 9,
+        "cols": 9
+      }
+    },
+    "person_k1": {
+      "sheet": {
+        "src": "person_k1_walk.png",
+        "frames": 9,
+        "cols": 9
+      }
+    },
+    "person_k2": {
+      "sheet": {
+        "src": "person_k2_walk.png",
+        "frames": 9,
+        "cols": 9
+      }
+    }
+  }
+}

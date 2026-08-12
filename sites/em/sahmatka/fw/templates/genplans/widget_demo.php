@@ -13,6 +13,22 @@ if ($api_base === '' || $script_src === '') {
         $script_src = $origin . '/sahmatka/template/default/js/genplan_widget.js';
     }
 }
+$sprites_src = preg_replace('#/genplan_widget\\.js$#', '/genplan_life_sprites.js', $script_src);
+$life_src = preg_replace('#/genplan_widget\\.js$#', '/genplan_life.js', $script_src);
+
+/**
+ * Cache-bust по mtime файла, а не по хардкоду — иначе после правок JS/спрайтов
+ * браузер продолжает отдавать старую версию по тому же URL+query.
+ */
+function genplan_asset_ver($absPath, $fallback)
+{
+    $m = @filemtime($absPath);
+    return $m ? (string) $m : $fallback;
+}
+$jsDir = __DIR__ . '/../../../template/default/js';
+$verWidget = genplan_asset_ver($jsDir . '/genplan_widget.js', '2.5.1');
+$verSprites = genplan_asset_ver($jsDir . '/genplan_life_sprites.js', $verWidget);
+$verLife = genplan_asset_ver($jsDir . '/genplan_life.js', $verWidget);
 ?>
 <style>
   html, body { margin: 0; padding: 0; width: 100%; background: #e8ecef; color: #1a1a1a; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
@@ -66,13 +82,17 @@ if ($api_base === '' || $script_src === '') {
   <pre id="gw_demo_snippet_full"></pre>
 </section>
 
-<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=2.4.11"></script>
+<script src="<?= htmlspecialchars($sprites_src, ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($verSprites, ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($life_src, ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($verLife, ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($verWidget, ENT_QUOTES, 'UTF-8') ?>"></script>
 <script>
 (function () {
   var SCRIPT_SRC = <?= json_encode($script_src, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+  var SPRITES_SRC = <?= json_encode($sprites_src, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+  var LIFE_SRC = <?= json_encode($life_src, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var API_BASE = <?= json_encode($api_base, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var KVARTAL_ID = <?= (int) $kvartal_id ?>;
-  var VER = (window.GenplanWidget && GenplanWidget.version) || '2.4.11';
+  var VER = (window.GenplanWidget && GenplanWidget.version) || '2.5.0';
 
   var qs = new URLSearchParams(window.location.search || '');
   var maxHParam = parseInt(qs.get('maxHeight') || '', 10);
@@ -98,9 +118,11 @@ if ($api_base === '' || $script_src === '') {
   GenplanWidget.mount(mountOpts);
 
   document.getElementById('gw_demo_snippet_simple').innerHTML = [
-    '<span class="tok-comment">&lt;!-- Контейнер + скрипт + mount --&gt;</span>',
+    '<span class="tok-comment">&lt;!-- Контейнер + скрипты + mount --&gt;</span>',
     '<span class="tok-tag">&lt;div</span> <span class="tok-attr">id</span>=<span class="tok-str">"genplan"</span><span class="tok-tag">&gt;&lt;/div&gt;</span>',
     '',
+    '<span class="tok-tag">&lt;script</span> <span class="tok-attr">src</span>=<span class="tok-str">"' + SPRITES_SRC + '?v=' + VER + '"</span><span class="tok-tag">&gt;&lt;/script&gt;</span>',
+    '<span class="tok-tag">&lt;script</span> <span class="tok-attr">src</span>=<span class="tok-str">"' + LIFE_SRC + '?v=' + VER + '"</span><span class="tok-tag">&gt;&lt;/script&gt;</span>',
     '<span class="tok-tag">&lt;script</span> <span class="tok-attr">src</span>=<span class="tok-str">"' + SCRIPT_SRC + '?v=' + VER + '"</span><span class="tok-tag">&gt;&lt;/script&gt;</span>',
     '',
     '<span class="tok-tag">&lt;script&gt;</span>',
@@ -129,6 +151,19 @@ if ($api_base === '' || $script_src === '') {
     '  <span class="tok-key">minZoom</span><span class="tok-punct">:</span> <span class="tok-num">1</span><span class="tok-punct">,</span>                         <span class="tok-comment">// мин. зум (× contain)</span>',
     '  <span class="tok-key">maxZoom</span><span class="tok-punct">:</span> <span class="tok-num">4</span><span class="tok-punct">,</span>                         <span class="tok-comment">// макс. зум колесом</span>',
     '  <span class="tok-key">idleHighlight</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>                <span class="tok-comment">// поочерёдная подсветка домов (откл: false)</span>',
+    '',
+    '  <span class="tok-key">life</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>                        <span class="tok-comment">// слой «жизнь»</span>',
+    '  <span class="tok-key">lifeCars</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>',
+    '  <span class="tok-key">lifePeople</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>',
+    '  <span class="tok-key">lifeClouds</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>',
+    '  <span class="tok-key">lifeBirds</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>                   <span class="tok-comment">// стаи + одиночки, размер/период — в редакторе</span>',
+    '  <span class="tok-key">lifeBirdFlockSize</span><span class="tok-punct">:</span> <span class="tok-num">5</span><span class="tok-punct">,</span>               <span class="tok-comment">// перебить настройку квартала (опц.)</span>',
+    '  <span class="tok-key">lifeBirdSingles</span><span class="tok-punct">:</span> <span class="tok-num">2</span><span class="tok-punct">,</span>',
+    '  <span class="tok-key">lifeClouds</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>                  <span class="tok-comment">// облака + мягкая тень (затемнение света)</span>',
+    '  <span class="tok-key">lifeCloudCount</span><span class="tok-punct">:</span> <span class="tok-num">2</span><span class="tok-punct">,</span>',
+    '  <span class="tok-key">lifeCloudShade</span><span class="tok-punct">:</span> <span class="tok-num">0.18</span><span class="tok-punct">,</span>              <span class="tok-comment">// сила тени под облаком</span>',
+    '  <span class="tok-key">lifeLight</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>',
+    '  <span class="tok-key">lifeLightMode</span><span class="tok-punct">:</span> <span class="tok-str">\'day\'</span><span class="tok-punct">,</span>              <span class="tok-comment">// off|day|evening|pulse</span>',
     '',
     '  <span class="tok-key">exploreFullscreen</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>',
     '  <span class="tok-key">openLinksInNewTab</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>',

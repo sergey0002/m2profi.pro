@@ -1220,6 +1220,711 @@ class ctr__genplans extends ctr__
             'imageWidth' => (int) $size[0],
             'imageHeight' => (int) $size[1],
             'objects' => $objects,
+            'life' => $this->life_public_payload($kvartal_id),
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    // ─── Life layer (task 12) ────────────────────────────────
+
+    function life_parse_params($raw)
+    {
+        if (is_array($raw)) {
+            return $raw;
+        }
+        $raw = trim((string) $raw);
+        if ($raw === '') {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    function life_track_row_public($row)
+    {
+        $points = json_decode($row['points'] ?? '', true);
+        if (!is_array($points)) {
+            $points = [];
+        }
+        $points = $this->normalize_points($points);
+        return [
+            'id' => (int) $row['track_id'],
+            'role' => (string) ($row['role'] ?? 'road'),
+            'closed' => !empty($row['closed']) ? true : false,
+            'title' => (string) ($row['title'] ?? ''),
+            'points' => $points,
+        ];
+    }
+
+    function life_agent_row_public($row)
+    {
+        $params = $this->life_parse_params($row['params_json'] ?? '');
+        $trackId = isset($row['track_id']) && $row['track_id'] !== null && $row['track_id'] !== ''
+            ? (int) $row['track_id']
+            : null;
+        return [
+            'id' => (int) $row['agent_id'],
+            'species' => (string) ($row['species'] ?? ''),
+            'trackId' => $trackId,
+            'spriteKey' => (string) ($row['sprite_key'] ?? 'default'),
+            'speed' => (float) ($row['speed'] ?? 40),
+            'periodMs' => (int) ($row['period_ms'] ?? 8000),
+            'enabled' => !empty($row['enabled']),
+            'params' => $params,
+        ];
+    }
+
+    function life_default_settings()
+    {
+        return [
+            'cars' => true,
+            'people' => true,
+            'birds' => true,
+            'clouds' => true,
+            'light' => 'day',
+            'perspective' => null,
+            // птицы: стая + одиночки
+            'birdFlockSize' => 5,
+            'birdFlockPeriodMs' => 26000,
+            'birdSingles' => 2,
+            'birdSinglePeriodMs' => 15000,
+            // облака: количество, плотность, затемнение света, скорость
+            'cloudCount' => 2,
+            'cloudOpacity' => 0.42,
+            'cloudShade' => 0.18,
+            'cloudSpeed' => 3.5,
+            // освещение: по теням домов на рендере — солнце сверху-слева, тень вниз-вправо
+            'lightFromDeg' => 48,
+            'shadowLen' => 7,
+            'shadowOpacity' => 0.34,
+            // наклон «земли» под ракурс рендера (слабый — иначе машины «едут боком»)
+            'groundPitch' => 0.32,
+            'groundSkew' => 0.22,
+            'personBillboard' => true,
+        ];
+    }
+
+    /** Ranges shared by save + load so stored values can never break the runtime. */
+    function life_bird_limits()
+    {
+        return [
+            'birdFlockSize' => [0, 12],
+            'birdFlockPeriodMs' => [4000, 300000],
+            'birdSingles' => [0, 8],
+            'birdSinglePeriodMs' => [3000, 300000],
+        ];
+    }
+
+    function life_cloud_limits()
+    {
+        return [
+            'cloudCount' => [0, 4],
+            'cloudOpacity' => [0.05, 0.85],
+            'cloudShade' => [0.0, 0.45],
+            'cloudSpeed' => [0.5, 20.0],
+        ];
+    }
+
+    function life_sun_limits()
+    {
+        return [
+            'lightFromDeg' => [0, 359.99],
+            'shadowLen' => [0, 24],
+            'shadowOpacity' => [0.0, 0.5],
+        ];
+    }
+
+    function life_ground_limits()
+    {
+        return [
+            'groundPitch' => [0.0, 1.0],
+            'groundSkew' => [0.0, 1.0],
+        ];
+    }
+
+    function life_normalize_perspective($raw)
+    {
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true);
+        }
+        if (!is_array($raw)) {
+            return null;
+        }
+        $points = $raw['points'] ?? null;
+        if (!is_array($points) || count($points) < 3) {
+            return null;
+        }
+        $norm = [];
+        foreach (array_slice($points, 0, 3) as $p) {
+            if (!is_array($p) || count($p) < 2) {
+                return null;
+            }
+            $norm[] = [(float) $p[0], (float) $p[1]];
+        }
+        $enabled = array_key_exists('enabled', $raw) ? !empty($raw['enabled']) : true;
+        if (!$enabled) {
+            return [
+                'enabled' => false,
+                'points' => $norm,
+                'scaleNear' => isset($raw['scaleNear']) ? (float) $raw['scaleNear'] : 1.0,
+                'scaleFar' => isset($raw['scaleFar']) ? (float) $raw['scaleFar'] : 0.35,
+            ];
+        }
+        return [
+            'enabled' => true,
+            'points' => $norm,
+            'scaleNear' => max(0.05, (float) ($raw['scaleNear'] ?? 1)),
+            'scaleFar' => max(0.02, (float) ($raw['scaleFar'] ?? 0.35)),
+        ];
+    }
+
+    function life_load_kvartal_settings($kvartal_id)
+    {
+        global $mysql;
+        $kvartal_id = (int) $kvartal_id;
+        $out = $this->life_default_settings();
+        try {
+            $row = $mysql->get_for_key('genplan_life_settings', 'kvartal_id', $kvartal_id);
+            if (!$row) {
+                return $out;
+            }
+            $sj = $this->life_parse_params($row['settings_json'] ?? '');
+            if ($sj) {
+                foreach (['cars', 'people', 'birds', 'clouds'] as $k) {
+                    if (array_key_exists($k, $sj)) {
+                        $out[$k] = !empty($sj[$k]);
+                    }
+                }
+                if (!empty($sj['light'])) {
+                    $out['light'] = (string) $sj['light'];
+                }
+                foreach ($this->life_bird_limits() as $k => $range) {
+                    if (array_key_exists($k, $sj)) {
+                        $out[$k] = max($range[0], min($range[1], (int) $sj[$k]));
+                    }
+                }
+                foreach ($this->life_cloud_limits() as $k => $range) {
+                    if (!array_key_exists($k, $sj)) {
+                        continue;
+                    }
+                    if ($k === 'cloudCount') {
+                        $out[$k] = max($range[0], min($range[1], (int) $sj[$k]));
+                    } else {
+                        $out[$k] = max($range[0], min($range[1], (float) $sj[$k]));
+                    }
+                }
+                foreach ($this->life_sun_limits() as $k => $range) {
+                    if (!array_key_exists($k, $sj)) {
+                        continue;
+                    }
+                    if ($k === 'lightFromDeg') {
+                        $deg = fmod((float) $sj[$k], 360.0);
+                        if ($deg < 0) {
+                            $deg += 360.0;
+                        }
+                        $out[$k] = $deg;
+                    } else {
+                        $out[$k] = max($range[0], min($range[1], (float) $sj[$k]));
+                    }
+                }
+                foreach ($this->life_ground_limits() as $k => $range) {
+                    if (array_key_exists($k, $sj)) {
+                        $out[$k] = max($range[0], min($range[1], (float) $sj[$k]));
+                    }
+                }
+                if (array_key_exists('personBillboard', $sj)) {
+                    $out['personBillboard'] = !empty($sj['personBillboard']);
+                }
+            }
+            $persp = $this->life_normalize_perspective($row['perspective_json'] ?? '');
+            if ($persp) {
+                $out['perspective'] = $persp;
+            }
+        } catch (Exception $e) {
+            // таблица ещё не создана
+        }
+        return $out;
+    }
+
+    function life_public_payload($kvartal_id)
+    {
+        global $mysql;
+        $kvartal_id = (int) $kvartal_id;
+        $tracks = [];
+        $agents = [];
+        $settings = $this->life_default_settings();
+        try {
+            $settings = $this->life_load_kvartal_settings($kvartal_id);
+            $trackRows = $mysql->get_arr(
+                'SELECT * FROM genplan_life_tracks WHERE kvartal_id="' . $kvartal_id . '" AND del="0"
+                 ORDER BY sort_order, track_id'
+            );
+            if ($trackRows) {
+                foreach ($trackRows as $row) {
+                    $t = $this->life_track_row_public($row);
+                    if (count($t['points']) >= 2) {
+                        $tracks[] = $t;
+                    }
+                }
+            }
+            $agentRows = $mysql->get_arr(
+                'SELECT * FROM genplan_life_agents WHERE kvartal_id="' . $kvartal_id . '" AND del="0" AND enabled="1"
+                 ORDER BY sort_order, agent_id'
+            );
+            if ($agentRows) {
+                foreach ($agentRows as $row) {
+                    $agents[] = $this->life_agent_row_public($row);
+                }
+            }
+        } catch (Exception $e) {
+            // таблицы ещё не созданы — пустой life
+            return [
+                'enabled' => false,
+                'settings' => $this->life_default_settings(),
+                'tracks' => [],
+                'agents' => [],
+            ];
+        }
+        $has = count($tracks) > 0 || count($agents) > 0;
+        return [
+            // enabled=true даже без треков: ambient clouds/light Stage 1
+            'enabled' => true,
+            'settings' => $settings,
+            'tracks' => $tracks,
+            'agents' => $agents,
+            'hasTracks' => $has,
+        ];
+    }
+
+    function act__life_list()
+    {
+        $this->require_admin();
+        global $mysql;
+        $kvartal_id = (int) ($_REQUEST['kvartal_id'] ?? 0);
+        if (!$kvartal_id || !$this->get_kvartal($kvartal_id)) {
+            echo json_encode(['success' => false, 'message' => 'Не указан kvartal_id']);
+            return;
+        }
+        $tracks = [];
+        $agents = [];
+        $trackRows = $mysql->get_arr(
+            'SELECT * FROM genplan_life_tracks WHERE kvartal_id="' . $kvartal_id . '" AND del="0"
+             ORDER BY sort_order, track_id'
+        );
+        if ($trackRows) {
+            foreach ($trackRows as $row) {
+                $tracks[] = $this->life_track_row_public($row);
+            }
+        }
+        $agentRows = $mysql->get_arr(
+            'SELECT * FROM genplan_life_agents WHERE kvartal_id="' . $kvartal_id . '" AND del="0"
+             ORDER BY sort_order, agent_id'
+        );
+        if ($agentRows) {
+            foreach ($agentRows as $row) {
+                $agents[] = $this->life_agent_row_public($row);
+            }
+        }
+        $settings = $this->life_load_kvartal_settings($kvartal_id);
+        echo json_encode([
+            'success' => true,
+            'tracks' => $tracks,
+            'agents' => $agents,
+            'settings' => $settings,
+            'perspective' => $settings['perspective'] ?? null,
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    function act__life_save_track()
+    {
+        $this->require_admin();
+        global $mysql;
+        $kvartal_id = (int) ($_POST['kvartal_id'] ?? 0);
+        $track_id = (int) ($_POST['track_id'] ?? 0);
+        $role = (string) ($_POST['role'] ?? 'road');
+        if (!in_array($role, ['road', 'walk', 'dog'], true)) {
+            $role = 'road';
+        }
+        $points = json_decode($_POST['points'] ?? '', true);
+        if (!$kvartal_id || !$this->get_kvartal($kvartal_id) || !is_array($points)) {
+            echo json_encode(['success' => false, 'message' => 'Некорректные данные']);
+            return;
+        }
+        $points = $this->normalize_points($points);
+        if (count($points) < 2) {
+            echo json_encode(['success' => false, 'message' => 'Нужно минимум 2 точки линии']);
+            return;
+        }
+        $title = trim((string) ($_POST['title'] ?? ''));
+        $data = [
+            'kvartal_id' => $kvartal_id,
+            'role' => $role,
+            'title' => $title !== '' ? mb_substr($title, 0, 128) : null,
+            'points' => json_encode($points),
+            'closed' => 0,
+            'sort_order' => (int) ($_POST['sort_order'] ?? 0),
+            'del' => 0,
+        ];
+        if ($track_id > 0) {
+            $existing = $mysql->get_for_key('genplan_life_tracks', 'track_id', $track_id);
+            if (!$existing || (int) $existing['kvartal_id'] !== $kvartal_id || !empty($existing['del'])) {
+                echo json_encode(['success' => false, 'message' => 'Трек не найден']);
+                return;
+            }
+            $mysql->update_for_key('genplan_life_tracks', 'track_id', $track_id, $data);
+        } else {
+            $track_id = (int) $mysql->insert('genplan_life_tracks', $data);
+        }
+        $row = $mysql->get_for_key('genplan_life_tracks', 'track_id', $track_id);
+        echo json_encode([
+            'success' => true,
+            'track' => $this->life_track_row_public($row),
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    function act__life_delete_track()
+    {
+        $this->require_admin();
+        global $mysql;
+        $kvartal_id = (int) ($_POST['kvartal_id'] ?? 0);
+        $track_id = (int) ($_POST['track_id'] ?? 0);
+        $existing = $mysql->get_for_key('genplan_life_tracks', 'track_id', $track_id);
+        if (!$existing || (int) $existing['kvartal_id'] !== $kvartal_id) {
+            echo json_encode(['success' => false, 'message' => 'Трек не найден']);
+            return;
+        }
+        $mysql->update_for_key('genplan_life_tracks', 'track_id', $track_id, ['del' => 1]);
+        $mysql->query(
+            'UPDATE genplan_life_agents SET del="1" WHERE track_id="' . $track_id . '" AND kvartal_id="' . $kvartal_id . '"'
+        );
+        echo json_encode(['success' => true]);
+    }
+
+    function act__life_save_agent()
+    {
+        $this->require_admin();
+        global $mysql;
+        $kvartal_id = (int) ($_POST['kvartal_id'] ?? 0);
+        $agent_id = (int) ($_POST['agent_id'] ?? 0);
+        $species = (string) ($_POST['species'] ?? '');
+        if (!in_array($species, ['car', 'person', 'dog', 'bird', 'cloud'], true)) {
+            echo json_encode(['success' => false, 'message' => 'Некорректный species']);
+            return;
+        }
+        if (!$kvartal_id || !$this->get_kvartal($kvartal_id)) {
+            echo json_encode(['success' => false, 'message' => 'Не указан kvartal_id']);
+            return;
+        }
+        $speed = (float) ($_POST['speed'] ?? 0);
+        $period_ms = (int) ($_POST['period_ms'] ?? 0);
+        if ($speed <= 0 || $period_ms < 1000) {
+            echo json_encode(['success' => false, 'message' => 'Укажите скорость и периодичность (≥1с)']);
+            return;
+        }
+        $track_id = isset($_POST['track_id']) && $_POST['track_id'] !== '' ? (int) $_POST['track_id'] : null;
+        if (in_array($species, ['car', 'person', 'dog'], true)) {
+            if (!$track_id) {
+                echo json_encode(['success' => false, 'message' => 'Нужен track_id']);
+                return;
+            }
+            $track = $mysql->get_for_key('genplan_life_tracks', 'track_id', $track_id);
+            if (!$track || (int) $track['kvartal_id'] !== $kvartal_id || !empty($track['del'])) {
+                echo json_encode(['success' => false, 'message' => 'Трек не найден']);
+                return;
+            }
+            $role = (string) ($track['role'] ?? '');
+            if ($species === 'car' && $role !== 'road') {
+                echo json_encode(['success' => false, 'message' => 'Машина только на дороге']);
+                return;
+            }
+            if ($species === 'person' && $role !== 'walk') {
+                echo json_encode(['success' => false, 'message' => 'Человек только на тропе']);
+                return;
+            }
+        } else {
+            $track_id = null;
+        }
+        $sprite = trim((string) ($_POST['sprite_key'] ?? 'default'));
+        if ($sprite === '') {
+            $sprite = 'default';
+        }
+        $params = $_POST['params_json'] ?? '{}';
+        if (is_array($params)) {
+            $params = json_encode($params, JSON_UNESCAPED_UNICODE);
+        }
+        $data = [
+            'kvartal_id' => $kvartal_id,
+            'track_id' => $track_id,
+            'species' => $species,
+            'sprite_key' => mb_substr($sprite, 0, 32),
+            'speed' => $speed,
+            'period_ms' => $period_ms,
+            'enabled' => isset($_POST['enabled']) ? ((int) $_POST['enabled'] ? 1 : 0) : 1,
+            'params_json' => (string) $params,
+            'sort_order' => (int) ($_POST['sort_order'] ?? 0),
+            'del' => 0,
+        ];
+        if ($agent_id > 0) {
+            $existing = $mysql->get_for_key('genplan_life_agents', 'agent_id', $agent_id);
+            if (!$existing || (int) $existing['kvartal_id'] !== $kvartal_id || !empty($existing['del'])) {
+                echo json_encode(['success' => false, 'message' => 'Агент не найден']);
+                return;
+            }
+            $mysql->update_for_key('genplan_life_agents', 'agent_id', $agent_id, $data);
+        } else {
+            $agent_id = (int) $mysql->insert('genplan_life_agents', $data);
+        }
+        $row = $mysql->get_for_key('genplan_life_agents', 'agent_id', $agent_id);
+        echo json_encode([
+            'success' => true,
+            'agent' => $this->life_agent_row_public($row),
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    function act__life_delete_agent()
+    {
+        $this->require_admin();
+        global $mysql;
+        $kvartal_id = (int) ($_POST['kvartal_id'] ?? 0);
+        $agent_id = (int) ($_POST['agent_id'] ?? 0);
+        $existing = $mysql->get_for_key('genplan_life_agents', 'agent_id', $agent_id);
+        if (!$existing || (int) $existing['kvartal_id'] !== $kvartal_id) {
+            echo json_encode(['success' => false, 'message' => 'Агент не найден']);
+            return;
+        }
+        $mysql->update_for_key('genplan_life_agents', 'agent_id', $agent_id, ['del' => 1]);
+        echo json_encode(['success' => true]);
+    }
+
+    /**
+     * Convenience: save open polyline + default agent (car/person) in one call.
+     * POST: kvartal_id, species=car|person, points JSON, speed?, period_ms?, sprite_key?
+     */
+    function act__life_save_path_agent()
+    {
+        $this->require_admin();
+        global $mysql;
+        $kvartal_id = (int) ($_POST['kvartal_id'] ?? 0);
+        $species = (string) ($_POST['species'] ?? '');
+        if (!in_array($species, ['car', 'person'], true)) {
+            echo json_encode(['success' => false, 'message' => 'species: car или person']);
+            return;
+        }
+        if (!$kvartal_id || !$this->get_kvartal($kvartal_id)) {
+            echo json_encode(['success' => false, 'message' => 'Не указан kvartal_id']);
+            return;
+        }
+        $points = json_decode($_POST['points'] ?? '', true);
+        if (!is_array($points)) {
+            echo json_encode(['success' => false, 'message' => 'Некорректные points']);
+            return;
+        }
+        $points = $this->normalize_points($points);
+        if (count($points) < 2) {
+            echo json_encode(['success' => false, 'message' => 'Нужно минимум 2 точки линии']);
+            return;
+        }
+        $role = $species === 'car' ? 'road' : 'walk';
+        $speed = isset($_POST['speed']) ? (float) $_POST['speed'] : ($species === 'car' ? 55 : 18);
+        $period_ms = isset($_POST['period_ms']) ? (int) $_POST['period_ms'] : ($species === 'car' ? 10000 : 12000);
+        if ($speed <= 0 || $period_ms < 1000) {
+            echo json_encode(['success' => false, 'message' => 'Укажите скорость и периодичность (≥1с)']);
+            return;
+        }
+        $sprite = trim((string) ($_POST['sprite_key'] ?? ($species === 'car' ? 'car_a' : 'person_m1')));
+        $track_id = (int) $mysql->insert('genplan_life_tracks', [
+            'kvartal_id' => $kvartal_id,
+            'role' => $role,
+            'title' => null,
+            'points' => json_encode($points),
+            'closed' => 0,
+            'sort_order' => 0,
+            'del' => 0,
+        ]);
+        $phase = isset($_POST['phase']) ? (float) $_POST['phase'] : 0;
+        $color = trim((string) ($_POST['color'] ?? ''));
+        $direction = isset($_POST['direction']) && (int) $_POST['direction'] === -1 ? -1 : 1;
+        $rotateVariants = !isset($_POST['rotate_variants']) || (int) $_POST['rotate_variants'] === 1;
+        if ($species !== 'car' && $species !== 'person') {
+            $rotateVariants = false;
+        }
+        $params = [
+            'phase' => max(0, min(1, $phase)),
+            'direction' => $direction,
+            'scale' => 1,
+            'rotateVariants' => $rotateVariants,
+        ];
+        if ($color !== '' && preg_match('/^#[0-9A-Fa-f]{3,8}$/', $color)) {
+            $params['color'] = $color;
+        }
+        $colorId = trim((string) ($_POST['color_id'] ?? ''));
+        if ($colorId !== '') {
+            $params['colorId'] = mb_substr($colorId, 0, 32);
+        }
+        $agent_id = (int) $mysql->insert('genplan_life_agents', [
+            'kvartal_id' => $kvartal_id,
+            'track_id' => $track_id,
+            'species' => $species,
+            'sprite_key' => mb_substr($sprite !== '' ? $sprite : 'default', 0, 32),
+            'speed' => $speed,
+            'period_ms' => $period_ms,
+            'enabled' => 1,
+            'params_json' => json_encode($params, JSON_UNESCAPED_UNICODE),
+            'sort_order' => 0,
+            'del' => 0,
+        ]);
+        $track = $mysql->get_for_key('genplan_life_tracks', 'track_id', $track_id);
+        $agent = $mysql->get_for_key('genplan_life_agents', 'agent_id', $agent_id);
+        echo json_encode([
+            'success' => true,
+            'track' => $this->life_track_row_public($track),
+            'agent' => $this->life_agent_row_public($agent),
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Save / clear perspective triangle for kvartal.
+     * POST: kvartal_id, enabled=0|1, points JSON [[x,y]×3], scaleNear?, scaleFar?
+     */
+    function act__life_save_perspective()
+    {
+        $this->require_admin();
+        global $mysql;
+        $kvartal_id = (int) ($_POST['kvartal_id'] ?? 0);
+        if (!$kvartal_id || !$this->get_kvartal($kvartal_id)) {
+            echo json_encode(['success' => false, 'message' => 'Не указан kvartal_id']);
+            return;
+        }
+        $enabled = !isset($_POST['enabled']) || (int) $_POST['enabled'] === 1;
+        $payload = null;
+        if ($enabled) {
+            $points = json_decode($_POST['points'] ?? '', true);
+            $payload = $this->life_normalize_perspective([
+                'enabled' => true,
+                'points' => $points,
+                'scaleNear' => $_POST['scaleNear'] ?? 1,
+                'scaleFar' => $_POST['scaleFar'] ?? 0.35,
+            ]);
+            if (!$payload) {
+                echo json_encode(['success' => false, 'message' => 'Нужен треугольник из 3 точек']);
+                return;
+            }
+        } else {
+            $payload = [
+                'enabled' => false,
+                'points' => [],
+                'scaleNear' => 1,
+                'scaleFar' => 0.35,
+            ];
+        }
+        $existing = null;
+        try {
+            $existing = $mysql->get_for_key('genplan_life_settings', 'kvartal_id', $kvartal_id);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Примените миграцию 007_genplan_life.sql']);
+            return;
+        }
+        $data = [
+            'kvartal_id' => $kvartal_id,
+            'perspective_json' => json_encode($payload, JSON_UNESCAPED_UNICODE),
+        ];
+        if ($existing) {
+            $mysql->update_for_key('genplan_life_settings', 'kvartal_id', $kvartal_id, $data);
+        } else {
+            $defaults = $this->life_default_settings();
+            unset($defaults['perspective']);
+            $data['settings_json'] = json_encode($defaults, JSON_UNESCAPED_UNICODE);
+            $mysql->insert('genplan_life_settings', $data);
+        }
+        echo json_encode([
+            'success' => true,
+            'perspective' => $payload['enabled'] ? $payload : null,
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Ambient settings per kvartal (Stage 1: birds flock / singles, toggles, light).
+     * POST: kvartal_id + any of birds, birdFlockSize, birdFlockPeriodMs, birdSingles,
+     *       birdSinglePeriodMs, cars, people, clouds, light
+     */
+    function act__life_save_settings()
+    {
+        $this->require_admin();
+        global $mysql;
+        $kvartal_id = (int) ($_POST['kvartal_id'] ?? 0);
+        if (!$kvartal_id || !$this->get_kvartal($kvartal_id)) {
+            echo json_encode(['success' => false, 'message' => 'Не указан kvartal_id']);
+            return;
+        }
+        $existing = null;
+        try {
+            $existing = $mysql->get_for_key('genplan_life_settings', 'kvartal_id', $kvartal_id);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Примените миграцию 007_genplan_life.sql']);
+            return;
+        }
+
+        $current = $this->life_load_kvartal_settings($kvartal_id);
+        unset($current['perspective']);
+
+        foreach (['cars', 'people', 'birds', 'clouds'] as $k) {
+            if (isset($_POST[$k])) {
+                $current[$k] = (int) $_POST[$k] === 1;
+            }
+        }
+        if (isset($_POST['light'])) {
+            $light = (string) $_POST['light'];
+            if (in_array($light, ['off', 'day', 'evening', 'pulse'], true)) {
+                $current['light'] = $light;
+            }
+        }
+        foreach ($this->life_bird_limits() as $k => $range) {
+            if (isset($_POST[$k]) && $_POST[$k] !== '') {
+                $current[$k] = max($range[0], min($range[1], (int) $_POST[$k]));
+            }
+        }
+        foreach ($this->life_cloud_limits() as $k => $range) {
+            if (!isset($_POST[$k]) || $_POST[$k] === '') {
+                continue;
+            }
+            if ($k === 'cloudCount') {
+                $current[$k] = max($range[0], min($range[1], (int) $_POST[$k]));
+            } else {
+                $current[$k] = max($range[0], min($range[1], (float) $_POST[$k]));
+            }
+        }
+        foreach ($this->life_sun_limits() as $k => $range) {
+            if (!isset($_POST[$k]) || $_POST[$k] === '') {
+                continue;
+            }
+            if ($k === 'lightFromDeg') {
+                $deg = fmod((float) $_POST[$k], 360.0);
+                if ($deg < 0) {
+                    $deg += 360.0;
+                }
+                $current[$k] = $deg;
+            } else {
+                $current[$k] = max($range[0], min($range[1], (float) $_POST[$k]));
+            }
+        }
+        foreach ($this->life_ground_limits() as $k => $range) {
+            if (isset($_POST[$k]) && $_POST[$k] !== '') {
+                $current[$k] = max($range[0], min($range[1], (float) $_POST[$k]));
+            }
+        }
+        if (isset($_POST['personBillboard'])) {
+            $current['personBillboard'] = (int) $_POST['personBillboard'] === 1;
+        }
+
+        $data = ['settings_json' => json_encode($current, JSON_UNESCAPED_UNICODE)];
+        if ($existing) {
+            $mysql->update_for_key('genplan_life_settings', 'kvartal_id', $kvartal_id, $data);
+        } else {
+            $data['kvartal_id'] = $kvartal_id;
+            $mysql->insert('genplan_life_settings', $data);
+        }
+        echo json_encode([
+            'success' => true,
+            'settings' => $this->life_load_kvartal_settings($kvartal_id),
         ], JSON_UNESCAPED_UNICODE);
     }
 }

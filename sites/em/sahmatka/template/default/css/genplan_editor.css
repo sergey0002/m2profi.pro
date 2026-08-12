@@ -587,8 +587,251 @@
     color: #44505c;
 }
 
+.genplan-editor__life-tools {
+    display: inline-flex;
+    gap: 6px;
+    margin-left: 4px;
+    align-items: center;
+}
+
+.genplan-editor__life-panel {
+    display: block;
+    width: 100%;
+    padding: 12px 14px 14px;
+    box-sizing: border-box;
+    border-top: 1px solid #e2e2e2;
+    background: #f7fafc;
+}
+
+.genplan-editor__life-hint {
+    margin: 0 0 10px;
+}
+
+.genplan-editor__life-grid {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.1fr);
+    gap: 14px 18px;
+    align-items: start;
+}
+
+.genplan-editor__life-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 12px;
+    align-items: end;
+}
+
+.genplan-editor__life-form .genplan-editor__field {
+    margin: 0;
+}
+
+.genplan-editor__life-form input[type="number"],
+.genplan-editor__life-form select {
+    width: 100%;
+    height: 36px;
+    box-sizing: border-box;
+    border: 1px solid #cfd6dd;
+    border-radius: 8px;
+    padding: 0 10px;
+    font: inherit;
+    background: #fff;
+}
+
+.genplan-editor__life-form .genplan-editor__field--check {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.genplan-editor__life-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.genplan-editor__life-persp-fields {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    align-items: end;
+    padding-top: 8px;
+    border-top: 1px dashed #d7dde3;
+}
+
+.genplan-editor__life-persp-fields .genplan-editor__btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+}
+
+.genplan-editor__life-birds {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    align-items: end;
+    padding-top: 10px;
+    border-top: 1px dashed #d7dde3;
+}
+
+.genplan-editor__life-birds > .genplan-editor__field-label {
+    grid-column: 1 / -1;
+    font-weight: 600;
+}
+
+.genplan-editor__life-birds .genplan-editor__btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+}
+
+.genplan-editor__life-clouds {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    align-items: end;
+    padding-top: 10px;
+    border-top: 1px dashed #d7dde3;
+}
+
+.genplan-editor__life-clouds > .genplan-editor__field-label {
+    grid-column: 1 / -1;
+    font-weight: 600;
+}
+
+.genplan-editor__life-clouds .genplan-editor__field--check {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.genplan-editor__life-clouds .genplan-editor__btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+}
+
+.genplan-editor__life-sun {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    align-items: end;
+    padding-top: 10px;
+    border-top: 1px dashed #d7dde3;
+}
+
+.genplan-editor__life-sun > .genplan-editor__field-label {
+    grid-column: 1 / -1;
+    font-weight: 600;
+}
+
+.genplan-editor__life-sun-preview {
+    grid-column: 1 / -1;
+    position: relative;
+    height: 56px;
+    border-radius: 8px;
+    border: 1px solid #d7dde3;
+    background:
+        radial-gradient(circle at 50% 50%, #fff 0 5px, transparent 6px),
+        linear-gradient(180deg, #f3f6f9, #e8edf2);
+    overflow: hidden;
+}
+
+.genplan-editor__life-sun-preview-label {
+    position: absolute;
+    left: 10px;
+    top: 8px;
+    font-size: 11px;
+    color: #6a7682;
+}
+
+.genplan-editor__life-sun-preview::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 34px;
+    height: 14px;
+    margin: -7px 0 0 -17px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 50%, rgba(20,28,40,0.35), rgba(20,28,40,0));
+    transform: translate(var(--sun-dx, 6px), var(--sun-dy, 6px));
+    pointer-events: none;
+}
+
+.genplan-editor__life-sun .genplan-editor__btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+}
+
+.genplan-persp-vertex {
+    background: transparent !important;
+    border: none !important;
+}
+
+.genplan-persp-vertex span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #e67e22;
+    color: #fff;
+    font: 700 11px/1 system-ui, sans-serif;
+    box-shadow: 0 0 0 2px #fff, 0 1px 4px rgba(0,0,0,0.25);
+    cursor: move;
+}
+
+.genplan-editor__life-list {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+    max-height: 140px;
+    overflow: auto;
+    border: 1px solid #e2e6ea;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.genplan-editor__life-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #eef1f4;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.genplan-editor__life-list li:last-child {
+    border-bottom: none;
+}
+
+.genplan-editor__life-list li:hover {
+    background: #f3f7fb;
+}
+
+.genplan-editor__life-list li.is-active {
+    background: #e8f1fb;
+    color: #1d4f91;
+    font-weight: 600;
+}
+
+.genplan-editor__life-list .role-road { color: #2f80ed; }
+.genplan-editor__life-list .role-walk { color: #28a745; }
+
 @media (max-width: 720px) {
     .genplan-editor__meta-grid {
+        grid-template-columns: 1fr;
+    }
+    .genplan-editor__life-grid,
+    .genplan-editor__life-form {
         grid-template-columns: 1fr;
     }
 }
