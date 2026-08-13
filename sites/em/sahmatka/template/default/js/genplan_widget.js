@@ -235,13 +235,23 @@
     return markerToneColor(obj.statusTone || 'muted');
   }
 
-  function isHashHref(href) {
+  function isHashOnlyHref(href) {
     if (!href) return false;
     var s = String(href).trim();
-    if (s.charAt(0) === '#') return s.length > 1;
+    return s.charAt(0) === '#' && s.length > 1;
+  }
+
+  function isHashHref(href) {
+    if (!href) return false;
+    if (isHashOnlyHref(href)) return true;
     try {
-      var u = new URL(s, (typeof window !== 'undefined' && window.location) ? window.location.href : 'https://example.invalid/');
+      var u = new URL(String(href).trim(), (typeof window !== 'undefined' && window.location) ? window.location.href : 'https://example.invalid/');
       if (!u.hash || u.hash.length < 2) return false;
+      // путь пустой или "/" + только якорь — считаем hash-only (часто из‑за <base href=/>)
+      if (u.pathname === '/' || u.pathname === '') {
+        var rest = String(href).trim().replace(/^https?:\/\/[^/]+/i, '');
+        if (rest === u.hash || rest === '/' + u.hash) return true;
+      }
       if (typeof window === 'undefined' || !window.location) return false;
       return u.origin === window.location.origin && u.pathname === window.location.pathname;
     } catch (e) {
@@ -259,6 +269,27 @@
     }
   }
 
+  /** Текущий URL страницы без hash (учитывает parent при same-origin iframe). */
+  function hostPagePathAndSearch() {
+    function fromLoc(loc) {
+      if (!loc) return '';
+      return String(loc.pathname || '/') + String(loc.search || '');
+    }
+    try {
+      if (window.self !== window.top && window.parent && window.parent.location) {
+        return fromLoc(window.parent.location) || fromLoc(window.location);
+      }
+    } catch (e) { /* cross-origin */ }
+    return fromLoc(window.location);
+  }
+
+  function samePageHrefForHash(hash) {
+    if (!hash || hash.charAt(0) !== '#') return hash || '#';
+    var path = hostPagePathAndSearch();
+    if (!path) return hash;
+    return path + hash;
+  }
+
   function scrollHostPageToHash(hash) {
     if (!hash || hash.charAt(0) !== '#') return false;
     var id = '';
@@ -271,20 +302,27 @@
       var el = doc.getElementById(id);
       if (!el) {
         try {
-          el = doc.getElementsByName(id)[0] || null;
+          el = doc.querySelector('[name="' + id.replace(/"/g, '\\"') + '"]');
         } catch (e2) { el = null; }
+      }
+      if (!el) {
+        try {
+          el = doc.getElementsByName(id)[0] || null;
+        } catch (e3) { el = null; }
       }
       if (el && typeof el.scrollIntoView === 'function') {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
       try {
+        var nextUrl = String((win.location && win.location.pathname) || '/') +
+          String((win.location && win.location.search) || '') + hash;
         if (win.history && typeof win.history.replaceState === 'function') {
-          win.history.replaceState(null, '', hash);
-        } else {
+          win.history.replaceState(null, '', nextUrl);
+        } else if (win.location) {
           win.location.hash = hash;
         }
-      } catch (e3) {
-        try { win.location.hash = hash; } catch (e4) {}
+      } catch (e4) {
+        try { win.location.hash = hash; } catch (e5) {}
       }
       return true;
     }
@@ -293,12 +331,12 @@
     try { inFrame = window.self !== window.top; } catch (e) { inFrame = true; }
 
     if (inFrame) {
-      try { if (tryWin(window.parent)) return true; } catch (e5) { /* cross-origin */ }
-      try { if (window.top && window.top !== window && tryWin(window.top)) return true; } catch (e6) { /* cross-origin */ }
+      try { if (tryWin(window.parent)) return true; } catch (e6) { /* cross-origin */ }
+      try { if (window.top && window.top !== window && tryWin(window.top)) return true; } catch (e7) { /* cross-origin */ }
       try {
         window.parent.postMessage({ source: 'GenplanWidget', type: 'scrollToHash', hash: hash }, '*');
         return true;
-      } catch (e7) { /* ignore */ }
+      } catch (e8) { /* ignore */ }
     }
 
     return tryWin(window);
@@ -878,14 +916,18 @@
 
   GenplanWidgetInstance.prototype._bindHostLink = function (anchor, href) {
     var self = this;
-    var url = href || (anchor && anchor.getAttribute('href')) || '';
-    if (isHashHref(url)) {
+    var url = String(href || (anchor && anchor.getAttribute('href')) || '').trim();
+    var hash = isHashHref(url) ? (hashFromHref(url) || (isHashOnlyHref(url) ? url : '')) : '';
+
+    if (hash && hash.length > 1) {
+      // Не оставляем href="#…" — из‑за <base href="/"> браузер показывает em-nsk.ru/#…
+      anchor.setAttribute('href', samePageHrefForHash(hash));
       anchor.removeAttribute('target');
       anchor.removeAttribute('rel');
       anchor.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        scrollHostPageToHash(hashFromHref(url) || url);
+        scrollHostPageToHash(hash);
       });
       return;
     }
@@ -2186,6 +2228,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.4.16'
+    version: '2.4.17'
   };
 })(typeof window !== 'undefined' ? window : this);
