@@ -1053,7 +1053,6 @@
 
   GenplanWidgetInstance.prototype._armClickGuard = function (labelEl) {
     if (!labelEl || !isCoarsePointer()) return;
-    var self = this;
     this._suppressLinkClicksUntil = Date.now() + CTA_SUPPRESS_MS;
     labelEl.classList.add('is-click-guard');
     if (labelEl._gwClickGuardTimer) clearTimeout(labelEl._gwClickGuardTimer);
@@ -1061,6 +1060,24 @@
       labelEl._gwClickGuardTimer = null;
       labelEl.classList.remove('is-click-guard');
     }, CTA_SUPPRESS_MS);
+  };
+
+  /** Перед hash-навигацией закрываем explore (иначе scroll-lock + оверлей глотают скролл на mobile). */
+  GenplanWidgetInstance.prototype._navigateHashFromCta = function (hash) {
+    var self = this;
+    if (!hash) return;
+    // Снимаем suppress — это осознанный тап по CTA, не ghost
+    this._suppressLinkClicksUntil = 0;
+    if (this.exploring) {
+      this._exitExplore();
+      // дать layout/unlock отработать до scrollIntoView
+      setTimeout(function () {
+        if (self.destroyed) return;
+        scrollHostPageToHash(hash);
+      }, 50);
+      return;
+    }
+    scrollHostPageToHash(hash);
   };
 
   GenplanWidgetInstance.prototype._bindHostLink = function (anchor, href) {
@@ -1077,7 +1094,7 @@
         e.preventDefault();
         e.stopPropagation();
         if (self._isLinkClickSuppressed()) return;
-        scrollHostPageToHash(hash);
+        self._navigateHashFromCta(hash);
       });
       return;
     }
@@ -2730,7 +2747,7 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.5.22',
+    version: '2.5.23',
     labelSkins: { card: 'card', expand: 'expand' },
     defaultLabelSkin: DEFAULT_LABEL_SKIN
   };
