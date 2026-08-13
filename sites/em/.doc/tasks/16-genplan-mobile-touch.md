@@ -1,308 +1,329 @@
-# #16 Genplan mobile: scroll, overlay enter, ghost-tap
+﻿# #16 Genplan mobile: scroll, overlay enter, ghost-tap
 
 | | |
 |---|---|
 | **Branch** | `feature/16-genplan-mobile-touch` |
-| **Статус** | план (код ещё не пишем) |
+| **Статус** | план после аудита (код ещё не пишем) |
+| **Версия as-is** | `GenplanWidget` **2.5.20** |
 | **Главный файл** | `sites/em/sahmatka/template/default/js/genplan_widget.js` |
 | **Демо** | `sites/em/sahmatka/fw/templates/genplans/widget_demo.php` |
-| **Где лежит этот план** | `sites/em/.doc/tasks/16-genplan-mobile-touch.md` |
+| **Где лежит план** | `sites/em/.doc/tasks/16-genplan-mobile-touch.md` |
 | **Связанные стейджи** | #10 виджет, #14 CTA/marker, #15 tooltip skins |
+| **Аудит** | 2026-08-13 — код виджета + demo + em-nsk.ru + сравнение с Sigma Facade |
+
+---
+
+## 0. Вердикт аудита (кратко)
+
+План в целом **верный**: оверлей с центральной кнопкой + убийство pan/tap→explore + suppress ghost-CTA.
+
+Но предыдущая версия плана **недооценивала** несколько точек входа и поверхность hit-testing. Исправления ниже обязательны до кода.
+
+### Критические находки
+
+1. **Три** пути в explore на mobile, не два:
+   - pan > 8px → `_enterExplore` (~2197–2202);
+   - short tap anywhere → `_shouldUseInlineExploreTap` в `endPointer` (~2231–2234);
+   - **тап по дому** → `_handleObjectActivate` → тот же `_shouldUseInlineExploreTap` (~2024–2026) — на свёрнутом coarse дом **никогда не открывает тултип**, только explore.
+2. **Scroll lock не виноват в «не скроллится»** в свёрнутом виде: `acquireScrollLock` только внутри `_enterExplore`. Страницу ломает **нежелательный вход в explore** (и уже потом lock).
+3. Слушатели Pointer Events висят на **viewport**, не на stage. `pointer-events: none` только на `.gw-stage` **недостаточен** — события всё равно приходят на viewport.
+4. Ghost-CTA guard **сейчас отсутствует**. Suppress должен покрывать не только `.gw-label__cta`, но и **`.gw-label__apts a`**, и оба скина (`card` → `.gw-label__card`, `expand` → `.gw-label__box`).
+5. На **em-nsk.ru** виджет пока **не встроен** (статичные картинки планов). QA — demo `iframe_router` + локальный mount; iframe/parent scroll — отдельная матрица.
+6. **jQuery Mobile / Hammer не нужны.** Виджет — Shadow DOM, без jQ, уже на Pointer Events. Sigma Facade хуже (всегда `setPointerCapture` на collapsed) — **не копировать**.
 
 ---
 
 ## 1. Цель стейджа
 
-На мобиле сделать предсказуемую двухрежимную механику:
+На мобиле:
 
-1. **Свёрнутый inline-режим** — страница **нормально скроллится** поверх карты; карта визуально «приглашает» открыть себя через **оверлей + центральную кнопку**; случайный тап/свайп по карте **не** открывает explore.
-2. **Explore (увеличенный)** — pan/pinch/тултипы работают; тап по дому открывает тултип **без** мгновенного перехода по CTA под пальцем.
+1. **Свёрнутый inline** — страница скроллится поверх карты; визуальный **оверлей + кнопка по центру**; случайный тап/свайп **не** открывает explore.
+2. **Explore** — pan/pinch/тултипы; тап по дому открывает тултип **без** мгновенного перехода по CTA под пальцем.
 
-Десктопную механику (hover → тултип, pan карты inline) не ломаем.
-
----
-
-## 2. Проблемы (as-is)
-
-### 2.1. Ghost-tap на CTA в explore
-
-**Симптом:** в увеличенном режиме жмёшь дом → тултип появляется **под пальцем** → в том же жесте срабатывает CTA («Выбрать квартиру» / hash-ссылка) → мгновенный переход на страницу дома.
-
-**Почему:** классический click-through / ghost activation:
-
-1. `pointerup` / synthetic `click` ещё «висит» на координатах пальца.
-2. Тултип (card/expand) монтируется/показывается в том же месте.
-3. CTA (`<a class="gw-label__cta">`) оказывается под пальцем и получает клик.
-
-Связанный код:
-
-- `_setActive` / `_setLabelExpanded` — открытие тултипа.
-- `_bindHostLink` — обработчик клика по CTA (~1020–1041).
-- `pointerdown` early-return для `labelAnchor` (~2102–2108) — не мешает **позднему** `click` на только что появившейся ссылке.
-
-### 2.2. Свёрнутая карта перехватывает скролл / сама открывается
-
-**Симптом:** тянешь страницу за область карты → карта увеличивается. Механика «свернуть» как раз и нужна, чтобы **скроллить страницу за карту**, а разворачивать — осознанным действием.
-
-**Почему (текущий код):**
-
-| Место | Поведение | Оценка |
-|-------|-----------|--------|
-| `pointermove` ~2197–2202 | coarse + inline + сдвиг > 8px → `_enterExplore()` | **баг**: скролл = открытие |
-| `endPointer` + `_shouldUseInlineExploreTap` ~2231–2234 | short tap по любой точке карты → explore | спорно: случайный тап тоже открывает |
-| `.gw-btn-explore` справа снизу | единственная явная CTA «Увеличить» | мелкая, легко промахнуться; дублирует тап/пан |
-| `touch-action: manipulation` на coarse viewport | задумано пускать скролл | JS всё равно перехватывает через Pointer Events |
-
-### 2.3. Почему «кнопка в углу» недостаточна
-
-- Маленькая зона нажатия.
-- Пользователь всё равно может открыть explore случайным свайпом/тапом по карте (см. выше).
-- Нет визуального «режима ожидания»: карта выглядит интерактивной целиком.
-
-**Решение продукта:** заменить угол-кнопку на **полноразмерный оверлей** поверх свёрнутой карты с **кнопкой по центру**. Открыть explore можно **только** нажав эту кнопку.
+Десктоп не ломаем.
 
 ---
 
-## 3. Целевой UX
+## 2. As-is: карта входов в explore (mobile)
 
-### 3.1. Mobile, свёрнут (`is-coarse` + не `is-explore`)
+Общие гейты: `isCoarsePointer()` / `allowsExploreMode()` (~201–220: `(hover:none) and (pointer:coarse)` **или** `max-width: 768px`), `exploreFullscreen` (дефолт `true`), `_enterExplore` early-out если уже exploring / destroyed / `exploreFullscreen === false`.
+
+| # | Путь | Цепочка | ~Строки | Условие |
+|---|------|---------|---------|---------|
+| A | Кнопка «Увеличить» | `.gw-btn-explore` click → `_enterExplore` | 830–838; CSS 467–468 | coarse + not explore (CSS) |
+| B | Pan по карте | `pointermove` → `_enterExplore` | 2197–2202 | inline, `_moved` (hypot > **8**), coarse |
+| C | Тап anywhere | `endPointer` → `_shouldUseInlineExploreTap` → `_enterExplore` | 2214–2234; helper 1999–2000 | `!_moved` && duration < **500** ms |
+| D | Тап по дому / poly | `endPointer` → `_handleObjectActivate` → `_shouldUseInlineExploreTap` | 2252–2256; 2022–2026 | то же; **тултип на collapsed не открывается** |
+| E | Keyboard Enter/Space | stage keydown → `_handleObjectActivate` | 2300–2308 | редко на телефоне; тот же helper |
+
+Комментарий в коде ~2198: «мобилка: жест pan → вход в explore (**как Sigma**)» — осознанный порт, сейчас мешает скроллу страницы.
+
+**To-be:** оставить только **осознанный tap по центральной gate-кнопке** (замена пути A). Пути B/C/D/E на coarse+inline — **выключить**.
+
+---
+
+## 3. As-is: почему «не скроллится»
+
+### 3.1. Scroll lock (не причина в collapsed)
+
+```
+acquireScrollLock  → body.overflow=hidden + document touchmove preventDefault {passive:false}
+releaseScrollLock  → refcount; на 0 снимает listener
+```
+
+- Вызов: только `_enterExplore` (~2422) + `_scrollLockHeld++`.
+- Снятие: `_exitExplore`, `destroy` (while-loop).
+- Refcount общий на страницу (несколько виджетов) — ок.
+- **Collapsed lock не ставит.**
+
+Риски lock (уже в explore, не #16 core, но учесть в тестах):
+
+- блокирует `document` touchmove целиком (iframe document / nested scrollers);
+- не трогает `html` / `position:fixed` — возможны iOS rubber-band quirks;
+- `removeEventListener` без `{passive:false}` — обычно ок, на экзотике проверить.
+
+### 3.2. Реальная причина
+
+JS на viewport:
+
+1. Pan > 8px → explore → затем lock.
+2. Short tap → explore → затем lock.
+3. `setPointerCapture` на coarse inline **уже отключён** (~2110–2113) — хорошо, Sigma так не делает.
+4. `.gw-poly { pointer-events: all }` даже в collapsed — poly участвует в hit-test; labels уже `pointer-events: none` на coarse collapsed (~454).
+
+`touch-action: manipulation` на coarse viewport **не** отменяет Pointer Events handlers.
+
+---
+
+## 4. As-is: ghost-tap CTA
+
+Цепочка:
+
+1. В explore тап по дому → `_setActive` → `_setLabelExpanded`.
+2. Тултип появляется под координатами пальца.
+3. Браузер шлёт compat `click` → попадает в новый `<a class="gw-label__cta">` (или apt-link).
+
+Сейчас:
+
+- `_bindHostLink` (~1020–1041): hash → `preventDefault` + scroll; external → optional `_blank`, только `stopPropagation`.
+- Apt links (~1086–1094): только `stopPropagation`, **не** через `_bindHostLink`.
+- `pointerdown` early-return для уже существующего `<a>` (~2102–2108) — **не** защищает от click на **только что** появившейся ссылке.
+- **Нет** `_suppressLinkClicksUntil`, **нет** временного `pointer-events: none` на expanded surface.
+
+Skin nuance:
+
+| Skin | Где CTA | Риск under-finger |
+|------|---------|-------------------|
+| `card` | `.gw-label__card` (chip остаётся на якоре) | card может сесть над/рядом с пальцем; `::before` bridge снизу card (~496) тоже `pointer-events: auto` |
+| `expand` | внутри `.gw-label__box` (чип морфится в карточку) | весь box растёт под пальцем — **высокий** риск |
+
+---
+
+## 5. Целевой UX (утверждённый)
+
+### 5.1. Mobile свёрнут
 
 ```
 ┌─────────────────────────────┐
-│  [карта, приглушена]        │
+│  карта (приглушена)         │
 │                             │
 │      ┌───────────────┐      │
-│      │  Увеличить    │      │  ← единственный способ войти в explore
+│      │  Увеличить    │      │  ← ЕДИНСТВЕННЫЙ вход в explore
 │      └───────────────┘      │
-│                             │
-│  (полупрозрачный оверлей)   │
+│        .gw-explore-gate     │
 └─────────────────────────────┘
-     ↕ страница скроллится сквозь/мимо карты
+        ↕ скролл страницы
 ```
 
 Правила:
 
-1. **Скролл страницы** поверх карты — работает всегда (вертикальный pan документа).
-2. **Тап / свайп по карте** (кроме центральной кнопки) — **ничего** не открывает, не зумит, не выбирает дом.
-3. **Тултипы / чипы / poly hit** в свёрнутом режиме — выключены (уже частично: labels `pointer-events: none`).
-4. **Единственный вход в explore** — тап по центральной кнопке на оверлее.
-5. Оверлей **не** блокирует скролл страницы: события скролла не `preventDefault`; зона вне кнопки не захватывает жест как «клик по карте».
+1. Скролл страницы, начатый на области карты — **работает**, explore не открывается.
+2. Тап/свайп по карте вне кнопки — **no-op**.
+3. Тултипы / poly hit / activate — **выкл**.
+4. Вход в explore — **только** gate-кнопка.
+5. Старой `.gw-btn-explore` (right/bottom) нет.
 
-### 3.2. Mobile, explore
+### 5.2. Mobile explore
 
-1. Полноэкранный/почти полноэкранный слой (как сейчас `_enterExplore`).
-2. Pan / pinch работают.
-3. Тап по дому → тултип; **первый** жест не активирует CTA.
-4. Отдельный осознанный тап по CTA → переход / hash-scroll.
-5. Закрытие — крестик / Escape (как сейчас).
+1. Как сейчас: fullscreen layer, pan/pinch, close, Escape, scroll lock.
+2. Тап по дому → тултип; **первый** жест не активирует ссылки.
+3. Отдельный тап по CTA / apt → переход / hash-scroll.
+4. Закрытие → снова gate-оверлей.
 
-### 3.3. Desktop
+### 5.3. Desktop
 
-Без изменений по смыслу:
+Без mobile-gate. Hover/pan/click как сейчас.
 
-- hover → тултип;
-- click по дому → sticky/active;
-- pan/zoom inline (если pannable);
-- кнопки «Увеличить» на десктопе **нет** (сейчас `is-coarse` only) — оверлей тоже **только coarse**.
+### 5.4. `exploreFullscreen: false`
+
+Gate **не показывать**. `_enterExplore` не вызывать. Coarse class для прочих правил может остаться, но без гейта/explore.
 
 ---
 
-## 4. Жесты: что использовать (рекомендация)
+## 6. Жесты и зависимости
 
-### 4.1. Варианты
+### 6.1. Решение: нативные Pointer Events
 
-| Подход | Плюсы | Минусы | Вердикт |
-|--------|-------|--------|---------|
-| **jQuery Mobile** | когда-то были `tap` / `swipe` | проект **мёртв**, тяжёлый, конфликты с jQuery 3, не нужен виджету (shadow DOM, без jQ) | **не подключать** |
-| **Hammer.js** | зрелые жесты | лишняя зависимость, поддержка средняя, виджет уже на Pointer Events | запасной план |
-| **@use-gesture / ZingTouch** | современные | оверхед для одного виджета, bundling | не нужно |
-| **Нативные Pointer Events + классификатор жеста** (уже есть зачатки) | уже в `genplan_widget.js`, без зависимостей, работает в shadow DOM | нужно **допилить** правила | **основной план** |
+| Подход | Вердикт |
+|--------|---------|
+| jQuery Mobile | **Нет** — мёртвый, тяжёлый, виджет без jQ + Shadow DOM |
+| Hammer.js / @use-gesture | **Нет** в этом стейдже; только если QA провалит native |
+| Pointer Events + правила | **Да** — уже в файле |
 
-Виджет монтируется в **Shadow DOM** и **не зависит от jQuery**. Тащить jQuery Mobile / jQuery UI ради 2 жестов — плохо: вес, конфликты, дублирование с уже существующими `pointerdown/move/up`.
+Классификатор на collapsed **упрощается**: для карты жесты игнорируем; для gate-кнопки — обычный `click` на `<button>` (плюс защита: если pointer ушёл > threshold с кнопки — не открывать explore).
 
-### 4.2. Модель жестов (свой лёгкий классификатор)
+Полноценный `_classifyPointerGesture` нужен в основном в **explore** (tap vs pan), там он уже почти есть (`_moved`, 8px, 500ms). На collapsed — проще early-return всего PE pipeline.
 
-На каждом `pointerdown` → `pointerup` / `pointercancel` вычисляем:
+### 6.2. Не «просто click» для CTA
 
-```
-start = { x, y, t, targetKind }
-moved = hypot(dx, dy) > MOVE_THRESHOLD   // 8–12 px
-duration = now - start.t
-gesture =
-  moved && duration > …     → "pan" | "scroll-intent"
-  !moved && duration < 500  → "tap"
-  иначе                     → "ignore"
-```
-
-Применение:
-
-| Контекст | `tap` | `pan` / scroll-intent |
-|----------|-------|------------------------|
-| coarse + inline + hit на **кнопку оверлея** | `_enterExplore()` | не открывать explore; не мешать скроллу |
-| coarse + inline + hit на карту/оверлей-фон | **ничего** | **ничего** (страница скроллит) |
-| coarse + explore + hit на дом | открыть тултип + **suppress CTA** | pan карты |
-| coarse + explore + hit на CTA (и suppress истёк) | переход | — |
-| desktop | как сейчас | pan/hover |
-
-Пороги (стартовые, подогнать на устройстве):
-
-- `MOVE_THRESHOLD = 10` px
-- `TAP_MAX_MS = 450`
-- `CTA_SUPPRESS_MS = 400` после открытия тултипа
-- опционально: suppress до следующего `pointerdown`, если он не является частью opening-gesture
-
-### 4.3. Почему не «просто click»
-
-На iOS/Android после `touch` браузер генерирует совместимостный `click`. Если DOM под пальцем поменялся между `touchstart` и `click`, клик попадает в **новый** элемент (CTA). Поэтому:
-
-- нельзя полагаться только на `click`;
-- нужен suppress-window **и/или** `pointer-events: none` на карточке на 1–2 кадра после expand.
+Проблема — **click-through после мутации DOM**, не классический 300ms delay (современный Safari + `touch-action`). Лечится suppress + pe:none, не jQuery Mobile.
 
 ---
 
-## 5. UI: оверлей вместо `.gw-btn-explore`
+## 7. UI: `.gw-explore-gate`
 
-### 5.1. Разметка (черновик)
+### 7.1. DOM
 
-Внутри `.gw-root` (рядом с inline viewport), только для coarse:
+Внутри `.gw-root` (sibling inline viewport), на instance:
 
 ```html
-<div class="gw-explore-gate" hidden>
+<div class="gw-explore-gate" aria-hidden="true">
   <button type="button" class="gw-explore-gate__btn">Увеличить</button>
 </div>
 ```
 
-Или без `hidden`, показывать CSS-ом:
+Показ CSS-ом:
 
 ```css
 .gw-explore-gate { display: none; }
 .gw-root.is-coarse:not(.is-explore) .gw-explore-gate { display: flex; }
+/* + JS: если !exploreFullscreen → не рендерить / не показывать */
 ```
 
-### 5.2. CSS-поведение
+### 7.2. CSS
 
-```text
-.gw-explore-gate
-  position: absolute; inset: 0;   /* покрывает виджет / viewport */
-  z-index: 7;                     /* выше карты, ниже explore-layer */
+```css
+.gw-explore-gate {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.35–0.45);  /* приглушить карту */
-  /* КРИТИЧНО для скролла: */
-  pointer-events: none;           /* фон не ест жесты */
-
-.gw-explore-gate__btn
-  pointer-events: auto;           /* только кнопка кликабельна */
-  min-height: 44px;               /* hit-target ≥ 44×44 */
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+.gw-explore-gate__btn {
+  pointer-events: auto;
+  min-height: 44px;
+  min-width: 44px;
   padding: 12px 22px;
-  border-radius: …;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
   font-weight: 600;
-  /* визуально «главный» CTA по центру */
+  font-size: 15px;
+  background: rgba(255,255,255,0.95);
+  color: #111;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.22);
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+.gw-root.is-explore .gw-explore-gate { display: none !important; }
 ```
 
-Важно:
+Старую `.gw-btn-explore` — не показывать (убрать из DOM или CSS forever `display:none`).
 
-- Фон оверлея с `pointer-events: none` → палец «проваливается» к странице/родителю для скролла.
-- Под оверлеем карта в coarse-collapsed **не должна** сама вызывать `_enterExplore` (см. §6).
-- Старую `.gw-btn-explore` (right/bottom) — **убрать** или оставить hidden forever на coarse (заменить гейтом).
+### 7.3. Почему pe:none на фоне + pe:none на карте
 
-### 5.3. A11y
+Только оверлей с pe:none **недостаточен**, если viewport всё ещё слушает pointerdown/move/up и зовёт `_enterExplore`. Нужен **двойной барьер**:
 
-- Кнопка — настоящий `<button type="button">`.
-- `aria-label="Увеличить интерактивный план"` (или через `locale.explore`).
-- Фокус: после закрытия explore вернуть фокус на gate-кнопку (nice-to-have).
+1. **JS:** coarse + !explore → не входить в explore ни по pan, ни по tap, ни по activate; early-return PE handler (не стартовать `_panStart` для activate).
+2. **CSS:**
 
-### 5.4. Копирайт / locale
+```css
+.gw-root.is-coarse:not(.is-explore) .gw-poly {
+  pointer-events: none !important; /* бить .gw-poly { pointer-events: all } */
+}
+.gw-root.is-coarse:not(.is-explore) .gw-stage,
+.gw-root.is-coarse:not(.is-explore) .gw-labels-overlay {
+  pointer-events: none !important;
+}
+.gw-root.is-coarse:not(.is-explore) .gw-viewport {
+  touch-action: pan-y;
+}
+```
 
-Сейчас: `locale.explore = 'Увеличить'`.
-Можно оставить или уточнить: «Открыть план» / «Смотреть план» — решить при вёрстке; в плане по умолчанию оставляем `'Увеличить'`.
+3. Gate-кнопка — единственный hit-target с `pointer-events: auto`.
+
+### 7.4. A11y / locale
+
+- Текст: `locale.explore` («Увеличить»).
+- `aria-label` = тот же / «Увеличить интерактивный план».
+- После `_exitExplore` — `gateBtn.focus()` (nice-to-have).
+- `aria-hidden` на gate: `false` когда виден, `true` в explore.
 
 ---
 
-## 6. Изменения в логике (as-is → to-be)
+## 8. Логика to-be (чеклист правок в коде)
 
-### 6.1. Удалить / отключить
+### 8.1. Обязательно удалить / отключить на coarse+inline
 
-1. **Pan → explore** в `pointermove` (~2197–2202) — удалить целиком.
-2. **`_shouldUseInlineExploreTap` → `_enterExplore` в `endPointer`** — удалить: тап по карте больше **не** открывает explore.
-3. Показ `.gw-btn-explore` в углу — заменить на `.gw-explore-gate`.
+| Что | Где | Действие |
+|-----|-----|----------|
+| Pan → explore | `pointermove` ~2197–2202 | **Удалить** блок |
+| Tap anywhere → explore | `endPointer` ~2231–2234 | **Удалить** / сделать no-op |
+| Object tap → explore | `_handleObjectActivate` ~2024–2026 | **Удалить** ветку `_shouldUseInlineExploreTap` |
+| Keyboard → explore через helper | ~2300–2308 | отпадёт вместе с helper |
+| Угловая кнопка | DOM + CSS `.gw-btn-explore` | Заменить gate |
 
-### 6.2. Добавить
+`_shouldUseInlineExploreTap` после правок либо удалить, либо `return false` с комментарием.
 
-1. DOM + CSS оверлея (§5).
-2. `click` / `pointerup`-tap **только** на `.gw-explore-gate__btn` → `_enterExplore()`.
-3. `_suppressLinkClicksUntil` (timestamp) + проверка в `_bindHostLink` / общем click-guard.
-4. После `_setLabelExpanded(..., true)` на coarse:
+### 8.2. Обязательно добавить
 
-   ```js
-   this._suppressLinkClicksUntil = Date.now() + CTA_SUPPRESS_MS;
-   // и/или card.style.pointerEvents = 'none'; requestAnimationFrame ×2 → restore
-   ```
+1. DOM/CSS `.gw-explore-gate` (§7).
+2. `gateBtn.addEventListener('click', …)` → `_enterExplore()` + `stopPropagation`.
+3. Guard: pointerdown на кнопке + move > threshold → не открывать explore.
+4. Ghost-tap:
+   - `CTA_SUPPRESS_MS = 400`;
+   - `_suppressLinkClicksUntil` при открытии тултипа на coarse;
+   - проверка в `_bindHostLink` **и** apt-links;
+   - класс `.is-click-guard` на expanded surface (~400ms).
+5. Collapsed CSS pe:none + `touch-action: pan-y` (§7.3).
+6. Early-return в `_bindStageInteractions` для `!isExplore && isCoarsePointer()`.
 
-5. Хелпер `_classifyPointerGesture(start, end)` — единая точка для tap vs pan (чтобы не плодить пороги).
+### 8.3. Оставить
 
-### 6.3. Оставить как есть
+- `_enterExplore` / `_exitExplore` / scroll lock / pinch / desktop.
+- `#15` placement/skins — кроме click-guard.
+- API `mount({ exploreFullscreen, labelSkin, … })`.
 
-- `_enterExplore` / `_exitExplore` / scroll lock.
-- Explore pan/pinch.
-- Desktop hover/active.
-- Tooltip placement / skins (#15) — вне скоупа, кроме suppress кликов.
-- Публичный API `GenplanWidget.mount({ exploreFullscreen })`.
+### 8.4. Secondary (если A+B мало на QA)
 
-### 6.4. Псевдокод входа
-
-```js
-// было: tap anywhere / pan → explore
-// стало:
-gateBtn.addEventListener('click', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  if (self.exploreFullscreen) self._enterExplore();
-});
-
-// inline coarse pointer handlers:
-// - НЕ setPointerCapture
-// - НЕ _enterExplore на move/up
-// - touch-action на viewport: pan-y (или manipulation) без JS preventDefault
-```
-
-### 6.5. `touch-action` (уточнение)
-
-Сейчас:
-
-```css
-.gw-root.is-coarse:not(.is-explore) .gw-viewport { touch-action: manipulation; }
-```
-
-Рекомендация to-be:
-
-```css
-.gw-root.is-coarse:not(.is-explore) .gw-viewport { touch-action: pan-y; }
-/* или даже: pointer-events: none на stage/poly в collapsed,
-   клики только через gate button */
-```
-
-Дополнительно рассмотреть в collapsed coarse:
-
-```css
-.gw-root.is-coarse:not(.is-explore) .gw-poly { pointer-events: none !important; }
-.gw-root.is-coarse:not(.is-explore) .gw-stage { pointer-events: none; }
-```
-
-Тогда жесты гарантированно уходят в скролл страницы; интерактив — только у gate-кнопки.
+**Вариант C:** на coarse при открытии тултипа предпочитать сторону **away from `clientY`**. Не блокер MVP.
 
 ---
 
-## 7. Ghost-tap: детальный алгоритм
-
-### Вариант A (обязательный минимум) — suppress window
+## 9. Ghost-tap: алгоритм (уточнённый)
 
 ```js
-// при открытии тултипа на coarse:
-this._suppressLinkClicksUntil = Date.now() + 400;
+var CTA_SUPPRESS_MS = 400;
 
-// в _bindHostLink click handler:
+// при expand на coarse:
+self._suppressLinkClicksUntil = Date.now() + CTA_SUPPRESS_MS;
+var surface = el.querySelector('.gw-label__card') || el.querySelector('.gw-label__box') || el;
+surface.classList.add('is-click-guard');
+clearTimeout(el._gwClickGuardTimer);
+el._gwClickGuardTimer = setTimeout(function () {
+  surface.classList.remove('is-click-guard');
+}, CTA_SUPPRESS_MS);
+
+// CSS:
+// .gw-label.is-click-guard .gw-label__card,
+// .gw-label.is-click-guard .gw-label__box { pointer-events: none !important; }
+
+// в каждом link click (CTA + apt + hash):
 if (Date.now() < (self._suppressLinkClicksUntil || 0)) {
   e.preventDefault();
   e.stopPropagation();
@@ -310,105 +331,131 @@ if (Date.now() < (self._suppressLinkClicksUntil || 0)) {
 }
 ```
 
-### Вариант B (усиление) — pointer-events
-
-```js
-card.style.pointerEvents = 'none';
-requestAnimationFrame(() => {
-  requestAnimationFrame(() => {
-    card.style.pointerEvents = '';
-  });
-});
-```
-
-Или CSS-класс `.is-click-guard` на 400ms.
-
-### Вариант C (опционально) — не открывать тултип под пальцем
-
-Placement уже умеет flip; на coarse после tap можно предпочитать сторону **away from touch** (если `clientY` известен). Это secondary — сначала A+B.
-
-**В стейдж включаем A + B; C — если останется клик-through на реальных девайсах.**
+Покрыть **оба** скина и **все** интерактивные `<a>` в label.
 
 ---
 
-## 8. Файлы и объём работ
+## 10. Сравнение с Sigma Facade (не копировать)
 
-| Файл | Что сделать |
-|------|-------------|
-| `template/default/js/genplan_widget.js` | оверлей, жесты, suppress, убрать pan/tap→explore, CSS в STYLE |
-| `fw/templates/genplans/widget_demo.php` | bump `?v=2.5.x`, при необходимости подпись «mobile gate» |
-| `.doc/tasks/16-genplan-mobile-touch.md` | этот план (обновлять по ходу) |
+| | Genplan (as-is) | Sigma Facade |
+|--|-----------------|--------------|
+| Shadow DOM, без jQ | да | да |
+| Scroll lock | тот же паттерн | тот же |
+| Угловая «Увеличить» | да | нет |
+| Pan/tap → explore | да | да |
+| `setPointerCapture` collapsed | **пропущен** (лучше) | **всегда** (хуже) |
+| Gate-оверлей | to-be #16 | нет |
 
-Новых npm/CDN-зависимостей **не** добавляем (без jQuery Mobile / Hammer), пока нативный классификатор не докажет обратное на QA.
-
-Оценка: ~0.5–1 день реализации + проход на iOS Safari + Android Chrome.
-
----
-
-## 9. Порядок реализации (чеклист)
-
-1. [ ] CSS/DOM: `.gw-explore-gate` + центральная кнопка; скрыть `.gw-btn-explore`.
-2. [ ] Wire: click по gate → `_enterExplore`.
-3. [ ] Удалить pan→explore и tap-anywhere→explore на coarse inline.
-4. [ ] Collapsed coarse: `pointer-events: none` на stage/poly (или эквивалент), `touch-action: pan-y`.
-5. [ ] Проверить: скролл страницы поверх виджета на реальном телефоне.
-6. [ ] Suppress CTA (A + B) после открытия тултипа в explore.
-7. [ ] Проверить ghost-tap на iOS и Android.
-8. [ ] Desktop smoke: hover, pan, CTA.
-9. [ ] Bump version + demo cache-bust.
-10. [ ] Коммит / PR в `feature/16-genplan-mobile-touch`.
+Genplan #16 — **осознанный fork** от «как Sigma».
 
 ---
 
-## 10. Тест-план (приёмка)
+## 11. Встраивание / окружение
+
+| Контекст | Статус |
+|----------|--------|
+| Demo `widget_demo` (2 скина) | есть; основной QA-стенд |
+| `iframe_router.php?ctr=genplans&act=widget_demo` | есть; без логина |
+| em-nsk.ru live mount | **не найден** (статика) |
+| Hash CTA `postMessage` | уже есть |
+
+---
+
+## 12. Файлы и оценка
+
+| Файл | Работа |
+|------|--------|
+| `template/default/js/genplan_widget.js` | gate, CSS, удаление B/C/D, suppress, pe:none |
+| `fw/templates/genplans/widget_demo.php` | bump `?v=` → 2.5.21+ |
+| `.doc/tasks/16-genplan-mobile-touch.md` | этот план |
+
+Зависимости: **0 новых**. Оценка: **0.5–1 день** + iOS Safari + Android Chrome.
+
+---
+
+## 13. Порядок реализации
+
+1. [ ] DOM/CSS `.gw-explore-gate`; спрятать `.gw-btn-explore`.
+2. [ ] Wire click gate → `_enterExplore`; учесть `exploreFullscreen: false`.
+3. [ ] Удалить pan→explore (~2197–2202).
+4. [ ] Удалить tap-anywhere → explore (~2231–2234).
+5. [ ] Удалить/нейтрализовать `_shouldUseInlineExploreTap` в `_handleObjectActivate` (~2024–2026).
+6. [ ] Collapsed coarse: early-return PE; CSS pe:none; `touch-action: pan-y`.
+7. [ ] Ручной тест скролла на телефоне / DevTools.
+8. [ ] Suppress A+B для CTA **и** apt links, оба скина.
+9. [ ] Ghost-tap тест iOS + Android.
+10. [ ] Desktop smoke.
+11. [ ] Version bump + demo cache-bust.
+12. [ ] Коммит / PR.
+
+---
+
+## 14. Тест-план (приёмка)
 
 ### Mobile свёрнуто
 
-- [ ] Страница скроллится пальцем **начиная жест на карте** — explore **не** открывается.
-- [ ] Быстрый тап по карте (не по кнопке) — explore **не** открывается.
-- [ ] Виден затемняющий оверлей и кнопка **по центру**.
-- [ ] Тап по «Увеличить» — открывается explore.
-- [ ] Старой кнопки в правом нижнем углу нет.
+- [ ] Скролл, начатый **на карте** — страница едет, explore **нет**.
+- [ ] Тап по карте (не кнопка) — explore **нет**.
+- [ ] Тап по дому/poly — explore **нет**, тултипа **нет**.
+- [ ] Оверлей + кнопка **по центру**.
+- [ ] Тап «Увеличить» — explore.
+- [ ] Скролл с кнопки вниз — explore желательно **не** открывать.
+- [ ] Угловой «Увеличить» нет.
+- [ ] Два виджета на demo — независимые gate.
 
 ### Mobile explore
 
-- [ ] Pan / pinch карты работают.
-- [ ] Тап по дому — тултип; **нет** мгновенного ухода на страницу дома.
-- [ ] Повторный тап по CTA — переход / hash-scroll как задумано.
-- [ ] Закрытие крестиком возвращает свёрнутый вид с оверлеем.
+- [ ] Pan / pinch ок.
+- [ ] Тап дом → тултип; **нет** мгновенного ухода.
+- [ ] Повторный тап CTA → переход / hash-scroll.
+- [ ] Apt-ссылка: без ghost на первом жесте.
+- [ ] Прогнать **card** и **expand**.
+- [ ] Close → снова gate.
 
 ### Desktop
 
-- [ ] Нет mobile-оверлея.
-- [ ] Hover-тултипы и pan без регрессий.
+- [ ] Нет gate-оверлея.
+- [ ] Hover / pan / CTA без регрессий.
+
+### Опции / края
+
+- [ ] `exploreFullscreen: false` — нет gate, нет explore.
+- [ ] Demo в iframe_router.
+- [ ] Два instance: explore на одном — lock; закрыть — скролл снова ок.
 
 ---
 
-## 11. Риски и краевые случаи
+## 15. Риски (обновлённые)
 
 | Риск | Митигация |
 |------|-----------|
-| Оверлей с `pointer-events: none` «ломает» скролл в iframe | проверить вложение на em-nsk; при необходимости `touch-action` на host |
-| Пользователи привыкли тапать «куда угодно» | центральная кнопка + затемнение делают affordance явным |
-| Suppress 400ms мало/много на разных ОС | константа + возможность подкрутить; вариант B как страховка |
-| Два виджета на demo-странице | gate у каждого instance отдельно |
-| `exploreFullscreen: false` | gate не показывать / не входить в explore |
+| pe:none только на stage, listeners на viewport | early-return JS **обязателен** + pe:none на poly `!important` |
+| Фон gate pe:none, карта снова ловит события | pe:none на stage/poly/labels + JS no-op |
+| Suppress 400ms мало | константа + pe class; подкрутить после QA |
+| expand-skin under finger | A+B; при провале — вариант C |
+| Привычка tap-anywhere | затемнение + большая центральная кнопка |
+| Scroll lock в iframe | локальный document; ок для demo |
+| Копирование Sigma capture | **запрещено** |
 
 ---
 
-## 12. Вне скоупа этого стейджа
+## 16. Вне скоупа
 
-- Редизайн тултипов / скинов card|expand (#15 уже в master).
-- Десктопный clamp тултипа.
-- Подключение jQuery Mobile / Hammer (только если нативный путь провалит QA — отдельное решение).
-- Изменение API `widget_data` / бэкенда.
+- Редизайн тултипов (#15).
+- Десктопный clamp.
+- jQuery Mobile / Hammer.
+- Вёрстка em-nsk (виджета там нет).
+- Рефактор scroll lock под `position:fixed` body.
+- API `widget_data` / бэкенд.
 
 ---
 
-## 13. Решение по зависимостям (итог)
+## 17. Итог решения
 
-**Не подключаем jQuery Mobile.**
-Используем уже существующие **Pointer Events** + явный классификатор `tap` / `pan` / `ignore` + UI-гейт (оверлей).
-Это согласовано с архитектурой виджета (Shadow DOM, без jQ) и закрывает оба бага без новых библиотек.
+1. **Оверлей + кнопка по центру** — единственный вход в explore на mobile.
+2. **Убить все** pan/tap/object пути в explore на collapsed (включая `_handleObjectActivate`).
+3. **Не** подключать jQuery Mobile; допилить Pointer Events.
+4. **Ghost-tap:** suppress + pe:none на expanded surface для CTA и apt, оба скина.
+5. **Скролл collapsed:** JS no-op + CSS pe:none + `touch-action: pan-y`; lock в collapsed не трогать.
 
-Если после QA на iOS/Android останутся систематические ложные срабатывания — тогда точечно рассмотреть **Hammer.js только для explore-слоя**, не для свёрнутого режима.
+Код — после подтверждения плана; чеклист §13.
