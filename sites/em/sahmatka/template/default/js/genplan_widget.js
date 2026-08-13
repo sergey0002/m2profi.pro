@@ -45,7 +45,7 @@
   var LABEL_POINTER_OVERLAP = 1;
   var LABEL_CARD_W = 280;
   var LABEL_CARD_GAP = 12;
-  var LABEL_CARD_V_GAP = 6;
+  var LABEL_CARD_V_GAP = 0;
   /** Точка входа чипа: 30% ширины карточки от края (не центр). */
   var LABEL_CARD_ANCHOR = 0.3;
 
@@ -408,6 +408,8 @@
     '.gw-label { position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: visible; pointer-events: auto; z-index: 5; cursor: pointer; -webkit-tap-highlight-color: transparent; }',
     '.gw-label.is-expanded { z-index: 200; }',
     '.gw-labels-overlay.has-expanded .gw-label:not(.is-expanded) { pointer-events: none !important; }',
+    /* чужие чипы под полупрозрачной карточкой не должны просвечивать */
+    '.gw-label.is-obscured { visibility: hidden !important; pointer-events: none !important; }',
     '.gw-label__box { position: absolute; left: 0; bottom: 0; top: auto; display: flex; flex-direction: column; width: fit-content; max-width: 220px; text-align: left; background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); overflow: hidden; transform: translate(-50%, 0); transform-origin: center bottom; transition: border-radius 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, width 0.12s ease, min-width 0.12s ease; }',
     /* белый хвостик: SVG 16×9, низ = якорь дома, верх стыкуется с плашкой */
     '.gw-label__pointer { position: absolute; left: 0; bottom: 0; width: 16px; height: 9px; transform: translate(-50%, 0); overflow: visible; pointer-events: none; z-index: 6; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.18)); display: block; }',
@@ -1209,6 +1211,47 @@
     if (this._els && this._els.root) {
       this._els.root.classList.toggle('has-label-expanded', has);
     }
+    this._syncObscuredLabels(stage);
+  };
+
+  /** Прячет чужие чипы, которые попадают под открытую (полупрозрачную) карточку. */
+  GenplanWidgetInstance.prototype._syncObscuredLabels = function (stage) {
+    var overlay = this._labelsOverlayForStage(stage);
+    if (!overlay) return;
+    var expanded = overlay.querySelector('.gw-label.is-expanded');
+    var nodes = overlay.querySelectorAll('.gw-label');
+    var i;
+    if (!expanded) {
+      for (i = 0; i < nodes.length; i++) nodes[i].classList.remove('is-obscured');
+      return;
+    }
+    var card = this._isCardSkin()
+      ? (expanded.querySelector('.gw-label__card') || expanded.querySelector('.gw-label__box'))
+      : expanded.querySelector('.gw-label__box');
+    if (!card) {
+      for (i = 0; i < nodes.length; i++) nodes[i].classList.remove('is-obscured');
+      return;
+    }
+    var cr = card.getBoundingClientRect();
+    if (!cr.width || !cr.height) {
+      for (i = 0; i < nodes.length; i++) nodes[i].classList.remove('is-obscured');
+      return;
+    }
+    var pad = 2;
+    for (i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el === expanded) {
+        el.classList.remove('is-obscured');
+        continue;
+      }
+      var chip = el.querySelector('.gw-label__box') || el;
+      var br = chip.getBoundingClientRect();
+      var hit = br.right > cr.left + pad
+        && br.left < cr.right - pad
+        && br.bottom > cr.top + pad
+        && br.top < cr.bottom - pad;
+      el.classList.toggle('is-obscured', hit);
+    }
   };
 
   GenplanWidgetInstance.prototype._labelElById = function (stage, objectId) {
@@ -1253,19 +1296,31 @@
     if (cardSkin) this._applyCardBesidePlacement(el);
   };
 
-  GenplanWidgetInstance.prototype._chipLocalRect = function (el) {
+  GenplanWidgetInstance.prototype._chipMetrics = function (el) {
     var box = el.querySelector('.gw-label__box');
+    var head = el.querySelector('.gw-label__head');
     var idleW = (box && box.offsetWidth) ? box.offsetWidth : 40;
-    var chipH = (box && box.offsetHeight) ? box.offsetHeight : 28;
+    var chipH = (head && head.offsetHeight) ? head.offsetHeight : ((box && box.offsetHeight) ? box.offsetHeight : 28);
     var lift = LABEL_POINTER_H - LABEL_POINTER_OVERLAP;
+    return { idleW: idleW, chipH: chipH, lift: lift };
+  };
+
+  GenplanWidgetInstance.prototype._cardAboveYFromChip = function (el) {
+    var m = this._chipMetrics(el);
+    // Вплотную к верху чипа (как в макете): без зазора, без наезда.
+    return -(m.lift + m.chipH + LABEL_CARD_V_GAP);
+  };
+
+  GenplanWidgetInstance.prototype._chipLocalRect = function (el) {
+    var m = this._chipMetrics(el);
     return {
-      left: -idleW / 2,
-      right: idleW / 2,
-      top: -lift - chipH,
-      bottom: -lift,
-      idleW: idleW,
-      chipH: chipH,
-      lift: lift
+      left: -m.idleW / 2,
+      right: m.idleW / 2,
+      top: -m.lift - m.chipH,
+      bottom: -m.lift,
+      idleW: m.idleW,
+      chipH: m.chipH,
+      lift: m.lift
     };
   };
 
@@ -1277,10 +1332,10 @@
 
   GenplanWidgetInstance.prototype._cardOverlapsChip = function (cardR, chipR, yMode) {
     if (yMode === 'beside') return false;
-    var gap = LABEL_CARD_V_GAP;
-    var xOverlap = cardR.right > chipR.left && cardR.left < chipR.right;
+    var slack = 1;
+    var xOverlap = cardR.right > chipR.left + slack && cardR.left < chipR.right - slack;
     if (!xOverlap) return false;
-    return cardR.bottom > chipR.top - gap && cardR.top < chipR.bottom + gap;
+    return cardR.bottom > chipR.top + slack && cardR.top < chipR.bottom - slack;
   };
 
   GenplanWidgetInstance.prototype._cardViewportOverflow = function (opt, cardW, cardH, dx, dy, anchorX, anchorY, vw, vh, margin) {
@@ -1304,19 +1359,16 @@
 
   /** Карточка над/рядом/под чипом; чип не двигается. */
   GenplanWidgetInstance.prototype._cardBesideBase = function (el) {
-    var box = el.querySelector('.gw-label__box');
     var card = el.querySelector('.gw-label__card');
-    var idleW = (box && box.offsetWidth) ? box.offsetWidth : 40;
-    var chipH = (box && box.offsetHeight) ? box.offsetHeight : 28;
+    var m = this._chipMetrics(el);
     var cardW = (card && card.offsetWidth) ? card.offsetWidth : LABEL_CARD_W;
     var side = el.dataset.expandSide || 'right';
     var yMode = el.dataset.cardY || 'above';
-    var lift = LABEL_POINTER_H - LABEL_POINTER_OVERLAP;
     var x;
     if (yMode === 'beside') {
       x = side === 'left'
-        ? -(idleW / 2 + LABEL_CARD_GAP + cardW)
-        : (idleW / 2 + LABEL_CARD_GAP);
+        ? -(m.idleW / 2 + LABEL_CARD_GAP + cardW)
+        : (m.idleW / 2 + LABEL_CARD_GAP);
     } else if (side === 'left') {
       x = -cardW * (1 - LABEL_CARD_ANCHOR);
     } else if (side === 'center') {
@@ -1326,22 +1378,36 @@
     }
     var y;
     if (yMode === 'beside') {
-      y = -lift;
+      y = -m.lift;
     } else if (yMode === 'below') {
-      y = LABEL_CARD_GAP + lift;
+      y = LABEL_CARD_GAP + m.lift;
     } else {
-      y = -(lift + chipH + LABEL_CARD_V_GAP);
+      y = this._cardAboveYFromChip(el);
     }
-    return { x: x, y: y, idleW: idleW, chipH: chipH, cardW: cardW, side: side, yMode: yMode, lift: lift };
+    return { x: x, y: y, idleW: m.idleW, chipH: m.chipH, cardW: cardW, side: side, yMode: yMode, lift: m.lift };
   };
 
   GenplanWidgetInstance.prototype._applyCardBesidePlacement = function (el) {
     var card = el.querySelector('.gw-label__card');
+    var chip = el.querySelector('.gw-label__box');
     if (!card) return;
     var base = this._cardBesideBase(el);
     var dx = parseFloat(el.dataset.shiftX || '0') || 0;
     var dy = parseFloat(el.dataset.shiftY || '0') || 0;
     card.style.transform = 'translate(' + (base.x + dx) + 'px, ' + (base.y - dy) + 'px)';
+
+    // Страховка: если карточка всё же наехала на свой чип — поднять ровно на overlap
+    // (только режим above; сбоку/снизу overlap чинит flip).
+    if (base.yMode === 'above' && chip) {
+      var cr = card.getBoundingClientRect();
+      var br = chip.getBoundingClientRect();
+      var overlap = cr.bottom - br.top;
+      if (overlap > 0.5) {
+        dy += overlap;
+        el.dataset.shiftY = String(dy);
+        card.style.transform = 'translate(' + (base.x + dx) + 'px, ' + (base.y - dy) + 'px)';
+      }
+    }
   };
 
   GenplanWidgetInstance.prototype._clearMeasureStyles = function (el) {
@@ -1436,10 +1502,8 @@
 
   GenplanWidgetInstance.prototype._prepareCardBesidePlacement = function (el, viewport, margin, opts) {
     opts = opts || {};
-    var box = el.querySelector('.gw-label__box');
     var card = el.querySelector('.gw-label__card');
-    var idleW = (box && box.offsetWidth) ? box.offsetWidth : 40;
-    var chipH = (box && box.offsetHeight) ? box.offsetHeight : 28;
+    var m = this._chipMetrics(el);
     var cardW = (card && card.offsetWidth) ? card.offsetWidth : (
       isCoarsePointer()
         ? Math.min(300, Math.max(220, viewport.clientWidth - 24))
@@ -1456,14 +1520,13 @@
     var anchorY = this._ty + ay * S;
     var vw = viewport.clientWidth;
     var vh = viewport.clientHeight;
-    var lift = LABEL_POINTER_H - LABEL_POINTER_OVERLAP;
     var chipR = this._chipLocalRect(el);
+    var aboveY = this._cardAboveYFromChip(el);
 
-    var rightX = idleW / 2 + LABEL_CARD_GAP;
-    var leftX = -(idleW / 2 + LABEL_CARD_GAP + cardW);
-    var aboveY = -(lift + chipH + LABEL_CARD_V_GAP);
-    var besideY = -lift;
-    var belowY = LABEL_CARD_GAP + lift;
+    var rightX = m.idleW / 2 + LABEL_CARD_GAP;
+    var leftX = -(m.idleW / 2 + LABEL_CARD_GAP + cardW);
+    var besideY = -m.lift;
+    var belowY = LABEL_CARD_GAP + m.lift;
     var aboveRightX = -cardW * LABEL_CARD_ANCHOR;
     var aboveLeftX = -cardW * (1 - LABEL_CARD_ANCHOR);
     var aboveCenterX = -cardW / 2;
@@ -1560,9 +1623,24 @@
     return this._els.viewport;
   };
 
+  GenplanWidgetInstance.prototype._cardOverlapsOwnChipScreen = function (el) {
+    if (!el) return false;
+    var card = el.querySelector('.gw-label__card');
+    var chip = el.querySelector('.gw-label__box');
+    if (!card || !chip) return false;
+    var cr = card.getBoundingClientRect();
+    var br = chip.getBoundingClientRect();
+    var pad = 1;
+    return cr.right > br.left + pad
+      && cr.left < br.right - pad
+      && cr.bottom > br.top + pad
+      && cr.top < br.bottom - pad;
+  };
+
   GenplanWidgetInstance.prototype._nudgeExpandedIntoViewport = function (el, viewport) {
     if (!el || !viewport) return;
     var margin = 10;
+    var stage = (this._els && (this.exploring ? this._els.exploreStage : this._els.stage)) || null;
     var vr = viewport.getBoundingClientRect();
     this._applyLabelPlacement(el, viewport);
     var box = this._isCardSkin()
@@ -1577,10 +1655,28 @@
     if (r.left < vr.left + margin) dScreenX += (vr.left + margin) - r.left;
     if (r.bottom > vr.bottom - margin) dScreenY += (vr.bottom - margin) - r.bottom;
     if (r.top < vr.top + margin) dScreenY += (vr.top + margin) - r.top;
-    if (!dScreenX && !dScreenY) return;
 
-    if (this._isCardSkin() && el.dataset.cardY === 'above' && dScreenY > 0) {
-      this._prepareCardBesidePlacement(el, viewport, margin, { skipAbove: true });
+    if (this._isCardSkin()) {
+      // сверху не влезло или карточка наехала на свой чип → открыть в другую сторону,
+      // а не «вдавливать» карточку вниз поверх заголовка
+      if (el.dataset.cardY === 'above' && (dScreenY > 0 || this._cardOverlapsOwnChipScreen(el))) {
+        this._prepareCardBesidePlacement(el, viewport, margin, { skipAbove: true });
+        this._syncObscuredLabels(stage);
+        return;
+      }
+      // для above — только горизонтальный clamp, вертикальный запрещён
+      if (el.dataset.cardY === 'above') {
+        if (dScreenX) {
+          el.dataset.shiftX = String(dx + dScreenX);
+          this._applyLabelPlacement(el, viewport);
+        }
+        this._syncObscuredLabels(stage);
+        return;
+      }
+    }
+
+    if (!dScreenX && !dScreenY) {
+      this._syncObscuredLabels(stage);
       return;
     }
 
@@ -1591,6 +1687,11 @@
     el.dataset.shiftX = String(dx);
     el.dataset.shiftY = String(dy);
     this._applyLabelPlacement(el, viewport);
+
+    if (this._isCardSkin() && this._cardOverlapsOwnChipScreen(el) && el.dataset.cardY !== 'beside') {
+      this._prepareCardBesidePlacement(el, viewport, margin, { skipAbove: true });
+    }
+    this._syncObscuredLabels(stage);
   };
 
   GenplanWidgetInstance.prototype._hitTestObjectId = function (clientX, clientY) {
@@ -2556,7 +2657,7 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.5.16',
+    version: '2.5.19',
     labelSkins: { card: 'card', expand: 'expand' },
     defaultLabelSkin: DEFAULT_LABEL_SKIN
   };
