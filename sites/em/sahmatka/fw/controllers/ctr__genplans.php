@@ -390,9 +390,23 @@ class ctr__genplans extends ctr__
     }
 
     /**
+     * Публичная страница дома: https://em-nsk.ru/home/?u={title}
+     * title в homes — номер/slug (906, atom, …).
+     */
+    function home_page_url($homeTitle)
+    {
+        $homeTitle = trim((string) $homeTitle);
+        if ($homeTitle === '') {
+            return '';
+        }
+        return $this->public_site_url() . '/home/?u=' . rawurlencode($homeTitle);
+    }
+
+    /**
+     * @param string $homeTitle homes.title для авто-URL, если link_url пуст
      * @return array{0:?string,1:?string} ctaLabel, ctaUrl
      */
-    function compute_cta_fields($statusTone, $linkUrl, $homeId)
+    function compute_cta_fields($statusTone, $linkUrl, $homeId, $homeTitle = '')
     {
         $linkUrl = trim((string) $linkUrl);
         if ($statusTone === 'muted') {
@@ -406,8 +420,12 @@ class ctr__genplans extends ctr__
         }
         if ($statusTone === 'ok' || $statusTone === 'warn') {
             $url = $linkUrl;
+            if ($url === '') {
+                $url = $this->home_page_url($homeTitle);
+            }
             if ($url === '' && $homeId > 0) {
-                $url = $this->public_site_url() . '/catalog/?home_id=' . (int) $homeId . '&start=0&limit=15';
+                $home = $this->get_home_row($homeId);
+                $url = $this->home_page_url($home['title'] ?? '');
             }
             if ($url === '') {
                 return [null, null];
@@ -559,6 +577,7 @@ class ctr__genplans extends ctr__
         $freeTotal = 0;
         $homeShow = null;
         $aptLinks = [];
+        $home = null;
 
         if ($homeId) {
             $home = is_array($batch) && isset($batch['homes'][$homeId])
@@ -606,8 +625,12 @@ class ctr__genplans extends ctr__
         }
 
         $linkUrl = trim((string) ($row['link_url'] ?? ''));
+        $homeTitleForUrl = '';
+        if ($homeId && !empty($home) && is_array($home)) {
+            $homeTitleForUrl = trim((string) ($home['title'] ?? ''));
+        }
         list($ctaLabel, $ctaUrl) = $homeId
-            ? $this->compute_cta_fields($statusTone, $linkUrl, $homeId)
+            ? $this->compute_cta_fields($statusTone, $linkUrl, $homeId, $homeTitleForUrl)
             : [null, null];
 
         return [
@@ -1144,15 +1167,24 @@ class ctr__genplans extends ctr__
         if ($suggest !== '' && mb_stripos($suggest, 'дом') === false) {
             $suggest = 'Дом ' . $suggest;
         }
+        $homeSlug = trim((string) ($home['title'] ?? ''));
+        $linkSuggest = $this->home_page_url($homeSlug);
+        $aptLinks = [];
+        if (!empty($batch['aptLinksByHome'][$home_id]) && is_array($batch['aptLinksByHome'][$home_id])) {
+            $aptLinks = $batch['aptLinksByHome'][$home_id];
+        }
         echo json_encode([
             'success' => true,
             'titleSuggest' => $suggest,
+            'homeSlug' => $homeSlug,
+            'linkSuggest' => $linkSuggest,
             'statusText' => $live['statusText'],
             'statusTone' => $live['statusTone'],
             'metaDelivery' => $live['metaDelivery'],
             'metaAddress' => $live['metaAddress'],
             'floorsLabel' => $live['floorsLabel'],
             'sectionsLabel' => $live['sectionsLabel'],
+            'aptLinks' => $aptLinks,
         ], JSON_UNESCAPED_UNICODE);
     }
 

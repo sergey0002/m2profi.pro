@@ -57,7 +57,7 @@ $widget_demo_url = isset($data['widget_demo_url']) ? (string) $data['widget_demo
                     </label>
                     <label class="genplan-editor__field">
                         <span class="genplan-editor__field-label">URL по клику</span>
-                        <input type="text" id="genplan_link_input" maxlength="512" placeholder="https://…" />
+                        <input type="text" id="genplan_link_input" maxlength="512" placeholder="https://…" autocomplete="off" />
                     </label>
                     <div class="genplan-editor__checks">
                         <label class="genplan-editor__check">
@@ -102,7 +102,8 @@ window.GENPLAN_CONFIG = {
     imageWidth: <?= $image_w ?>,
     imageHeight: <?= $image_h ?>,
     ajaxBase: <?= json_encode($ajax_base) ?>,
-    maxUploadBytes: <?= (int) $max_upload_bytes ?>
+    maxUploadBytes: <?= (int) $max_upload_bytes ?>,
+    publicSiteUrl: <?= json_encode((getenv('PUBLIC_URL') && getenv('PUBLIC_URL') !== '') ? rtrim((string) getenv('PUBLIC_URL'), '/') : 'https://em-nsk.ru') ?>
 };
 </script>
 <script src="/sahmatka/template/default/js/genplan_editor.js"></script>

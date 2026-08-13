@@ -24,7 +24,7 @@
    
   ?>
 
-  <link rel="stylesheet" href="/sahmatka/template/default/css/sun_path.css?v=18">
+  <link rel="stylesheet" href="/sahmatka/template/default/css/sun_path.css?v=20">
   
   
   <style>
@@ -50,6 +50,17 @@
     --anim150: .15s ease-out;
     --anim300: .3s ease-out;
 }
+/* iframe: десктоп — на всю высоту модалки; мобилка — обычный поток */
+html, body {
+  margin: 0;
+  overflow-x: hidden;
+}
+@media (min-width: 1024px) {
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+}
 	@media print {
   .no-print {
     display: none !important;
@@ -64,13 +75,23 @@
 .mdl {
   width: 100%;
   max-width: 1254px;
-  /* равные минимальные отступы со всех сторон */
+  /* равные отступы со всех сторон */
   padding: 16px;
   background: #fff !important;
   box-sizing: border-box;
-  height: auto !important;
-  min-height: 0 !important;
+  height: auto;
+  min-height: 0;
   overflow: visible;
+}
+@media (min-width: 1024px) {
+  .mdl {
+    height: 100% !important;
+    min-height: 100% !important;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 }
 @media (max-width: 1023.98px) {
   .mdl {
@@ -89,15 +110,23 @@
   grid-template-columns: 370px 1fr;
   grid-column-gap: 20px;
   align-items: stretch;
-  height: auto !important;
-  min-height: 0 !important;
+  height: auto;
+  min-height: 0;
   overflow: visible;
+}
+@media (min-width: 1024px) {
+  .mdl-inner {
+    flex: 1 1 auto;
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden;
+  }
 }
 /* типографика Exo 2: заголовок 24px, остальное пропорционально */
 .mdl {
   font-family: var(--mainfont);
 }
-/* серая плашка: не обрезать текст согласия; расти по контенту при необходимости */
+/* серая плашка — на всю высоту ряда (как правая колонка) */
 .mdl-aside {
   -ms-grid-column: 1;
   grid-column: 1;
@@ -110,17 +139,23 @@
   gap: 0;
   min-width: 0;
   height: auto;
-  min-height: max-content;
+  min-height: 0;
   align-self: stretch;
   background: #F0F0F0;
   border-radius: 16px;
   padding: 16px;
   box-sizing: border-box;
-  overflow: visible;
+  overflow: auto;
   font-family: var(--mainfont);
   font-size: 16px;
   line-height: 1.4;
   color: var(--dark);
+}
+@media (min-width: 1024px) {
+  .mdl-aside {
+    height: 100%;
+    overflow: auto;
+  }
 }
 /* правая панель */
 .mdl-body {
@@ -136,6 +171,15 @@
   min-width: 0;
   align-self: stretch;
   overflow: visible;
+}
+@media (min-width: 1024px) {
+  .mdl-body {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 }
 @media (max-width: 1023.98px) {
   .mdl-inner {
@@ -757,6 +801,57 @@
 [data-tabs-content].open {
   display: block;
 }
+@media (min-width: 1024px) {
+  [data-tabs-content].open {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .mdl-body-top {
+    flex: 0 0 auto;
+  }
+  .mdl-main {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .mdl-pln {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    justify-content: center;
+    gap: 12px;
+  }
+  .mdl-pln__top,
+  .mdl-pln__bottom {
+    flex: 0 0 auto;
+  }
+  .mdl-pln .plan-with-sun {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .mdl-pln .plan-with-sun__frame {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mdl-pln .plan-with-sun__img {
+    max-height: 100% !important;
+    width: auto !important;
+    max-width: 100% !important;
+  }
+}
 
 [data-tabs-target].active {
   pointer-events: none;
@@ -929,7 +1024,7 @@
                 $data['data']['image_pb'] ?? '',
                 $o1,
                 $o2,
-                ['img_style' => 'max-height:80vh;max-width:100%;width:100%;height:auto;']
+                ['img_style' => 'max-height:100%;max-width:100%;width:auto;height:auto;']
             ) ?>
             <div class="mdl-pln__bottom"><?=$data['data']['adress']?> </div>
           </div>
@@ -1051,4 +1146,4 @@ document.getElementById('printButton').addEventListener('click', function(e) {
   
   
 </script>
-<script src="/sahmatka/template/default/js/sun_path.js?v=18"></script>
+<script src="/sahmatka/template/default/js/sun_path.js?v=20"></script>
