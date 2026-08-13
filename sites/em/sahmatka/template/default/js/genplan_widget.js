@@ -48,6 +48,8 @@
   var LABEL_CARD_V_GAP = 0;
   /** Точка входа чипа: 30% ширины карточки от края (не центр). */
   var LABEL_CARD_ANCHOR = 0.3;
+  /** После открытия тултипа на coarse глушим клики по CTA/apt (ghost-tap). */
+  var CTA_SUPPRESS_MS = 400;
 
   /** Реестр скинов тултипов: имя → описание. Новые скины = CSS + ветка в _isCardSkin/_applyLabelPlacement. */
   var LABEL_SKIN_ALIASES = {
@@ -393,7 +395,11 @@
     '.gw-root.is-pannable:not(.is-coarse) .gw-stage.is-dragging { cursor: grabbing; }',
     '.gw-root.is-explore .gw-explore-inner .gw-viewport { touch-action: none; cursor: grab; }',
     '.gw-root.is-explore .gw-explore-inner .gw-stage.is-dragging { cursor: grabbing; }',
-    '.gw-root.is-coarse:not(.is-explore) .gw-viewport { touch-action: manipulation; cursor: default; }',
+    '.gw-root.is-coarse:not(.is-explore) .gw-viewport { touch-action: pan-y; cursor: default; }',
+    /* collapsed mobile: карта инерна — скролл страницы; hit только у gate-кнопки */
+    '.gw-root.is-coarse:not(.is-explore) .gw-stage { pointer-events: none !important; }',
+    '.gw-root.is-coarse:not(.is-explore) .gw-labels-overlay { pointer-events: none !important; }',
+    '.gw-root.is-coarse:not(.is-explore) .gw-poly { pointer-events: none !important; }',
     '.gw-stage img { display: block; width: 100%; height: auto; border: 0; max-width: none; pointer-events: none; -webkit-user-drag: none; vertical-align: top; }',
     '.gw-stage svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }',
     /* pointer-events:all — иначе при idle fill-opacity:0 клик «пролетает» сквозь polygon (SVG visiblePainted) */
@@ -451,6 +457,8 @@
     '.gw-label__apts a:hover { text-decoration: underline; }',
     '.gw-label__cta { display: flex; align-items: center; justify-content: center; margin-top: 28px; padding: 0 14px; height: 40px; border-radius: 5px; background: #e53935; color: #fff !important; font-size: 14px; font-weight: 600; text-align: center; text-decoration: none !important; box-sizing: border-box; }',
     '.gw-label__cta:hover { background: #c62828; }',
+    /* ghost-tap: на время после открытия тултипа глушим ссылки внутри карточки */
+    '.gw-label.is-click-guard .gw-label__card, .gw-label.is-click-guard .gw-label__box { pointer-events: none !important; }',
     '.gw-root.is-coarse:not(.is-explore) .gw-label { pointer-events: none !important; }',
     '.gw-root.is-coarse.is-explore .gw-label { pointer-events: auto; }',
     '.gw-root.is-coarse .gw-label:not(.is-expanded) .gw-label__head { gap: 4px; max-width: 120px; padding: 2px 6px; font-size: 10px; }',
@@ -464,8 +472,12 @@
     '.gw-btn-close { position: absolute; top: 12px; right: 12px; z-index: 20; width: 40px; height: 40px; padding: 0; display: none; align-items: center; justify-content: center; }',
     '.gw-btn-close svg { display: block; width: 18px; height: 18px; }',
     '.gw-root.is-explore .gw-btn-close { display: flex; }',
-    '.gw-btn-explore { position: absolute; right: 12px; bottom: 12px; z-index: 6; height: 40px; padding: 0 14px; display: none; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }',
-    '.gw-root.is-coarse:not(.is-explore) .gw-btn-explore { display: inline-flex; }',
+    /* legacy corner btn — скрыт; вход через .gw-explore-gate */
+    '.gw-btn-explore { display: none !important; }',
+    '.gw-explore-gate { display: none; position: absolute; inset: 0; z-index: 7; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); pointer-events: none; box-sizing: border-box; }',
+    '.gw-root.is-coarse:not(.is-explore).has-explore-gate .gw-explore-gate { display: flex; }',
+    '.gw-explore-gate__btn { pointer-events: auto; appearance: none; border: 0; min-height: 44px; min-width: 44px; padding: 12px 22px; border-radius: 8px; background: rgba(255,255,255,0.95); color: #111; box-shadow: 0 1px 6px rgba(0,0,0,0.22); cursor: pointer; font: inherit; font-size: 15px; font-weight: 600; line-height: 1.2; -webkit-tap-highlight-color: transparent; }',
+    '.gw-root.is-explore .gw-explore-gate { display: none !important; }',
     '.gw-msg { padding: 16px; font-size: 14px; line-height: 1.45; color: #444; background: transparent; border: 0; border-radius: 0; }',
     '.gw-msg.is-error { color: #8a1f11; background: #fdecea; border: 1px solid #f5c2c0; border-radius: 6px; }',
     '.gw-msg.is-loading { color: #666; background: transparent; border: 0; box-shadow: none; margin: 0; }',
@@ -480,7 +492,6 @@
     '.gw-explore-inner .gw-viewport { width: 100%; height: 100%; background: #1a1a1a; margin: 0; }',
     '.gw-explore-inner .gw-stage { cursor: grab; }',
     '.gw-explore-inner .gw-stage.is-dragging { cursor: grabbing; }',
-    '.gw-root.is-explore .gw-btn-explore { display: none !important; }',
     /* ── skin: card — чип на якоре, карточка прижата сверху ── */
     '.gw-root[data-label-skin="card"] .gw-label { font-family: "Exo 2", Exo2, sans-serif; }',
     '.gw-root[data-label-skin="card"] .gw-label__box { z-index: 9; }',
@@ -694,6 +705,17 @@
     if (!this._els.root) return;
     this._els.root.classList.toggle('is-coarse', isCoarsePointer());
     this._syncMobileLabelsVisibility();
+    this._syncExploreGate();
+  };
+
+  GenplanWidgetInstance.prototype._syncExploreGate = function () {
+    var root = this._els && this._els.root;
+    if (!root) return;
+    var show = !!(this.exploreFullscreen && allowsExploreMode() && isCoarsePointer() && !this.exploring);
+    root.classList.toggle('has-explore-gate', show);
+    if (this._els.exploreGate) {
+      this._els.exploreGate.setAttribute('aria-hidden', show ? 'false' : 'true');
+    }
   };
 
   GenplanWidgetInstance.prototype._syncMobileLabelsVisibility = function () {
@@ -827,17 +849,25 @@
     var labelsOverlay = this._buildLabelsOverlay(true);
     viewport.appendChild(labelsOverlay);
 
-    var exploreBtn = document.createElement('button');
-    exploreBtn.type = 'button';
-    exploreBtn.className = 'gw-btn gw-btn-explore';
-    exploreBtn.textContent = this.locale.explore;
-    exploreBtn.addEventListener('click', function (e) {
+    // Mobile gate: оверлей + кнопка по центру (единственный вход в explore)
+    var exploreGate = document.createElement('div');
+    exploreGate.className = 'gw-explore-gate';
+    exploreGate.setAttribute('aria-hidden', 'true');
+    var gateBtn = document.createElement('button');
+    gateBtn.type = 'button';
+    gateBtn.className = 'gw-explore-gate__btn';
+    gateBtn.textContent = this.locale.explore;
+    gateBtn.setAttribute('aria-label', this.locale.explore);
+    gateBtn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
       if (self.exploreFullscreen) self._enterExplore();
     });
-    root.appendChild(exploreBtn);
-    this._els.exploreBtn = exploreBtn;
+    exploreGate.appendChild(gateBtn);
+    root.appendChild(exploreGate);
+    this._els.exploreGate = exploreGate;
+    this._els.exploreGateBtn = gateBtn;
+    this._syncExploreGate();
 
     // Explore overlay
     var exploreLayer = document.createElement('div');
@@ -1017,6 +1047,22 @@
     return tri;
   };
 
+  GenplanWidgetInstance.prototype._isLinkClickSuppressed = function () {
+    return Date.now() < (this._suppressLinkClicksUntil || 0);
+  };
+
+  GenplanWidgetInstance.prototype._armClickGuard = function (labelEl) {
+    if (!labelEl || !isCoarsePointer()) return;
+    var self = this;
+    this._suppressLinkClicksUntil = Date.now() + CTA_SUPPRESS_MS;
+    labelEl.classList.add('is-click-guard');
+    if (labelEl._gwClickGuardTimer) clearTimeout(labelEl._gwClickGuardTimer);
+    labelEl._gwClickGuardTimer = setTimeout(function () {
+      labelEl._gwClickGuardTimer = null;
+      labelEl.classList.remove('is-click-guard');
+    }, CTA_SUPPRESS_MS);
+  };
+
   GenplanWidgetInstance.prototype._bindHostLink = function (anchor, href) {
     var self = this;
     var url = String(href || (anchor && anchor.getAttribute('href')) || '').trim();
@@ -1030,6 +1076,7 @@
       anchor.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
+        if (self._isLinkClickSuppressed()) return;
         scrollHostPageToHash(hash);
       });
       return;
@@ -1038,7 +1085,12 @@
       anchor.target = '_blank';
       anchor.rel = 'noopener noreferrer';
     }
-    anchor.addEventListener('click', function (e) { e.stopPropagation(); });
+    anchor.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (self._isLinkClickSuppressed()) {
+        e.preventDefault();
+      }
+    });
   };
 
   GenplanWidgetInstance.prototype._buildLabelBody = function (o, self) {
@@ -1091,7 +1143,10 @@
           a.target = '_blank';
           a.rel = 'noopener noreferrer';
         }
-        a.addEventListener('click', function (e) { e.stopPropagation(); });
+        a.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (self._isLinkClickSuppressed()) e.preventDefault();
+        });
         apts.appendChild(a);
       });
       body.appendChild(apts);
@@ -1827,6 +1882,7 @@
         targetEl.classList.remove('is-snap');
         targetEl.classList.add('is-expanded');
         self._applyLabelPlacement(targetEl, viewport);
+        self._armClickGuard(targetEl);
         self._syncExpandedOverlayClass(stage);
         if (targetEl._gwClampTimer) clearTimeout(targetEl._gwClampTimer);
         targetEl._gwClampTimer = setTimeout(function () {
@@ -1996,8 +2052,9 @@
     this._setActive(stage, null);
   };
 
-  GenplanWidgetInstance.prototype._shouldUseInlineExploreTap = function (isExplore) {
-    return !isExplore && isCoarsePointer() && this.exploreFullscreen && allowsExploreMode();
+  /** @deprecated #16: explore только через .gw-explore-gate, не через tap/pan по карте */
+  GenplanWidgetInstance.prototype._shouldUseInlineExploreTap = function (/* isExplore */) {
+    return false;
   };
 
   GenplanWidgetInstance.prototype._notifyObjectSelect = function (obj) {
@@ -2021,10 +2078,8 @@
 
   GenplanWidgetInstance.prototype._handleObjectActivate = function (obj, stage, isExplore) {
     if (!obj) return;
-    if (this._shouldUseInlineExploreTap(isExplore)) {
-      this._enterExplore();
-      return;
-    }
+    // #16: на свёрнутом mobile не открываем explore по тапу дома — только gate-кнопка
+    if (!isExplore && isCoarsePointer()) return;
     if (this._activeObjectId != null && String(this._activeObjectId) === String(obj.id)) {
       this._clearSelection(stage);
       return;
@@ -2091,6 +2146,8 @@
 
     surface.addEventListener('pointerdown', function (ev) {
       if (self.destroyed || isStaleExploreBinding()) return;
+      // #16: свёрнутый mobile — карта инерна (скролл страницы); explore только через gate
+      if (!isExplore && isCoarsePointer()) return;
 
       var label = targetLabel(ev);
       var labelAnchor = null;
@@ -2194,12 +2251,6 @@
         self._clampTransform(viewport);
         self._applyExploreTransform();
         curStage.classList.add('is-dragging');
-      } else if (!isExplore && self._moved && isCoarsePointer() && self.exploreFullscreen && allowsExploreMode()) {
-        // мобилка: жест pan → вход в explore (как Sigma), без inline-зума
-        try { surface.releasePointerCapture && surface.releasePointerCapture(ev.pointerId); } catch (err) { /* ignore */ }
-        self._pointers.clear();
-        self._panStart = null;
-        self._enterExplore();
       } else if (!isExplore && self._moved && !isCoarsePointer()) {
         // десктоп: pan в обычном виджете
         self._tx = self._panStart.tx + dx2;
@@ -2228,11 +2279,7 @@
       var shortTap = !self._moved && (Date.now() - start.time < 500);
       if (!shortTap) return;
 
-      // мобилка, компактный вид: любой тап по карте → explore (без ссылок/тултипов)
-      if (self._shouldUseInlineExploreTap(isExplore)) {
-        self._enterExplore();
-        return;
-      }
+      // #16: tap-anywhere → explore убран; вход только через .gw-explore-gate
 
       // тап по подписи → выбор объекта (переход только по <a> внутри tooltip)
       if (start.labelAnchor) return;
@@ -2423,6 +2470,7 @@
     this._scrollLockHeld += 1;
     document.addEventListener('keydown', this._onKeyDown);
     if (this._els.closeBtn) this._els.closeBtn.focus();
+    this._syncExploreGate();
   };
 
   GenplanWidgetInstance.prototype._exitExplore = function (fromDestroy) {
@@ -2445,6 +2493,10 @@
       this._restoreInlineCamera();
       this._layoutFit();
       this._syncIdleHighlight();
+      this._syncExploreGate();
+      if (this._els.exploreGateBtn && typeof this._els.exploreGateBtn.focus === 'function') {
+        try { this._els.exploreGateBtn.focus(); } catch (err) { /* ignore */ }
+      }
     } else {
       this._inlineSnap = null;
     }
@@ -2658,7 +2710,7 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.5.20',
+    version: '2.5.21',
     labelSkins: { card: 'card', expand: 'expand' },
     defaultLabelSkin: DEFAULT_LABEL_SKIN
   };
