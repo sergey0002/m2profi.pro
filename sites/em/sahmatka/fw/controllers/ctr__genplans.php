@@ -850,9 +850,6 @@ class ctr__genplans extends ctr__
 
     function act__widget_demo()
     {
-        if (!check_access('admin')) {
-            die('Ошибка доступа');
-        }
         global $t;
 
         $kvartal_id = (int) ($_REQUEST['kvartal_id'] ?? 0);
