@@ -2,7 +2,9 @@
  * GenplanWidget — встраиваемый read-only виджет интерактивного плана ЖК (EM).
  * Изоляция: Shadow DOM. Без Leaflet / внешних deps.
  * API: GenplanWidget.mount({ el, kvartalId, apiBase?, width?, maxHeight?, minZoom?, maxZoom?,
- *   offsetX?, offsetY?, offsetBottom?, idleHighlight?, highlight?, … })
+ *   offsetX?, offsetY?, offsetBottom?, idleHighlight?, highlight?, labelSkin?, … })
+ * labelSkin (дефолт 'card'): 'card' — карточка над чипом, чуть сдвинута (заголовок остаётся);
+ *   'expand' — текущее раскрытие чипа в карточку.
  * idleHighlight (дефолт true): по очереди подсвечивает дома, пока курсор вне карты / мобилка не в explore.
  */
 (function (global) {
@@ -16,6 +18,11 @@
     } catch (e) { /* ignore */ }
     return '';
   })();
+
+  function exo2StylesheetHref() {
+    if (!SCRIPT_SRC) return '';
+    return SCRIPT_SRC.replace(/\/default\/js\/[^/?#]+(?:\?.*)?$/, '/fonts/exo2/exotwo.css');
+  }
 
   var DEFAULT_LOCALE = {
     loading: 'Загрузка…',
@@ -36,6 +43,30 @@
   /** Высота SVG-хвостика; бокс поднимаем на 1px меньше, чтобы треугольник зашёл под край. */
   var LABEL_POINTER_H = 9;
   var LABEL_POINTER_OVERLAP = 1;
+  var LABEL_CARD_W = 280;
+  var LABEL_CARD_GAP = 12;
+  var LABEL_CARD_V_GAP = 0;
+  /** Точка входа чипа: 30% ширины карточки от края (не центр). */
+  var LABEL_CARD_ANCHOR = 0.3;
+
+  /** Реестр скинов тултипов: имя → описание. Новые скины = CSS + ветка в _isCardSkin/_applyLabelPlacement. */
+  var LABEL_SKIN_ALIASES = {
+    card: 'card',
+    beside: 'card',
+    side: 'card',
+    default: 'card',
+    expand: 'expand',
+    classic: 'expand',
+    current: 'expand',
+    inline: 'expand'
+  };
+  var DEFAULT_LABEL_SKIN = 'card';
+
+  function normalizeLabelSkin(name) {
+    var s = String(name == null ? '' : name).trim().toLowerCase();
+    if (!s) return DEFAULT_LABEL_SKIN;
+    return LABEL_SKIN_ALIASES[s] || (s === 'card' || s === 'expand' ? s : DEFAULT_LABEL_SKIN);
+  }
 
   // Общий счётчик блокировки скролла страницы (несколько виджетов на одной странице).
   var scrollLockCount = 0;
@@ -386,32 +417,36 @@
     /* раскрытие вниз: позицию низа заголовка держит JS (translateY -headH); хвостик скрыт */
     '.gw-label.is-below .gw-label__box { top: 0; bottom: auto; transform-origin: center top; }',
     '.gw-label.is-below .gw-label__pointer { display: none; }',
-    '.gw-label.is-expanded .gw-label__box { background: rgba(255,255,255,0.95); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
-    '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; flex: 0 0 auto; transition: padding 0.12s ease; }',
+    '.gw-label.is-expanded .gw-label__box { background: transparent; border-radius: 5px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
+    '.gw-label.is-expanded .gw-label__box::before { content: ""; position: absolute; inset: 0; z-index: 0; background: #fff; opacity: 0.85; border-radius: inherit; pointer-events: none; }',
+    '.gw-label.is-expanded .gw-label__head, .gw-label.is-expanded .gw-label__body-wrap { position: relative; z-index: 1; }',
+    '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #000; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; flex: 0 0 auto; transition: padding 0.12s ease; }',
     '.gw-label.is-compact .gw-label__head { padding: 4px 6px; }',
-    '.gw-label.is-expanded .gw-label__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 12px 8px 9px; white-space: normal; width: 100%; max-width: none; box-sizing: border-box; }',
+    '.gw-label.is-expanded .gw-label__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 12px 8px 9px; white-space: normal; width: 100%; max-width: none; box-sizing: border-box; color: #000; font-weight: 700; }',
+    '.gw-label.is-expanded .gw-label__head .gw-label__text { color: #000 !important; font-weight: 700; }',
+    '.gw-label.is-expanded .gw-label__head .gw-label__status { color: #000 !important; font-weight: 400; }',
     '.gw-label.is-expanded.is-below .gw-label__head { border-bottom: 1px solid #000; }',
     '.gw-label.is-expanded:not(.is-below) .gw-label__head { border-top: 1px solid #000; }',
     '.gw-label__tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid #9aa0a6; flex: 0 0 auto; }',
     '.gw-label__text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }',
     '.gw-label.is-expanded .gw-label__text { overflow: visible; text-overflow: unset; white-space: normal; flex: 1 1 auto; min-width: 0; }',
     '.gw-label:not(.is-expanded) .gw-label__status { display: none !important; }',
-    '.gw-label__status { font-weight: 400; font-size: 12px; line-height: 1.25; }',
+    '.gw-label__status { font-weight: 400; font-size: 12px; line-height: 1.25; color: #000; }',
     '.gw-label.is-expanded .gw-label__status { display: inline; }',
     '.gw-label__body-wrap { display: grid; grid-template-rows: 0fr; max-width: 0; min-width: 0; overflow: hidden; opacity: 0; flex: 0 0 auto; transition: grid-template-rows 0.12s ease, max-width 0.12s ease, opacity 0.1s ease; }',
     '.gw-label.is-expanded .gw-label__body-wrap { grid-template-rows: 1fr; max-width: none; width: 100%; opacity: 1; }',
-    '.gw-label__body { overflow: hidden; min-height: 0; font-size: 12px; line-height: 1.4; color: #333; padding: 0 12px; box-sizing: border-box; width: 100%; transition: padding 0.12s ease; }',
+    '.gw-label__body { overflow: hidden; min-height: 0; font-size: 12px; line-height: 1.45; color: #000; padding: 0 12px; box-sizing: border-box; width: 100%; transition: padding 0.12s ease; }',
     /* мгновенное закрытие при смене дома — без «хвоста» анимации */
-    '.gw-label.is-snap .gw-label__box, .gw-label.is-snap .gw-label__body-wrap, .gw-label.is-snap .gw-label__body, .gw-label.is-snap .gw-label__head { transition: none !important; }',
+    '.gw-label.is-snap .gw-label__box, .gw-label.is-snap .gw-label__body-wrap, .gw-label.is-snap .gw-label__body, .gw-label.is-snap .gw-label__head, .gw-label.is-snap .gw-label__card { transition: none !important; }',
     '.gw-label.is-expanded .gw-label__body { padding: 8px 12px 12px; }',
     '.gw-label__content { margin-bottom: 6px; }',
-    '.gw-label__meta-line { display: block; color: #555; margin-bottom: 4px; font-size: 11px; line-height: 1.35; }',
-    '.gw-label__badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }',
-    '.gw-label__badge { display: inline-block; padding: 4px 8px; border: 1px solid #e53935; border-radius: 6px; font-size: 11px; color: #444; background: rgba(255,255,255,0.6); }',
+    '.gw-label__meta-line { display: block; color: #000; margin-bottom: 4px; font-size: 12px; line-height: 1.45; }',
+    '.gw-label__badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; }',
+    '.gw-label__badge { display: inline-block; padding: 5px 10px; border: 1px solid #e53935; border-radius: 5px; font-size: 12px; font-weight: 700; color: #000; background: transparent; line-height: 1.2; }',
     '.gw-label__apts { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }',
     '.gw-label__apts a { color: #056bf5; text-decoration: none; font-size: 12px; }',
     '.gw-label__apts a:hover { text-decoration: underline; }',
-    '.gw-label__cta { display: block; margin-top: 10px; padding: 10px 12px; border-radius: 6px; background: #e53935; color: #fff !important; font-size: 13px; font-weight: 600; text-align: center; text-decoration: none !important; }',
+    '.gw-label__cta { display: flex; align-items: center; justify-content: center; margin-top: 28px; padding: 0 14px; height: 40px; border-radius: 5px; background: #e53935; color: #fff !important; font-size: 14px; font-weight: 600; text-align: center; text-decoration: none !important; box-sizing: border-box; }',
     '.gw-label__cta:hover { background: #c62828; }',
     '.gw-root.is-coarse:not(.is-explore) .gw-label { pointer-events: none !important; }',
     '.gw-root.is-coarse.is-explore .gw-label { pointer-events: auto; }',
@@ -442,7 +477,43 @@
     '.gw-explore-inner .gw-viewport { width: 100%; height: 100%; background: #1a1a1a; margin: 0; }',
     '.gw-explore-inner .gw-stage { cursor: grab; }',
     '.gw-explore-inner .gw-stage.is-dragging { cursor: grabbing; }',
-    '.gw-root.is-explore .gw-btn-explore { display: none !important; }'
+    '.gw-root.is-explore .gw-btn-explore { display: none !important; }',
+    /* ── skin: card — чип на якоре, карточка прижата сверху ── */
+    '.gw-root[data-label-skin="card"] .gw-label { font-family: "Exo 2", Exo2, sans-serif; }',
+    '.gw-root[data-label-skin="card"] .gw-label__box { z-index: 9; }',
+    '.gw-root[data-label-skin="card"] .gw-label.is-expanded .gw-label__box { width: fit-content; min-width: 0; max-width: 220px; background: #fff; border-radius: 5px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); flex-direction: column; }',
+    '.gw-root[data-label-skin="card"] .gw-label.is-expanded .gw-label__box::before { content: none; }',
+    '.gw-root[data-label-skin="card"] .gw-label.is-expanded .gw-label__head { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 6px; padding: 4px 9px; white-space: nowrap; width: fit-content; max-width: 100%; border: 0 !important; }',
+    '.gw-root[data-label-skin="card"] .gw-label.is-compact.is-expanded .gw-label__head { padding: 4px 6px; }',
+    '.gw-root[data-label-skin="card"] .gw-label.is-expanded .gw-label__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; }',
+    '.gw-root[data-label-skin="card"] .gw-label__box .gw-label__status { display: none !important; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card { position: absolute; left: 0; bottom: 0; z-index: 8; width: 280px; min-width: 280px; max-width: 280px; visibility: hidden; pointer-events: none; font-family: "Exo 2", Exo2, sans-serif; }',
+    '.gw-root[data-label-skin="card"] .gw-label.is-expanded .gw-label__card { visibility: visible; pointer-events: auto; }',
+    '.gw-root[data-label-skin="card"] .gw-label.is-expanded .gw-label__card::before { content: ""; position: absolute; left: 18%; width: 28%; height: 8px; bottom: -8px; pointer-events: auto; }',
+    '.gw-root[data-label-skin="card"] .gw-label.is-expanded[data-expand-side="left"] .gw-label__card::before { left: auto; right: 18%; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card-inner { position: relative; display: flex; flex-direction: column; box-sizing: border-box; width: 100%; overflow: hidden; padding: 16px; background: transparent; border-radius: 5px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }',
+    '.gw-root[data-label-skin="card"] .gw-label__card-inner::before { content: ""; position: absolute; inset: 0; z-index: 0; background: #fff; opacity: 0.85; border-radius: 5px; pointer-events: none; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card-inner > * { position: relative; z-index: 1; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card-head { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; padding: 0 0 8px; margin: 0; font-size: 14px; font-weight: 700; line-height: 1.25; color: #000; box-sizing: border-box; width: 100%; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card-head .gw-label__text { color: #000 !important; font-weight: 700; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card-head .gw-label__status { color: #000 !important; font-weight: 400; font-size: 14px; display: inline; flex: 0 0 auto; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card-head .gw-label__text { overflow: visible; text-overflow: unset; white-space: nowrap; flex: 0 1 auto; min-width: 0; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card-head:not(:last-child) { border-bottom: 1px solid #000; margin-bottom: 14px; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card-head .gw-label__tri { border-left-width: 5px; border-right-width: 5px; border-bottom-width: 8px; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card .gw-label__body { padding: 0; width: 100%; font-size: 12px; line-height: 1.45; color: #000; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card .gw-label__content { margin-bottom: 6px; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card .gw-label__meta-line { font-size: 12px; font-weight: 400; color: #000; margin-bottom: 4px; line-height: 1.45; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card .gw-label__meta-line:last-of-type { margin-bottom: 0; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card .gw-label__badges { gap: 8px; margin: 22px 0 0; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card .gw-label__badge { padding: 5px 10px; border-radius: 5px; border: 1px solid #e53935; font-size: 12px; font-weight: 700; color: #000; background: transparent; line-height: 1.2; }',
+    '.gw-root[data-label-skin="card"] .gw-label__card .gw-label__cta { display: flex; align-items: center; justify-content: center; margin-top: 28px; padding: 0 14px; height: 40px; border-radius: 5px; font-size: 14px; font-weight: 600; font-family: inherit; background: #e53935; color: #fff !important; box-sizing: border-box; }',
+    '.gw-root[data-label-skin="card"].is-coarse .gw-label.is-expanded .gw-label__box { width: fit-content; min-width: 0; max-width: 120px; }',
+    '.gw-root[data-label-skin="card"].is-coarse .gw-label.is-expanded .gw-label__head { font-size: 10px; padding: 2px 6px; max-width: 120px; }',
+    '.gw-root[data-label-skin="card"].is-coarse .gw-label.is-expanded .gw-label__card { width: min(300px, calc(100vw - 24px)); min-width: min(300px, calc(100vw - 24px)); max-width: min(300px, calc(100vw - 24px)); }',
+    '.gw-root[data-label-skin="card"].is-coarse .gw-label__card-inner { padding: 16px; }',
+    '.gw-root[data-label-skin="card"].is-coarse .gw-label__card-head { font-size: 14px; padding: 0 0 8px; }',
+    '.gw-root[data-label-skin="card"].is-coarse .gw-label__card .gw-label__body { font-size: 12px; padding: 0; }',
+    '@media (prefers-reduced-motion: reduce) { .gw-root[data-label-skin="card"] .gw-label__card { transition: none; } }'
   ].join('\n');
 
   function GenplanWidgetInstance(host, options) {
@@ -463,6 +534,7 @@
     this.exploreFullscreen = options.exploreFullscreen !== false;
     this.openLinksInNewTab = options.openLinksInNewTab !== false;
     this.idleHighlight = options.idleHighlight !== false;
+    this.labelSkin = normalizeLabelSkin(options.labelSkin || options.tooltipSkin || options.skin);
     this._highlight = normalizeHighlightOpts(options.highlight, HL_DEFAULT);
 
     this._fitScale = 1;
@@ -517,12 +589,21 @@
     style.textContent = WIDGET_CSS;
     this.shadow.appendChild(style);
 
+    var fontHref = exo2StylesheetHref();
+    if (fontHref) {
+      var fontLink = document.createElement('link');
+      fontLink.rel = 'stylesheet';
+      fontLink.href = fontHref;
+      this.shadow.appendChild(fontLink);
+    }
+
     var root = document.createElement('div');
     root.className = 'gw-root is-boot-loading';
     root.setAttribute('role', 'region');
     root.setAttribute('aria-label', this.locale.ariaLabel);
     this.shadow.appendChild(root);
     this._els.root = root;
+    root.setAttribute('data-label-skin', this.labelSkin);
     this._applyHighlightCssVars();
     this._syncCoarseClass();
 
@@ -906,6 +987,24 @@
     return false;
   };
 
+  GenplanWidgetInstance.prototype._isCardSkin = function () {
+    return this.labelSkin === 'card';
+  };
+
+  /** В карточке только номер (без слова «Дом»), как в макете. */
+  GenplanWidgetInstance.prototype._cardHeadNumber = function (o) {
+    var raw = '';
+    if (o && o.titleText) raw = String(o.titleText);
+    else if (o && o.titleHtml) {
+      var d = document.createElement('div');
+      d.innerHTML = o.titleHtml;
+      raw = String(d.textContent || '');
+    }
+    raw = raw.replace(/\s+/g, ' ').trim();
+    raw = raw.replace(/^(дом)\s+/i, '');
+    return raw;
+  };
+
   GenplanWidgetInstance.prototype._makeTri = function (tone, color) {
     var tri = document.createElement('span');
     tri.className = 'gw-label__tri';
@@ -1005,6 +1104,26 @@
     return body;
   };
 
+  GenplanWidgetInstance.prototype._buildCardHead = function (o, showTitle, tone, markerColor) {
+    var head = document.createElement('div');
+    head.className = 'gw-label__card-head';
+    var num = this._cardHeadNumber(o);
+    if (num) {
+      var t = document.createElement('span');
+      t.className = 'gw-label__text';
+      t.textContent = num;
+      head.appendChild(t);
+    }
+    head.appendChild(this._makeTri(tone, markerColor));
+    if (o.statusText) {
+      var st = document.createElement('span');
+      st.className = 'gw-label__status';
+      st.textContent = o.statusText;
+      head.appendChild(st);
+    }
+    return head;
+  };
+
   GenplanWidgetInstance.prototype._buildLabelElement = function (o, data) {
     var self = this;
     var anchor = this._labelAnchor(o);
@@ -1031,20 +1150,27 @@
     if (showTitle) {
       var chipText = document.createElement('span');
       chipText.className = 'gw-label__text';
-      if (o.titleHtml) chipText.innerHTML = o.titleHtml;
-      else chipText.textContent = o.titleText || '';
+      chipText.textContent = this._cardHeadNumber(o);
       head.appendChild(chipText);
     }
     if (o.statusText) {
       var st = document.createElement('span');
       st.className = 'gw-label__status';
-      st.style.color = markerColor;
       st.textContent = o.statusText;
       head.appendChild(st);
     }
     box.appendChild(head);
 
-    if (hasBody) {
+    var card = null;
+    if (this._isCardSkin() && expandable) {
+      card = document.createElement('div');
+      card.className = 'gw-label__card';
+      var inner = document.createElement('div');
+      inner.className = 'gw-label__card-inner';
+      inner.appendChild(this._buildCardHead(o, showTitle, tone, markerColor));
+      if (hasBody) inner.appendChild(this._buildLabelBody(o, self));
+      card.appendChild(inner);
+    } else if (hasBody) {
       var bodyWrap = document.createElement('div');
       bodyWrap.className = 'gw-label__body-wrap';
       bodyWrap.appendChild(this._buildLabelBody(o, self));
@@ -1060,6 +1186,7 @@
     pointer.appendChild(poly);
 
     label.appendChild(box);
+    if (card) label.appendChild(card);
     label.appendChild(pointer);
     return label;
   };
@@ -1103,20 +1230,63 @@
     el.style.top = (this._ty + ay * S) + 'px';
     if (!box) return;
 
-    if (el.classList.contains('is-below')) {
+    var cardSkin = this._isCardSkin();
+    var boxDx = cardSkin ? 0 : dx;
+    var boxDy = cardSkin ? 0 : dy;
+
+    if (!cardSkin && el.classList.contains('is-below')) {
       // низ заголовка на якоре; тело раскрывается вниз (хвостик скрыт)
       var headH = (head && head.offsetHeight) ? head.offsetHeight : 28;
       box.style.top = '0';
       box.style.bottom = 'auto';
-      box.style.transform = 'translate(calc(-50% + ' + dx + 'px), ' + (-headH + dy) + 'px)';
+      box.style.transform = 'translate(calc(-50% + ' + boxDx + 'px), ' + (-headH + boxDy) + 'px)';
       if (pointer) pointer.style.transform = 'translate(-50%, 0)';
     } else {
       // idle / раскрытие вверх: кончик хвостика на якоре → бокс выше на LABEL_POINTER_H
       box.style.top = 'auto';
       box.style.bottom = '0';
-      box.style.transform = 'translate(calc(-50% + ' + dx + 'px), ' + (-dy - (LABEL_POINTER_H - LABEL_POINTER_OVERLAP)) + 'px)';
-      if (pointer) pointer.style.transform = 'translate(-50%, ' + (-dy) + 'px)';
+      box.style.transform = 'translate(calc(-50% + ' + boxDx + 'px), ' + (-boxDy - (LABEL_POINTER_H - LABEL_POINTER_OVERLAP)) + 'px)';
+      if (pointer) pointer.style.transform = 'translate(-50%, ' + (-boxDy) + 'px)';
     }
+
+    if (cardSkin) this._applyCardBesidePlacement(el);
+  };
+
+  /** Карточка над чипом, чуть сдвинута; чип не двигается. */
+  GenplanWidgetInstance.prototype._cardBesideBase = function (el) {
+    var box = el.querySelector('.gw-label__box');
+    var card = el.querySelector('.gw-label__card');
+    var idleW = (box && box.offsetWidth) ? box.offsetWidth : 40;
+    var chipH = (box && box.offsetHeight) ? box.offsetHeight : 28;
+    var cardW = (card && card.offsetWidth) ? card.offsetWidth : LABEL_CARD_W;
+    var side = el.dataset.expandSide || 'right';
+    var yMode = el.dataset.cardY === 'beside' ? 'beside' : 'above';
+    var lift = LABEL_POINTER_H - LABEL_POINTER_OVERLAP;
+    var x;
+    if (yMode === 'beside') {
+      x = side === 'left'
+        ? -(idleW / 2 + LABEL_CARD_GAP + cardW)
+        : (idleW / 2 + LABEL_CARD_GAP);
+    } else if (side === 'left') {
+      x = -cardW * (1 - LABEL_CARD_ANCHOR);
+    } else if (side === 'center') {
+      x = -cardW / 2;
+    } else {
+      x = -cardW * LABEL_CARD_ANCHOR;
+    }
+    var y = yMode === 'beside'
+      ? -lift
+      : -(lift + chipH + LABEL_CARD_V_GAP);
+    return { x: x, y: y, idleW: idleW, chipH: chipH, cardW: cardW, side: side, yMode: yMode, lift: lift };
+  };
+
+  GenplanWidgetInstance.prototype._applyCardBesidePlacement = function (el) {
+    var card = el.querySelector('.gw-label__card');
+    if (!card) return;
+    var base = this._cardBesideBase(el);
+    var dx = parseFloat(el.dataset.shiftX || '0') || 0;
+    var dy = parseFloat(el.dataset.shiftY || '0') || 0;
+    card.style.transform = 'translate(' + (base.x + dx) + 'px, ' + (base.y - dy) + 'px)';
   };
 
   GenplanWidgetInstance.prototype._clearMeasureStyles = function (el) {
@@ -1155,6 +1325,11 @@
     el.dataset.shiftX = '0';
     el.dataset.shiftY = '0';
     this._applyLabelPlacement(el, viewport);
+
+    if (this._isCardSkin()) {
+      this._prepareCardBesidePlacement(el, viewport, margin);
+      return;
+    }
 
     var idleW = (box && box.offsetWidth) ? box.offsetWidth : 40;
     var headH = (head && head.offsetHeight) ? head.offsetHeight : 28;
@@ -1204,6 +1379,78 @@
     this._applyLabelPlacement(el, viewport);
   };
 
+  GenplanWidgetInstance.prototype._prepareCardBesidePlacement = function (el, viewport, margin) {
+    var box = el.querySelector('.gw-label__box');
+    var card = el.querySelector('.gw-label__card');
+    var idleW = (box && box.offsetWidth) ? box.offsetWidth : 40;
+    var chipH = (box && box.offsetHeight) ? box.offsetHeight : 28;
+    var cardW = (card && card.offsetWidth) ? card.offsetWidth : (
+      isCoarsePointer()
+        ? Math.min(300, Math.max(220, viewport.clientWidth - 24))
+        : LABEL_CARD_W
+    );
+    var cardH = (card && card.offsetHeight)
+      ? card.offsetHeight
+      : (parseFloat(el.dataset.cachedCardH || '') || 200);
+
+    var S = this._scale;
+    var ax = parseFloat(el.dataset.anchorX || '0') || 0;
+    var ay = parseFloat(el.dataset.anchorY || '0') || 0;
+    var anchorX = this._tx + ax * S;
+    var anchorY = this._ty + ay * S;
+    var vw = viewport.clientWidth;
+    var vh = viewport.clientHeight;
+    var lift = LABEL_POINTER_H - LABEL_POINTER_OVERLAP;
+
+    var rightX = idleW / 2 + LABEL_CARD_GAP;
+    var leftX = -(idleW / 2 + LABEL_CARD_GAP + cardW);
+    var aboveY = -(lift + chipH + LABEL_CARD_V_GAP);
+    var besideY = -lift;
+    var aboveRightX = -cardW * LABEL_CARD_ANCHOR;
+    var aboveLeftX = -cardW * (1 - LABEL_CARD_ANCHOR);
+    var aboveCenterX = -cardW / 2;
+
+    var candidates = [
+      { side: 'right', yMode: 'above', x: aboveRightX, y: aboveY },
+      { side: 'left', yMode: 'above', x: aboveLeftX, y: aboveY },
+      { side: 'center', yMode: 'above', x: aboveCenterX, y: aboveY },
+      { side: 'right', yMode: 'beside', x: rightX, y: besideY },
+      { side: 'left', yMode: 'beside', x: leftX, y: besideY }
+    ];
+
+    function fits(opt) {
+      var left = anchorX + opt.x;
+      var bottom = anchorY + opt.y;
+      var top = bottom - cardH;
+      var right = left + cardW;
+      return left >= margin && top >= margin && right <= vw - margin && bottom <= vh - margin;
+    }
+
+    var chosen = null;
+    for (var i = 0; i < candidates.length; i++) {
+      if (fits(candidates[i])) { chosen = candidates[i]; break; }
+    }
+    if (!chosen) chosen = candidates[0];
+
+    var cardLeft = anchorX + chosen.x;
+    var cardBottom = anchorY + chosen.y;
+    var cardTop = cardBottom - cardH;
+    var cardRight = cardLeft + cardW;
+    var dx = 0;
+    var dy = 0;
+    if (cardRight > vw - margin) dx += (vw - margin) - cardRight;
+    if (cardLeft + dx < margin) dx += margin - (cardLeft + dx);
+    if (cardTop < margin) dy -= (margin - cardTop);
+    if (cardBottom > vh - margin) dy += cardBottom - (vh - margin);
+
+    el.dataset.expandSide = chosen.side;
+    el.dataset.cardY = chosen.yMode;
+    el.dataset.shiftX = String(dx);
+    el.dataset.shiftY = String(dy);
+    el.dataset.placementReady = '1';
+    this._applyLabelPlacement(el, viewport);
+  };
+
   GenplanWidgetInstance.prototype._snapCollapseLabel = function (el, viewport) {
     if (!el) return;
     el.classList.add('is-snap');
@@ -1214,6 +1461,7 @@
     el.dataset.shiftY = '0';
     el.dataset.placementReady = '0';
     el.dataset.expandSide = '';
+    el.dataset.cardY = '';
     this._clearMeasureStyles(el);
     if (el._gwClampTimer) {
       clearTimeout(el._gwClampTimer);
@@ -1252,7 +1500,9 @@
     var margin = 10;
     var vr = viewport.getBoundingClientRect();
     this._applyLabelPlacement(el, viewport);
-    var box = el.querySelector('.gw-label__box') || el;
+    var box = this._isCardSkin()
+      ? (el.querySelector('.gw-label__card') || el.querySelector('.gw-label__box') || el)
+      : (el.querySelector('.gw-label__box') || el);
     var r = box.getBoundingClientRect();
     var dx = parseFloat(el.dataset.shiftX || '0') || 0;
     var dy = parseFloat(el.dataset.shiftY || '0') || 0;
@@ -1264,7 +1514,7 @@
     if (r.top < vr.top + margin) dScreenY += (vr.top + margin) - r.top;
     if (!dScreenX && !dScreenY) return;
     dx += dScreenX;
-    // below: +dy вниз; above: transform Y=-dy → для сдвига вниз уменьшаем dy
+    // below: +dy вниз; above / card: transform Y=-dy → для сдвига вниз уменьшаем dy
     if (el.classList.contains('is-below')) dy += dScreenY;
     else dy -= dScreenY;
     el.dataset.shiftX = String(dx);
@@ -1398,7 +1648,7 @@
         var targetEl = el;
         var targetId = String(objectId);
         self._prepareExpandPlacement(targetEl, viewport);
-        if (targetEl.dataset.expandSide === 'below') targetEl.classList.add('is-below');
+        if (!self._isCardSkin() && targetEl.dataset.expandSide === 'below') targetEl.classList.add('is-below');
         else targetEl.classList.remove('is-below');
         targetEl.dataset.expandPending = '0';
         targetEl.classList.remove('is-snap');
@@ -1414,8 +1664,12 @@
             return;
           }
           var body = targetEl.querySelector('.gw-label__body');
+          var card = targetEl.querySelector('.gw-label__card');
           if (body && body.offsetHeight) {
             targetEl.dataset.cachedBodyH = String(body.offsetHeight);
+          }
+          if (card && card.offsetHeight) {
+            targetEl.dataset.cachedCardH = String(card.offsetHeight);
           }
           self._nudgeExpandedIntoViewport(targetEl, viewport);
         }, 80);
@@ -1496,7 +1750,7 @@
         var again = self._hitTestObjectId(self._lastPointerX, self._lastPointerY);
         if (again != null) self._setHover(stage, again);
       }
-    }, 40);
+    }, this._isCardSkin() ? 90 : 40);
   };
 
   GenplanWidgetInstance.prototype._setHover = function (stage, objectId, fromTimer) {
@@ -2221,6 +2475,9 @@
     if (options.exploreFullscreen == null) options.exploreFullscreen = true;
     if (options.openLinksInNewTab == null) options.openLinksInNewTab = true;
     if (options.idleHighlight == null) options.idleHighlight = true;
+    if (options.labelSkin == null && options.tooltipSkin == null && options.skin == null) {
+      options.labelSkin = DEFAULT_LABEL_SKIN;
+    }
     var inst = new GenplanWidgetInstance(host, options);
     inst.mount();
     return inst;
@@ -2228,6 +2485,8 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.4.17'
+    version: '2.5.15',
+    labelSkins: { card: 'card', expand: 'expand' },
+    defaultLabelSkin: DEFAULT_LABEL_SKIN
   };
 })(typeof window !== 'undefined' ? window : this);

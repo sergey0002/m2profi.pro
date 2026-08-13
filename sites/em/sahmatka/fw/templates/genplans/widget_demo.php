@@ -18,6 +18,12 @@ if ($api_base === '' || $script_src === '') {
   html, body { margin: 0; padding: 0; width: 100%; background: #e8ecef; color: #1a1a1a; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
   .gw-page-head { max-width: 1200px; margin: 0 auto; padding: 24px 20px 12px; }
   .gw-page-head h1 { margin: 0; font-size: 22px; font-weight: 700; }
+  .gw-skin-block { margin: 0 0 28px; }
+  .gw-skin-caption {
+    max-width: 1200px; margin: 0 auto; padding: 16px 20px 10px;
+    font-size: 15px; font-weight: 600;
+  }
+  .gw-skin-caption span { font-weight: 400; color: #555; margin-left: 8px; }
   .gw-widget-frame {
     width: 100%;
     background: #f0f2f4;
@@ -25,7 +31,7 @@ if ($api_base === '' || $script_src === '') {
     border-bottom: 1px solid #c5ccd3;
     box-shadow: 0 1px 0 rgba(0,0,0,0.06);
   }
-  #genplan_demo_mount { width: 100%; margin: 0 auto; background: #f0f2f4; }
+  .gw-demo-mount { width: 100%; margin: 0 auto; background: #f0f2f4; }
   .gw-embed {
     max-width: 960px;
     margin: 0 auto;
@@ -54,9 +60,19 @@ if ($api_base === '' || $script_src === '') {
   <h1>Интерактивный план — виджет</h1>
 </header>
 
-<div class="gw-widget-frame">
-  <div id="genplan_demo_mount"></div>
-</div>
+<section class="gw-skin-block">
+  <div class="gw-skin-caption">Скин <code>card</code> <span>макет — дефолт</span></div>
+  <div class="gw-widget-frame">
+    <div id="genplan_demo_mount_card" class="gw-demo-mount"></div>
+  </div>
+</section>
+
+<section class="gw-skin-block">
+  <div class="gw-skin-caption">Скин <code>expand</code> <span>альтернативная механика тултипов</span></div>
+  <div class="gw-widget-frame">
+    <div id="genplan_demo_mount_expand" class="gw-demo-mount"></div>
+  </div>
+</section>
 
 <section class="gw-embed">
   <h2>Код для вставки</h2>
@@ -66,13 +82,13 @@ if ($api_base === '' || $script_src === '') {
   <pre id="gw_demo_snippet_full"></pre>
 </section>
 
-<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=2.4.17"></script>
+<script src="<?= htmlspecialchars($script_src, ENT_QUOTES, 'UTF-8') ?>?v=2.5.15"></script>
 <script>
 (function () {
   var SCRIPT_SRC = <?= json_encode($script_src, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var API_BASE = <?= json_encode($api_base, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
   var KVARTAL_ID = <?= (int) $kvartal_id ?>;
-  var VER = (window.GenplanWidget && GenplanWidget.version) || '2.4.17';
+  var VER = (window.GenplanWidget && GenplanWidget.version) || '2.5.15';
 
   var qs = new URLSearchParams(window.location.search || '');
   var maxHParam = parseInt(qs.get('maxHeight') || '', 10);
@@ -81,21 +97,29 @@ if ($api_base === '' || $script_src === '') {
   var offsetYParam = parseFloat(qs.get('offsetY') || '');
   var offsetBottomParam = parseFloat(qs.get('offsetBottom') || '');
 
-  // width/maxHeight — дефолты GenplanWidget: '100%' / 600 (можно переопределить ?width=&maxHeight=)
-  var mountOpts = {
-    el: '#genplan_demo_mount',
-    kvartalId: KVARTAL_ID,
-    apiBase: API_BASE,
-    offsetBottom: (isFinite(offsetBottomParam)) ? offsetBottomParam : 100,
-    minZoom: 1,
-    maxZoom: 4
-  };
-  if (isFinite(widthParam) && widthParam > 0) mountOpts.width = widthParam;
-  if (isFinite(maxHParam) && maxHParam > 0) mountOpts.maxHeight = maxHParam;
-  if (isFinite(offsetXParam)) mountOpts.offsetX = offsetXParam;
-  if (isFinite(offsetYParam)) mountOpts.offsetY = offsetYParam;
+  function baseOpts(el) {
+    var opts = {
+      el: el,
+      kvartalId: KVARTAL_ID,
+      apiBase: API_BASE,
+      offsetBottom: (isFinite(offsetBottomParam)) ? offsetBottomParam : 100,
+      minZoom: 1,
+      maxZoom: 4
+    };
+    if (isFinite(widthParam) && widthParam > 0) opts.width = widthParam;
+    if (isFinite(maxHParam) && maxHParam > 0) opts.maxHeight = maxHParam;
+    if (isFinite(offsetXParam)) opts.offsetX = offsetXParam;
+    if (isFinite(offsetYParam)) opts.offsetY = offsetYParam;
+    return opts;
+  }
 
-  GenplanWidget.mount(mountOpts);
+  var cardOpts = baseOpts('#genplan_demo_mount_card');
+  cardOpts.labelSkin = 'card';
+  GenplanWidget.mount(cardOpts);
+
+  var expandOpts = baseOpts('#genplan_demo_mount_expand');
+  expandOpts.labelSkin = 'expand';
+  GenplanWidget.mount(expandOpts);
 
   document.getElementById('gw_demo_snippet_simple').innerHTML = [
     '<span class="tok-comment">&lt;!-- Контейнер + скрипт + mount --&gt;</span>',
@@ -129,6 +153,7 @@ if ($api_base === '' || $script_src === '') {
     '  <span class="tok-key">minZoom</span><span class="tok-punct">:</span> <span class="tok-num">1</span><span class="tok-punct">,</span>                         <span class="tok-comment">// мин. зум (× contain)</span>',
     '  <span class="tok-key">maxZoom</span><span class="tok-punct">:</span> <span class="tok-num">4</span><span class="tok-punct">,</span>                         <span class="tok-comment">// макс. зум колесом</span>',
     '  <span class="tok-key">idleHighlight</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>                <span class="tok-comment">// поочерёдная подсветка домов (откл: false)</span>',
+    '  <span class="tok-key">labelSkin</span><span class="tok-punct">:</span> <span class="tok-str">\'card\'</span><span class="tok-punct">,</span>                   <span class="tok-comment">// card — макет; expand — альтернативная механика</span>',
     '',
     '  <span class="tok-key">exploreFullscreen</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>',
     '  <span class="tok-key">openLinksInNewTab</span><span class="tok-punct">:</span> <span class="tok-key">true</span><span class="tok-punct">,</span>',
