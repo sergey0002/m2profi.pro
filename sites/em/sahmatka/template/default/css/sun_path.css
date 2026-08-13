@@ -27,7 +27,7 @@
   width: 100% !important;
   max-width: 100% !important;
   height: auto !important;
-  max-height: 400px !important;
+  max-height: 100% !important;
   margin: 0 auto;
   visibility: visible !important;
   opacity: 1 !important;
@@ -36,7 +36,7 @@
 }
 
 .mdl-pln .plan-with-sun__img {
-  max-height: 70vh !important;
+  max-height: 100% !important;
 }
 
 .sun-path__stage {
@@ -182,7 +182,7 @@
   opacity: 1;
 }
 
-/* Радио Утро/День/Вечер — ниже всей орбиты (не на макете public, но в каноне task) */
+/* Радио Утро/День/Вечер — место всегда зарезервировано (без прыжка формы) */
 .sun-path__controls {
   position: relative;
   z-index: 6;
@@ -193,25 +193,21 @@
   margin: 4px auto 0;
   padding: 10px 4px 4px;
   box-sizing: border-box;
+  /* фиксированная высота слота — вкл/выкл только меняет видимость */
+  min-height: 52px;
+  height: 52px;
   pointer-events: auto !important;
   line-height: normal;
   background: transparent;
   opacity: 0;
   visibility: hidden;
-  max-height: 0;
   overflow: hidden;
-  transition:
-    opacity 0.4s ease,
-    visibility 0.4s ease,
-    max-height 0.4s ease,
-    margin 0.4s ease,
-    padding 0.4s ease;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
 }
 
 .sun-path__controls.is-visible {
   opacity: 1;
   visibility: visible;
-  max-height: 100px;
   overflow: visible;
   pointer-events: auto !important;
 }
@@ -219,11 +215,6 @@
 .sun-path__controls.is-off {
   opacity: 0 !important;
   visibility: hidden;
-  max-height: 0 !important;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
   pointer-events: none !important;
   overflow: hidden;
 }
@@ -347,6 +338,8 @@
     width: min(280px, 100%);
     margin-top: 2px;
     padding: 8px 0 2px;
+    min-height: 50px;
+    height: 50px;
   }
 
   .sun-path__radio {

@@ -99,6 +99,11 @@
     var showAptLinksInput = document.getElementById('genplan_show_apt_links');
     var addPointBtn = document.getElementById('genplan_add_point');
     var homePreview = document.getElementById('genplan_home_preview');
+    var LINK_PLACEHOLDER_DEFAULT = 'https://…';
+    var publicSiteUrl = (cfg.publicSiteUrl || 'https://em-nsk.ru').replace(/\/$/, '');
+    var homesById = {};
+    var liveHomeCache = {};
+    var TOOLTIP_PREVIEW_OPEN_KEY = 'genplan_editor_tooltip_preview_open';
 
     var hasImage = !!(cfg.imageUrl && cfg.imageWidth && cfg.imageHeight);
     var currentOverlay = null;
@@ -723,11 +728,13 @@
             homeSelect.value = data.homeId ? String(data.homeId) : '';
         }
         updateAptLinksUi();
+        updateLinkPlaceholder(data.homeId || 0);
         if (!data.homeId) {
-            if (homePreview) {
-                homePreview.innerHTML = '';
-                homePreview.style.display = 'none';
-            }
+            liveHomeCache = {};
+            renderTooltipPreview();
+        } else if (liveHomeCache[data.homeId]) {
+            renderTooltipPreview();
+            fetchHomeAutofill(data.homeId, { onlyPreview: true });
         } else {
             fetchHomeAutofill(data.homeId, { onlyPreview: true });
         }
@@ -739,6 +746,8 @@
         if (titleInput) titleInput.value = '';
         if (contentInput) contentInput.value = '';
         if (linkInput) linkInput.value = '';
+        updateLinkPlaceholder(0);
+        liveHomeCache = {};
         if (showTitleDesktopInput) showTitleDesktopInput.checked = true;
         if (showTitleMobileInput) showTitleMobileInput.checked = true;
         if (showAptLinksInput) {
@@ -1002,6 +1011,24 @@
 
     // ─── Homes options / autofill ────────────────────────────
 
+    function buildHomePageUrl(homeSlug) {
+        homeSlug = String(homeSlug || '').trim();
+        if (!homeSlug) return '';
+        return publicSiteUrl + '/home/?u=' + encodeURIComponent(homeSlug);
+    }
+
+    /** Placeholder only — value/linkUrl не трогаем и не сохраняем авто-URL. */
+    function updateLinkPlaceholder(homeId, linkSuggest) {
+        if (!linkInput) return;
+        var url = '';
+        if (linkSuggest) {
+            url = String(linkSuggest).trim();
+        } else if (homeId && homesById[homeId]) {
+            url = buildHomePageUrl(homesById[homeId].title);
+        }
+        linkInput.placeholder = url || LINK_PLACEHOLDER_DEFAULT;
+    }
+
     function ensureHomesOptions() {
         if (homesLoaded || !homeSelect) return Promise.resolve();
         return fetch(cfg.ajaxBase + '&act=homes_options&kvartal_id=' + encodeURIComponent(cfg.kvartalId), {
@@ -1012,29 +1039,255 @@
                 if (!res || !res.success || !Array.isArray(res.homes)) return;
                 var cur = homeSelect.value;
                 homeSelect.innerHTML = '';
+                homesById = {};
                 var empty = document.createElement('option');
                 empty.value = '';
                 empty.textContent = '— не выбран —';
                 homeSelect.appendChild(empty);
                 res.homes.forEach(function (h) {
+                    var id = parseInt(h.id, 10) || 0;
+                    var title = h.title || ('#' + h.id);
+                    homesById[id] = { id: id, title: h.title || '' };
                     var opt = document.createElement('option');
                     opt.value = String(h.id);
-                    opt.textContent = h.title || ('#' + h.id);
+                    opt.textContent = title;
                     homeSelect.appendChild(opt);
                 });
                 if (cur) homeSelect.value = cur;
                 homesLoaded = true;
+                if (selectedLayer && selectedLayer.genplanData) {
+                    updateLinkPlaceholder(selectedLayer.genplanData.homeId || 0);
+                }
             })
             .catch(function () { /* ignore */ });
+    }
+
+    function markerToneColor(tone) {
+        if (tone === 'ok') return '#28a745';
+        if (tone === 'warn') return '#e53935';
+        if (tone === 'wait') return '#2f80ed';
+        if (tone === 'danger') return '#dc3545';
+        return '#9aa0a6';
+    }
+
+    function computePreviewCta(live, linkUrl, homeId) {
+        var tone = (live && live.statusTone) || 'muted';
+        var url = String(linkUrl || '').trim();
+        if (tone === 'muted') return null;
+        if (tone === 'wait') {
+            if (!url) return null;
+            return { label: 'Сообщить о старте продаж', url: url };
+        }
+        if (tone === 'ok' || tone === 'warn') {
+            if (!url) {
+                if (live && live.linkSuggest) url = String(live.linkSuggest).trim();
+                else if (homeId && homesById[homeId]) url = buildHomePageUrl(homesById[homeId].title);
+            }
+            if (!url) return null;
+            return { label: 'Выбрать квартиру', url: url };
+        }
+        return null;
+    }
+
+    function isTooltipPreviewOpen() {
+        try {
+            var v = window.localStorage.getItem(TOOLTIP_PREVIEW_OPEN_KEY);
+            if (v === '0') return false;
+            if (v === '1') return true;
+        } catch (e) { /* ignore */ }
+        return true;
+    }
+
+    function setTooltipPreviewOpen(open) {
+        try {
+            window.localStorage.setItem(TOOLTIP_PREVIEW_OPEN_KEY, open ? '1' : '0');
+        } catch (e) { /* ignore */ }
+        if (homePreview) {
+            homePreview.classList.toggle('is-collapsed', !open);
+        }
+    }
+
+    function applyTooltipPreviewOpenState() {
+        setTooltipPreviewOpen(isTooltipPreviewOpen());
+    }
+
+    function renderTooltipPreview() {
+        if (!homePreview) return;
+        if (!selectedLayer || !selectedLayer.genplanData) {
+            homePreview.innerHTML = '';
+            homePreview.style.display = 'none';
+            return;
+        }
+
+        var homeId = homeSelect && homeSelect.value ? parseInt(homeSelect.value, 10) : 0;
+        var live = (homeId && liveHomeCache[homeId]) ? liveHomeCache[homeId] : null;
+        var titleRaw = titleInput ? String(titleInput.value || '').trim() : '';
+        if (!titleRaw && live && live.titleSuggest) titleRaw = String(live.titleSuggest).trim();
+        var contentHtml = contentInput ? String(contentInput.value || '').trim() : '';
+        var linkUrl = linkInput ? String(linkInput.value || '').trim() : '';
+        var showTitleDesktop = !showTitleDesktopInput || !!showTitleDesktopInput.checked;
+        var showTitleMobile = !showTitleMobileInput || !!showTitleMobileInput.checked;
+        var showAptLinks = !!(showAptLinksInput && showAptLinksInput.checked && homeId);
+        var aptLinks = (live && Array.isArray(live.aptLinks)) ? live.aptLinks : [];
+        var statusText = live && live.statusText ? String(live.statusText) : '';
+        var statusTone = (live && live.statusTone) || 'muted';
+        var metaDelivery = live && live.metaDelivery ? String(live.metaDelivery) : '';
+        var metaAddress = live && live.metaAddress ? String(live.metaAddress) : '';
+        var floorsLabel = live && live.floorsLabel ? String(live.floorsLabel) : '';
+        var sectionsLabel = live && live.sectionsLabel ? String(live.sectionsLabel) : '';
+        var cta = computePreviewCta(live, linkUrl, homeId);
+        var hasBody = !!(contentHtml || metaDelivery || metaAddress || floorsLabel || sectionsLabel || (showAptLinks && aptLinks.length) || cta);
+        var toneColor = markerToneColor(statusTone);
+
+        homePreview.innerHTML = '';
+        homePreview.style.display = '';
+
+        var caption = document.createElement('button');
+        caption.type = 'button';
+        caption.className = 'genplan-editor__tooltip-preview-caption';
+        var caret = document.createElement('span');
+        caret.className = 'genplan-editor__tooltip-preview-caret';
+        caret.setAttribute('aria-hidden', 'true');
+        caption.appendChild(caret);
+        caption.appendChild(document.createTextNode('Превью тултипа'));
+        caption.setAttribute('aria-expanded', isTooltipPreviewOpen() ? 'true' : 'false');
+        caption.addEventListener('click', function () {
+            var next = !isTooltipPreviewOpen();
+            setTooltipPreviewOpen(next);
+            caption.setAttribute('aria-expanded', next ? 'true' : 'false');
+        });
+        homePreview.appendChild(caption);
+
+        var bodyWrap = document.createElement('div');
+        bodyWrap.className = 'genplan-editor__tooltip-preview-body';
+        homePreview.appendChild(bodyWrap);
+        applyTooltipPreviewOpenState();
+
+        if (!titleRaw && !statusText && !hasBody) {
+            var empty = document.createElement('div');
+            empty.className = 'genplan-editor__gw-empty';
+            empty.textContent = 'Заполните заголовок или выберите дом — здесь появится тултип';
+            bodyWrap.appendChild(empty);
+            return;
+        }
+
+        var stage = document.createElement('div');
+        stage.className = 'genplan-editor__tooltip-preview-stage';
+
+        var label = document.createElement('div');
+        label.className = 'genplan-editor__gw-label';
+
+        var box = document.createElement('div');
+        box.className = 'genplan-editor__gw-box';
+
+        var head = document.createElement('div');
+        head.className = 'genplan-editor__gw-head';
+
+        var tri = document.createElement('span');
+        tri.className = 'genplan-editor__gw-tri';
+        tri.style.borderBottomColor = toneColor;
+        head.appendChild(tri);
+
+        if (showTitleDesktop && titleRaw) {
+            var text = document.createElement('span');
+            text.className = 'genplan-editor__gw-text';
+            text.textContent = titleRaw;
+            head.appendChild(text);
+        }
+        if (statusText) {
+            var st = document.createElement('span');
+            st.className = 'genplan-editor__gw-status';
+            st.style.color = toneColor;
+            st.textContent = statusText;
+            head.appendChild(st);
+        }
+        box.appendChild(head);
+
+        if (hasBody) {
+            var body = document.createElement('div');
+            body.className = 'genplan-editor__gw-body';
+            if (contentHtml) {
+                var content = document.createElement('div');
+                content.className = 'genplan-editor__gw-content';
+                content.innerHTML = contentHtml;
+                body.appendChild(content);
+            }
+            if (metaDelivery) {
+                var d1 = document.createElement('span');
+                d1.className = 'genplan-editor__gw-meta';
+                d1.textContent = metaDelivery;
+                body.appendChild(d1);
+            }
+            if (metaAddress) {
+                var d2 = document.createElement('span');
+                d2.className = 'genplan-editor__gw-meta';
+                d2.textContent = metaAddress;
+                body.appendChild(d2);
+            }
+            if (floorsLabel || sectionsLabel) {
+                var badges = document.createElement('div');
+                badges.className = 'genplan-editor__gw-badges';
+                if (floorsLabel) {
+                    var b1 = document.createElement('span');
+                    b1.className = 'genplan-editor__gw-badge';
+                    b1.textContent = floorsLabel;
+                    badges.appendChild(b1);
+                }
+                if (sectionsLabel) {
+                    var b2 = document.createElement('span');
+                    b2.className = 'genplan-editor__gw-badge';
+                    b2.textContent = sectionsLabel;
+                    badges.appendChild(b2);
+                }
+                body.appendChild(badges);
+            }
+            if (showAptLinks && aptLinks.length) {
+                var apts = document.createElement('div');
+                apts.className = 'genplan-editor__gw-apts';
+                aptLinks.forEach(function (link) {
+                    var a = document.createElement('a');
+                    a.href = link.url || '#';
+                    a.textContent = link.label || '';
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                    apts.appendChild(a);
+                });
+                body.appendChild(apts);
+            }
+            if (cta) {
+                var ctaEl = document.createElement('div');
+                ctaEl.className = 'genplan-editor__gw-cta';
+                ctaEl.textContent = cta.label;
+                ctaEl.title = cta.url;
+                body.appendChild(ctaEl);
+            }
+            box.appendChild(body);
+        }
+
+        label.appendChild(box);
+        stage.appendChild(label);
+        bodyWrap.appendChild(stage);
+
+        var flags = [];
+        flags.push(showTitleDesktop ? 'заголовок desktop: да' : 'заголовок desktop: нет');
+        flags.push(showTitleMobile ? 'mobile: да' : 'mobile: нет');
+        if (cta && cta.url) flags.push('CTA → ' + cta.url);
+        else if (homeId && !linkUrl) {
+            var auto = (live && live.linkSuggest) || (homesById[homeId] && buildHomePageUrl(homesById[homeId].title)) || '';
+            if (auto) flags.push('авто URL → ' + auto);
+        }
+        var flagsEl = document.createElement('div');
+        flagsEl.className = 'genplan-editor__gw-flags';
+        flagsEl.textContent = flags.join(' · ');
+        bodyWrap.appendChild(flagsEl);
     }
 
     function fetchHomeAutofill(homeId, opts) {
         opts = opts || {};
         if (!homeId) {
-            if (homePreview) {
-                homePreview.innerHTML = '';
-                homePreview.style.display = 'none';
-            }
+            liveHomeCache = {};
+            updateLinkPlaceholder(0);
+            renderTooltipPreview();
             return;
         }
         fetch(
@@ -1051,26 +1304,29 @@
                     }
                     return;
                 }
-                if (homePreview) {
-                    var parts = [];
-                    if (res.statusText) parts.push(res.statusText);
-                    if (res.metaDelivery) parts.push(res.metaDelivery);
-                    if (res.metaAddress) parts.push(res.metaAddress);
-                    if (res.floorsLabel) parts.push(res.floorsLabel);
-                    if (res.sectionsLabel) parts.push(res.sectionsLabel);
-                    homePreview.innerHTML = '';
-                    var label = document.createElement('div');
-                    label.className = 'genplan-editor__home-preview-title';
-                    label.textContent = 'На сайте (живые данные дома)';
-                    homePreview.appendChild(label);
-                    parts.forEach(function (p) {
-                        var row = document.createElement('div');
-                        row.className = 'genplan-editor__home-preview-row';
-                        row.textContent = p;
-                        homePreview.appendChild(row);
-                    });
-                    homePreview.style.display = '';
+                liveHomeCache[homeId] = {
+                    titleSuggest: res.titleSuggest || '',
+                    homeSlug: res.homeSlug || '',
+                    linkSuggest: res.linkSuggest || '',
+                    statusText: res.statusText || '',
+                    statusTone: res.statusTone || 'muted',
+                    metaDelivery: res.metaDelivery || '',
+                    metaAddress: res.metaAddress || '',
+                    floorsLabel: res.floorsLabel || '',
+                    sectionsLabel: res.sectionsLabel || '',
+                    aptLinks: Array.isArray(res.aptLinks) ? res.aptLinks : []
+                };
+                if (res.homeSlug) {
+                    homesById[homeId] = { id: homeId, title: res.homeSlug };
                 }
+                updateLinkPlaceholder(homeId, res.linkSuggest || '');
+                if (!opts.onlyPreview && titleInput && !(titleInput.value || '').trim() && res.titleSuggest) {
+                    titleInput.value = res.titleSuggest;
+                    if (selectedLayer && selectedLayer.genplanData) {
+                        selectedLayer.genplanData.title = res.titleSuggest;
+                    }
+                }
+                renderTooltipPreview();
             })
             .catch(function () {
                 if (homePreview) {
@@ -1645,6 +1901,7 @@
                 selectedLayer.genplanData.title = titleInput.value;
             }
             markMetaDirty();
+            renderTooltipPreview();
         });
     }
     if (contentInput) {
@@ -1654,6 +1911,7 @@
                 selectedLayer.genplanData.content = contentInput.value;
             }
             markMetaDirty();
+            renderTooltipPreview();
         });
     }
     if (showTitleDesktopInput) {
@@ -1663,6 +1921,7 @@
                 selectedLayer.genplanData.showTitleDesktop = !!showTitleDesktopInput.checked;
             }
             markMetaDirty();
+            renderTooltipPreview();
         });
     }
     if (showTitleMobileInput) {
@@ -1672,6 +1931,7 @@
                 selectedLayer.genplanData.showTitleMobile = !!showTitleMobileInput.checked;
             }
             markMetaDirty();
+            renderTooltipPreview();
         });
     }
     if (showAptLinksInput) {
@@ -1681,6 +1941,7 @@
                 selectedLayer.genplanData.showAptLinks = !!showAptLinksInput.checked;
             }
             markMetaDirty();
+            renderTooltipPreview();
         });
     }
     if (addPointBtn) {
@@ -1698,6 +1959,7 @@
                 selectedLayer.genplanData.linkUrl = (linkInput.value || '').trim();
             }
             markMetaDirty();
+            renderTooltipPreview();
         });
     }
     if (homeSelect) {
@@ -1710,10 +1972,16 @@
             markMetaDirty();
             updateAptLinksUi();
             if (hid > 0) {
+                updateLinkPlaceholder(hid);
                 fetchHomeAutofill(hid, { onlyPreview: false });
-            } else if (homePreview) {
-                homePreview.innerHTML = '';
-                homePreview.style.display = 'none';
+            } else {
+                liveHomeCache = {};
+                updateLinkPlaceholder(0);
+                renderTooltipPreview();
+                if (homePreview && !selectedLayer) {
+                    homePreview.innerHTML = '';
+                    homePreview.style.display = 'none';
+                }
             }
         });
     }

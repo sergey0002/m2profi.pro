@@ -381,10 +381,7 @@
           if (controls) {
             controls.classList.add('is-off');
           }
-          root.style.paddingLeft = '';
-          root.style.paddingRight = '';
-          frame.style.marginTop = '';
-          frame.style.marginBottom = '';
+          // отступы орбиты НЕ снимаем — высота карточки/формы стабильна
         }, delay);
       }
     }
