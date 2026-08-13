@@ -2606,7 +2606,15 @@
       vw = Math.max(1, hostW);
       this._els.root.style.width = '100%';
     }
-    var vh = Math.max(1, this.maxHeight);
+    var collapsedMobile = isCoarsePointer() && !this.exploring;
+    var vh;
+    if (collapsedMobile) {
+      // высота = картинка по ширине, без серых полей сверху/снизу
+      var widthFitH = this._imgH * (vw / this._imgW);
+      vh = Math.max(1, Math.min(this.maxHeight, widthFitH));
+    } else {
+      vh = Math.max(1, this.maxHeight);
+    }
 
     var prevZoom = this._inlineReady && this._minScale > 0
       ? (this._scale / this._minScale)
@@ -2632,7 +2640,19 @@
       stage.style.transformOrigin = '0 0';
     }
 
-    if (!this._inlineReady) {
+    if (collapsedMobile) {
+      var coverM = Math.max(vw / this._imgW, vh / this._imgH);
+      this._scale = coverM;
+      this._minScale = coverM;
+      this._maxScale = coverM;
+      this._fitScale = coverM;
+      this._labelsBaseScale = coverM;
+      var swM = this._imgW * this._scale;
+      var shM = this._imgH * this._scale;
+      this._tx = (vw - swM) / 2;
+      this._ty = (vh - shM) / 2;
+      this._inlineReady = true;
+    } else if (!this._inlineReady) {
       // стартовый масштаб — cover, чтобы был pan по обеим осям (если аспект не совпал)
       var cover = Math.max(vw / this._imgW, vh / this._imgH);
       this._scale = Math.max(this._minScale, Math.min(this._maxScale, cover));
@@ -2710,7 +2730,7 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.5.21',
+    version: '2.5.22',
     labelSkins: { card: 'card', expand: 'expand' },
     defaultLabelSkin: DEFAULT_LABEL_SKIN
   };
