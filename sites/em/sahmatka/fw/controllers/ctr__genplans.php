@@ -356,6 +356,53 @@ class ctr__genplans extends ctr__
         return 'Срок сдачи: ' . $q . ' квартал ' . $year;
     }
 
+    function marker_tone_hex($tone)
+    {
+        if ($tone === 'ok') {
+            return '#28A745';
+        }
+        if ($tone === 'warn') {
+            return '#E53935';
+        }
+        if ($tone === 'wait') {
+            return '#2F80ED';
+        }
+        if ($tone === 'danger') {
+            return '#DC3545';
+        }
+        return '#9AA0A6';
+    }
+
+    function default_marker_hex($homeId, $statusTone)
+    {
+        if (!$homeId) {
+            return '#009DFF';
+        }
+        return $this->marker_tone_hex($statusTone);
+    }
+
+    /**
+     * @return string|null canonical #RRGGBB or null if empty/invalid
+     */
+    function normalize_marker_hex($raw)
+    {
+        $s = strtoupper(trim((string) $raw));
+        if ($s === '') {
+            return null;
+        }
+        if ($s[0] !== '#') {
+            $s = '#' . $s;
+        }
+        if (preg_match('/^#([0-9A-F]{3})$/', $s, $m)) {
+            $h = $m[1];
+            return '#' . $h[0] . $h[0] . $h[1] . $h[1] . $h[2] . $h[2];
+        }
+        if (preg_match('/^#[0-9A-F]{6}$/', $s)) {
+            return $s;
+        }
+        return null;
+    }
+
     /**
      * @return array{statusTone:string,statusText:string}
      */
@@ -406,8 +453,23 @@ class ctr__genplans extends ctr__
      * @param string $homeTitle homes.title для авто-URL, если link_url пуст
      * @return array{0:?string,1:?string} ctaLabel, ctaUrl
      */
-    function compute_cta_fields($statusTone, $linkUrl, $homeId, $homeTitle = '')
+    function compute_cta_fields($statusTone, $linkUrl, $homeId, $homeTitle = '', $ctaLabelOverride = '', $ctaUrlOverride = '', $showCta = false)
     {
+        $ctaUrlOverride = trim((string) $ctaUrlOverride);
+        $ctaLabelOverride = trim((string) $ctaLabelOverride);
+
+        // Явная кнопка: чекбокс «Показывать кнопку»
+        if ($showCta) {
+            $label = $ctaLabelOverride !== '' ? $ctaLabelOverride : 'Сообщить о старте продаж';
+            $url = $ctaUrlOverride !== '' ? $ctaUrlOverride : '#form_sale';
+            return [$label, $url];
+        }
+
+        // Без привязки к дому — только явная кнопка
+        if (!$homeId) {
+            return [null, null];
+        }
+
         $linkUrl = trim((string) $linkUrl);
         if ($statusTone === 'muted') {
             return [null, null];
@@ -629,9 +691,21 @@ class ctr__genplans extends ctr__
         if ($homeId && !empty($home) && is_array($home)) {
             $homeTitleForUrl = trim((string) ($home['title'] ?? ''));
         }
-        list($ctaLabel, $ctaUrl) = $homeId
-            ? $this->compute_cta_fields($statusTone, $linkUrl, $homeId, $homeTitleForUrl)
-            : [null, null];
+        $ctaLabelStored = isset($row['cta_label']) ? (string) $row['cta_label'] : '';
+        $ctaUrlStored = isset($row['cta_url']) ? (string) $row['cta_url'] : '';
+        $showCta = (bool) $this->row_flag($row, 'show_cta', 0);
+        list($ctaLabel, $ctaUrl) = $this->compute_cta_fields(
+            $statusTone,
+            $linkUrl,
+            $homeId ? $homeId : 0,
+            $homeTitleForUrl,
+            $ctaLabelStored,
+            $ctaUrlStored,
+            $showCta
+        );
+
+        $markerCustom = $this->normalize_marker_hex($row['marker_color'] ?? '');
+        $markerColor = $markerCustom ?: $this->default_marker_hex($homeId, $statusTone);
 
         return [
             'id' => (int) $row['genplan_polygon_id'],
@@ -657,6 +731,8 @@ class ctr__genplans extends ctr__
             'aptLinks' => $aptLinks,
             'ctaLabel' => $ctaLabel,
             'ctaUrl' => $ctaUrl,
+            'showCta' => $showCta,
+            'markerColor' => $markerColor,
             'linkUrl' => $linkUrl,
             'labelX' => $labelX,
             'labelY' => $labelY,
@@ -835,6 +911,10 @@ class ctr__genplans extends ctr__
                     'showTitleMobile' => (bool) $this->row_flag($v, 'show_title_mobile', 1),
                     'showAptLinks' => (bool) ($homeId ? $this->row_flag($v, 'show_apt_links', 0) : 0),
                     'linkUrl' => (string) ($v['link_url'] ?? ''),
+                    'markerColor' => (string) ($v['marker_color'] ?? ''),
+                    'ctaLabel' => (string) ($v['cta_label'] ?? ''),
+                    'ctaUrl' => (string) ($v['cta_url'] ?? ''),
+                    'showCta' => (bool) $this->row_flag($v, 'show_cta', 0),
                     'labelX' => $labelX,
                     'labelY' => $labelY,
                     'points' => $points,
@@ -900,8 +980,21 @@ class ctr__genplans extends ctr__
         $show_title_desktop = $this->post_flag('show_title_desktop', 1);
         $show_title_mobile = $this->post_flag('show_title_mobile', 1);
         $show_apt_links = $home_id > 0 ? $this->post_flag('show_apt_links', 0) : 0;
+        $show_cta = $this->post_flag('show_cta', 0);
 
         $link_url = trim((string) ($_POST['link_url'] ?? ''));
+        $marker_color = $this->normalize_marker_hex($_POST['marker_color'] ?? '');
+        $cta_label = trim((string) ($_POST['cta_label'] ?? ''));
+        $cta_url = trim((string) ($_POST['cta_url'] ?? ''));
+        if (function_exists('mb_substr')) {
+            if ($cta_label !== '') {
+                $cta_label = mb_substr($cta_label, 0, 160);
+            }
+            if ($cta_url !== '') {
+                $cta_url = mb_substr($cta_url, 0, 512);
+            }
+        }
+        // update_for_key: null/'' → NULL; строки пишем явно
         $data = [
             'kvartal_id' => $kvartal_id,
             'title' => $title,
@@ -909,11 +1002,21 @@ class ctr__genplans extends ctr__
             'show_title_desktop' => $show_title_desktop,
             'show_title_mobile' => $show_title_mobile,
             'show_apt_links' => $show_apt_links,
+            'show_cta' => $show_cta,
             'link_url' => $link_url,
             'points' => json_encode($points),
             'sort_order' => (int) ($_POST['sort_order'] ?? 0),
             'del' => 0,
         ];
+        if ($marker_color !== null) {
+            $data['marker_color'] = $marker_color;
+        }
+        if ($cta_label !== '') {
+            $data['cta_label'] = $cta_label;
+        }
+        if ($cta_url !== '') {
+            $data['cta_url'] = $cta_url;
+        }
         // home_id / label_*: update_for_key пишет NULL; insert без ключа = DEFAULT NULL
         if ($home_id > 0) {
             $data['home_id'] = $home_id;
@@ -934,6 +1037,9 @@ class ctr__genplans extends ctr__
             $data['home_id'] = $home_id > 0 ? $home_id : null;
             $data['label_x'] = $label_x;
             $data['label_y'] = $label_y;
+            $data['marker_color'] = $marker_color;
+            $data['cta_label'] = $cta_label !== '' ? $cta_label : null;
+            $data['cta_url'] = $cta_url !== '' ? $cta_url : null;
             // update_for_key: '' → NULL; title NOT NULL — пустой title пишем отдельным SQL
             if ($title === '') {
                 unset($data['title']);

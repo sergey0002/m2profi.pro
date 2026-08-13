@@ -59,6 +59,24 @@ $widget_demo_url = isset($data['widget_demo_url']) ? (string) $data['widget_demo
                         <span class="genplan-editor__field-label">URL по клику</span>
                         <input type="text" id="genplan_link_input" maxlength="512" placeholder="https://…" autocomplete="off" />
                     </label>
+                    <label class="genplan-editor__field">
+                        <span class="genplan-editor__field-label">Цвет треугольника <span class="genplan-editor__hint">hex · пусто = авто</span></span>
+                        <input type="text" id="genplan_marker_color_input" maxlength="7" placeholder="#009DFF" autocomplete="off" spellcheck="false" />
+                    </label>
+                    <div class="genplan-editor__cta-block">
+                        <label class="genplan-editor__check">
+                            <input type="checkbox" id="genplan_show_cta" />
+                            <span>Показывать кнопку</span>
+                        </label>
+                        <label class="genplan-editor__field">
+                            <span class="genplan-editor__field-label">Текст кнопки</span>
+                            <input type="text" id="genplan_cta_label_input" maxlength="160" placeholder="Сообщить о старте продаж" autocomplete="off" />
+                        </label>
+                        <label class="genplan-editor__field">
+                            <span class="genplan-editor__field-label">Ссылка кнопки <span class="genplan-editor__hint">URL или якорь #form_sale</span></span>
+                            <input type="text" id="genplan_cta_url_input" maxlength="512" placeholder="#form_sale" autocomplete="off" />
+                        </label>
+                    </div>
                     <div class="genplan-editor__checks">
                         <label class="genplan-editor__check">
                             <input type="checkbox" id="genplan_show_title_desktop" checked />
@@ -106,4 +124,4 @@ window.GENPLAN_CONFIG = {
     publicSiteUrl: <?= json_encode((getenv('PUBLIC_URL') && getenv('PUBLIC_URL') !== '') ? rtrim((string) getenv('PUBLIC_URL'), '/') : 'https://em-nsk.ru') ?>
 };
 </script>
-<script src="/sahmatka/template/default/js/genplan_editor.js"></script>
+<script src="/sahmatka/template/default/js/genplan_editor.js?v=14.2"></script>

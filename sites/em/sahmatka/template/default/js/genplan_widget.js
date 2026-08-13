@@ -33,6 +33,10 @@
     revealOpacity: 0.58
   };
 
+  /** Высота SVG-хвостика; бокс поднимаем на 1px меньше, чтобы треугольник зашёл под край. */
+  var LABEL_POINTER_H = 9;
+  var LABEL_POINTER_OVERLAP = 1;
+
   // Общий счётчик блокировки скролла страницы (несколько виджетов на одной странице).
   var scrollLockCount = 0;
   var savedBodyOverflow = '';
@@ -224,6 +228,82 @@
     return markerToneColor(tone);
   }
 
+  function resolveMarkerColor(obj) {
+    var raw = obj && obj.markerColor ? String(obj.markerColor).trim() : '';
+    if (raw) return raw;
+    if (!(obj && obj.homeId)) return '#009DFF';
+    return markerToneColor(obj.statusTone || 'muted');
+  }
+
+  function isHashHref(href) {
+    if (!href) return false;
+    var s = String(href).trim();
+    if (s.charAt(0) === '#') return s.length > 1;
+    try {
+      var u = new URL(s, (typeof window !== 'undefined' && window.location) ? window.location.href : 'https://example.invalid/');
+      if (!u.hash || u.hash.length < 2) return false;
+      if (typeof window === 'undefined' || !window.location) return false;
+      return u.origin === window.location.origin && u.pathname === window.location.pathname;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function hashFromHref(href) {
+    var s = String(href || '').trim();
+    if (s.charAt(0) === '#') return s;
+    try {
+      return new URL(s, window.location.href).hash || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function scrollHostPageToHash(hash) {
+    if (!hash || hash.charAt(0) !== '#') return false;
+    var id = '';
+    try { id = decodeURIComponent(hash.slice(1)); } catch (e) { id = hash.slice(1); }
+    if (!id) return false;
+
+    function tryWin(win) {
+      if (!win || !win.document) return false;
+      var doc = win.document;
+      var el = doc.getElementById(id);
+      if (!el) {
+        try {
+          el = doc.getElementsByName(id)[0] || null;
+        } catch (e2) { el = null; }
+      }
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      try {
+        if (win.history && typeof win.history.replaceState === 'function') {
+          win.history.replaceState(null, '', hash);
+        } else {
+          win.location.hash = hash;
+        }
+      } catch (e3) {
+        try { win.location.hash = hash; } catch (e4) {}
+      }
+      return true;
+    }
+
+    var inFrame = false;
+    try { inFrame = window.self !== window.top; } catch (e) { inFrame = true; }
+
+    if (inFrame) {
+      try { if (tryWin(window.parent)) return true; } catch (e5) { /* cross-origin */ }
+      try { if (window.top && window.top !== window && tryWin(window.top)) return true; } catch (e6) { /* cross-origin */ }
+      try {
+        window.parent.postMessage({ source: 'GenplanWidget', type: 'scrollToHash', hash: hash }, '*');
+        return true;
+      } catch (e7) { /* ignore */ }
+    }
+
+    return tryWin(window);
+  }
+
   function flipY(y, imageHeight) {
     var h = Number(imageHeight) || 0;
     return h > 0 ? (h - Number(y)) : Number(y);
@@ -260,11 +340,15 @@
     '.gw-label.is-expanded { z-index: 200; }',
     '.gw-labels-overlay.has-expanded .gw-label:not(.is-expanded) { pointer-events: none !important; }',
     '.gw-label__box { position: absolute; left: 0; bottom: 0; top: auto; display: flex; flex-direction: column; width: fit-content; max-width: 220px; text-align: left; background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,0.18); overflow: hidden; transform: translate(-50%, 0); transform-origin: center bottom; transition: border-radius 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, width 0.12s ease, min-width 0.12s ease; }',
+    /* белый хвостик: SVG 16×9, низ = якорь дома, верх стыкуется с плашкой */
+    '.gw-label__pointer { position: absolute; left: 0; bottom: 0; width: 16px; height: 9px; transform: translate(-50%, 0); overflow: visible; pointer-events: none; z-index: 6; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.18)); display: block; }',
+    '.gw-label__pointer polygon { fill: #fff; }',
     /* раскрытие вверх: низ заголовка на якоре, контент растёт вверх */
     '.gw-label.is-expanded:not(.is-below) .gw-label__box { flex-direction: column-reverse; transform-origin: center bottom; }',
-    /* раскрытие вниз: позицию низа заголовка держит JS (translateY -headH) */
+    /* раскрытие вниз: позицию низа заголовка держит JS (translateY -headH); хвостик скрыт */
     '.gw-label.is-below .gw-label__box { top: 0; bottom: auto; transform-origin: center top; }',
-    '.gw-label.is-expanded .gw-label__box { background: rgba(255,255,255,0.9); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
+    '.gw-label.is-below .gw-label__pointer { display: none; }',
+    '.gw-label.is-expanded .gw-label__box { background: rgba(255,255,255,0.95); border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); box-sizing: border-box; width: 260px; min-width: 260px; max-width: 260px; }',
     '.gw-label__head { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; color: #1a1a1a; font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; width: fit-content; max-width: 100%; flex: 0 0 auto; transition: padding 0.12s ease; }',
     '.gw-label.is-compact .gw-label__head { padding: 4px 6px; }',
     '.gw-label.is-expanded .gw-label__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 12px 8px 9px; white-space: normal; width: 100%; max-width: none; box-sizing: border-box; }',
@@ -295,6 +379,7 @@
     '.gw-root.is-coarse.is-explore .gw-label { pointer-events: auto; }',
     '.gw-root.is-coarse .gw-label:not(.is-expanded) .gw-label__head { gap: 4px; max-width: 120px; padding: 2px 6px; font-size: 10px; }',
     '.gw-root.is-coarse .gw-label__tri { border-left-width: 4px; border-right-width: 4px; border-bottom-width: 7px; }',
+    '.gw-root.is-coarse .gw-label__pointer { width: 14px; height: 8px; }',
     '.gw-root.is-coarse .gw-label.is-expanded .gw-label__box { width: min(280px, calc(100vw - 24px)); min-width: min(280px, calc(100vw - 24px)); max-width: min(280px, calc(100vw - 24px)); }',
     '.gw-root.is-coarse .gw-label.is-expanded .gw-label__head { font-size: 11px; padding: 10px 10px 6px; max-width: none; }',
     '.gw-root.is-coarse .gw-label.is-expanded .gw-label__body { font-size: 11px; padding: 6px 10px 10px; }',
@@ -783,12 +868,32 @@
     return false;
   };
 
-  GenplanWidgetInstance.prototype._makeTri = function (tone) {
+  GenplanWidgetInstance.prototype._makeTri = function (tone, color) {
     var tri = document.createElement('span');
     tri.className = 'gw-label__tri';
-    tri.style.borderBottomColor = markerToneColor(tone || 'muted');
+    tri.style.borderBottomColor = color || markerToneColor(tone || 'muted');
     tri.setAttribute('aria-hidden', 'true');
     return tri;
+  };
+
+  GenplanWidgetInstance.prototype._bindHostLink = function (anchor, href) {
+    var self = this;
+    var url = href || (anchor && anchor.getAttribute('href')) || '';
+    if (isHashHref(url)) {
+      anchor.removeAttribute('target');
+      anchor.removeAttribute('rel');
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        scrollHostPageToHash(hashFromHref(url) || url);
+      });
+      return;
+    }
+    if (self.openLinksInNewTab) {
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+    }
+    anchor.addEventListener('click', function (e) { e.stopPropagation(); });
   };
 
   GenplanWidgetInstance.prototype._buildLabelBody = function (o, self) {
@@ -851,11 +956,7 @@
       cta.className = 'gw-label__cta';
       cta.href = o.ctaUrl;
       cta.textContent = o.ctaLabel;
-      if (self.openLinksInNewTab) {
-        cta.target = '_blank';
-        cta.rel = 'noopener noreferrer';
-      }
-      cta.addEventListener('click', function (e) { e.stopPropagation(); });
+      this._bindHostLink(cta, o.ctaUrl);
       body.appendChild(cta);
     }
 
@@ -867,6 +968,7 @@
     var anchor = this._labelAnchor(o);
     var showTitle = this._shouldShowTitleChip(o);
     var tone = o.statusTone || 'muted';
+    var markerColor = resolveMarkerColor(o);
     var expandable = this._objectHasExpandableBody(o);
     var hasBody = this._objectHasLabelBody(o);
 
@@ -883,7 +985,7 @@
 
     var head = document.createElement('div');
     head.className = 'gw-label__head';
-    head.appendChild(this._makeTri(tone));
+    head.appendChild(this._makeTri(tone, markerColor));
     if (showTitle) {
       var chipText = document.createElement('span');
       chipText.className = 'gw-label__text';
@@ -894,7 +996,7 @@
     if (o.statusText) {
       var st = document.createElement('span');
       st.className = 'gw-label__status';
-      st.style.color = markerToneColor(tone);
+      st.style.color = markerColor;
       st.textContent = o.statusText;
       head.appendChild(st);
     }
@@ -907,7 +1009,16 @@
       box.appendChild(bodyWrap);
     }
 
+    var pointer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    pointer.setAttribute('class', 'gw-label__pointer');
+    pointer.setAttribute('viewBox', '0 0 16 9');
+    pointer.setAttribute('aria-hidden', 'true');
+    var poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', '0,0 16,0 8,9');
+    pointer.appendChild(poly);
+
     label.appendChild(box);
+    label.appendChild(pointer);
     return label;
   };
 
@@ -945,21 +1056,24 @@
     var dy = parseFloat(el.dataset.shiftY || '0') || 0;
     var box = el.querySelector('.gw-label__box');
     var head = el.querySelector('.gw-label__head');
+    var pointer = el.querySelector('.gw-label__pointer');
     el.style.left = (this._tx + ax * S) + 'px';
     el.style.top = (this._ty + ay * S) + 'px';
     if (!box) return;
 
     if (el.classList.contains('is-below')) {
-      // низ заголовка на якоре; тело раскрывается вниз
+      // низ заголовка на якоре; тело раскрывается вниз (хвостик скрыт)
       var headH = (head && head.offsetHeight) ? head.offsetHeight : 28;
       box.style.top = '0';
       box.style.bottom = 'auto';
       box.style.transform = 'translate(calc(-50% + ' + dx + 'px), ' + (-headH + dy) + 'px)';
+      if (pointer) pointer.style.transform = 'translate(-50%, 0)';
     } else {
-      // idle / раскрытие вверх: низ бокса (заголовок) на якоре
+      // idle / раскрытие вверх: кончик хвостика на якоре → бокс выше на LABEL_POINTER_H
       box.style.top = 'auto';
       box.style.bottom = '0';
-      box.style.transform = 'translate(calc(-50% + ' + dx + 'px), ' + (-dy) + 'px)';
+      box.style.transform = 'translate(calc(-50% + ' + dx + 'px), ' + (-dy - (LABEL_POINTER_H - LABEL_POINTER_OVERLAP)) + 'px)';
+      if (pointer) pointer.style.transform = 'translate(-50%, ' + (-dy) + 'px)';
     }
   };
 
@@ -1016,7 +1130,7 @@
     var vw = viewport.clientWidth;
     var vh = viewport.clientHeight;
 
-    var spaceAbove = Math.max(0, anchorY - headHExp - margin);
+    var spaceAbove = Math.max(0, anchorY - LABEL_POINTER_H - headHExp - margin);
     var spaceBelow = Math.max(0, vh - anchorY - margin);
     var below = bodyH > spaceAbove;
     if (below && bodyH > spaceBelow && spaceAbove >= spaceBelow) below = false;
@@ -2072,6 +2186,6 @@
 
   global.GenplanWidget = {
     mount: mount,
-    version: '2.4.11'
+    version: '2.4.16'
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -94,12 +94,18 @@
     var contentInput = document.getElementById('genplan_content_input');
     var homeSelect = document.getElementById('genplan_home_select');
     var linkInput = document.getElementById('genplan_link_input');
+    var markerColorInput = document.getElementById('genplan_marker_color_input');
+    var ctaLabelInput = document.getElementById('genplan_cta_label_input');
+    var ctaUrlInput = document.getElementById('genplan_cta_url_input');
+    var showCtaInput = document.getElementById('genplan_show_cta');
     var showTitleDesktopInput = document.getElementById('genplan_show_title_desktop');
     var showTitleMobileInput = document.getElementById('genplan_show_title_mobile');
     var showAptLinksInput = document.getElementById('genplan_show_apt_links');
     var addPointBtn = document.getElementById('genplan_add_point');
     var homePreview = document.getElementById('genplan_home_preview');
     var LINK_PLACEHOLDER_DEFAULT = 'https://…';
+    var UNBOUND_MARKER_DEFAULT = '#009DFF';
+    var CTA_LABEL_DEFAULT = 'Сообщить о старте продаж';
     var publicSiteUrl = (cfg.publicSiteUrl || 'https://em-nsk.ru').replace(/\/$/, '');
     var homesById = {};
     var liveHomeCache = {};
@@ -721,6 +727,10 @@
         if (titleInput) titleInput.value = data.title || '';
         if (contentInput) contentInput.value = data.content || '';
         if (linkInput) linkInput.value = data.linkUrl || '';
+        if (markerColorInput) markerColorInput.value = data.markerColor || '';
+        if (ctaLabelInput) ctaLabelInput.value = data.ctaLabel || '';
+        if (ctaUrlInput) ctaUrlInput.value = data.ctaUrl || '';
+        if (showCtaInput) showCtaInput.checked = !!data.showCta;
         if (showTitleDesktopInput) showTitleDesktopInput.checked = data.showTitleDesktop !== false;
         if (showTitleMobileInput) showTitleMobileInput.checked = data.showTitleMobile !== false;
         if (showAptLinksInput) showAptLinksInput.checked = !!data.showAptLinks;
@@ -729,6 +739,7 @@
         }
         updateAptLinksUi();
         updateLinkPlaceholder(data.homeId || 0);
+        updateMarkerColorPlaceholder();
         if (!data.homeId) {
             liveHomeCache = {};
             renderTooltipPreview();
@@ -746,7 +757,12 @@
         if (titleInput) titleInput.value = '';
         if (contentInput) contentInput.value = '';
         if (linkInput) linkInput.value = '';
+        if (markerColorInput) markerColorInput.value = '';
+        if (ctaLabelInput) ctaLabelInput.value = '';
+        if (ctaUrlInput) ctaUrlInput.value = '';
+        if (showCtaInput) showCtaInput.checked = false;
         updateLinkPlaceholder(0);
+        updateMarkerColorPlaceholder();
         liveHomeCache = {};
         if (showTitleDesktopInput) showTitleDesktopInput.checked = true;
         if (showTitleMobileInput) showTitleMobileInput.checked = true;
@@ -768,6 +784,22 @@
         data.title = titleInput ? titleInput.value : '';
         data.content = contentInput ? contentInput.value : '';
         data.linkUrl = linkInput ? (linkInput.value || '').trim() : '';
+        data.markerColor = markerColorInput ? (markerColorInput.value || '').trim() : '';
+        data.ctaLabel = ctaLabelInput ? (ctaLabelInput.value || '').trim() : '';
+        data.ctaUrl = ctaUrlInput ? (ctaUrlInput.value || '').trim() : '';
+        data.showCta = showCtaInput ? !!showCtaInput.checked : false;
+        if (data.showCta && !data.ctaUrl) {
+            data.ctaUrl = '#form_sale';
+            if (ctaUrlInput && !(ctaUrlInput.value || '').trim()) {
+                ctaUrlInput.value = data.ctaUrl;
+            }
+        }
+        if (data.showCta && !data.ctaLabel) {
+            data.ctaLabel = CTA_LABEL_DEFAULT;
+            if (ctaLabelInput && !(ctaLabelInput.value || '').trim()) {
+                ctaLabelInput.value = data.ctaLabel;
+            }
+        }
         data.showTitleDesktop = showTitleDesktopInput ? !!showTitleDesktopInput.checked : true;
         data.showTitleMobile = showTitleMobileInput ? !!showTitleMobileInput.checked : true;
         data.showAptLinks = showAptLinksInput && homeSelect && homeSelect.value ? !!showAptLinksInput.checked : false;
@@ -826,6 +858,10 @@
             showTitleMobile: item.showTitleMobile !== false,
             showAptLinks: !!item.showAptLinks,
             linkUrl: item.linkUrl || '',
+            markerColor: item.markerColor || '',
+            ctaLabel: item.ctaLabel || '',
+            ctaUrl: item.ctaUrl || '',
+            showCta: !!item.showCta,
             labelX: item.labelX != null ? item.labelX : null,
             labelY: item.labelY != null ? item.labelY : null,
             points: clonePoints(item.points || []),
@@ -1070,13 +1106,35 @@
         return '#9aa0a6';
     }
 
-    function computePreviewCta(live, linkUrl, homeId) {
+    function defaultMarkerHex(homeId, statusTone) {
+        if (!homeId) return UNBOUND_MARKER_DEFAULT;
+        return markerToneColor(statusTone || 'muted');
+    }
+
+    function updateMarkerColorPlaceholder() {
+        if (!markerColorInput) return;
+        var hid = homeSelect && homeSelect.value ? parseInt(homeSelect.value, 10) : 0;
+        var live = (hid && liveHomeCache[hid]) ? liveHomeCache[hid] : null;
+        var tone = (live && live.statusTone) || 'muted';
+        markerColorInput.placeholder = defaultMarkerHex(hid, tone);
+    }
+
+    function computePreviewCta(live, linkUrl, homeId, ctaText, ctaUrl, showCta) {
+        var customUrl = String(ctaUrl || '').trim();
+        var customText = String(ctaText || '').trim();
+        if (showCta) {
+            return {
+                label: customText || CTA_LABEL_DEFAULT,
+                url: customUrl || '#form_sale'
+            };
+        }
+        if (!homeId) return null;
         var tone = (live && live.statusTone) || 'muted';
         var url = String(linkUrl || '').trim();
         if (tone === 'muted') return null;
         if (tone === 'wait') {
             if (!url) return null;
-            return { label: 'Сообщить о старте продаж', url: url };
+            return { label: customText || CTA_LABEL_DEFAULT, url: url };
         }
         if (tone === 'ok' || tone === 'warn') {
             if (!url) {
@@ -1084,7 +1142,7 @@
                 else if (homeId && homesById[homeId]) url = buildHomePageUrl(homesById[homeId].title);
             }
             if (!url) return null;
-            return { label: 'Выбрать квартиру', url: url };
+            return { label: customText || 'Выбрать квартиру', url: url };
         }
         return null;
     }
@@ -1125,6 +1183,10 @@
         if (!titleRaw && live && live.titleSuggest) titleRaw = String(live.titleSuggest).trim();
         var contentHtml = contentInput ? String(contentInput.value || '').trim() : '';
         var linkUrl = linkInput ? String(linkInput.value || '').trim() : '';
+        var ctaText = ctaLabelInput ? String(ctaLabelInput.value || '').trim() : '';
+        var ctaUrlVal = ctaUrlInput ? String(ctaUrlInput.value || '').trim() : '';
+        var showCta = !!(showCtaInput && showCtaInput.checked);
+        var customMarker = markerColorInput ? String(markerColorInput.value || '').trim() : '';
         var showTitleDesktop = !showTitleDesktopInput || !!showTitleDesktopInput.checked;
         var showTitleMobile = !showTitleMobileInput || !!showTitleMobileInput.checked;
         var showAptLinks = !!(showAptLinksInput && showAptLinksInput.checked && homeId);
@@ -1135,9 +1197,9 @@
         var metaAddress = live && live.metaAddress ? String(live.metaAddress) : '';
         var floorsLabel = live && live.floorsLabel ? String(live.floorsLabel) : '';
         var sectionsLabel = live && live.sectionsLabel ? String(live.sectionsLabel) : '';
-        var cta = computePreviewCta(live, linkUrl, homeId);
+        var cta = computePreviewCta(live, linkUrl, homeId, ctaText, ctaUrlVal, showCta);
         var hasBody = !!(contentHtml || metaDelivery || metaAddress || floorsLabel || sectionsLabel || (showAptLinks && aptLinks.length) || cta);
-        var toneColor = markerToneColor(statusTone);
+        var toneColor = customMarker || defaultMarkerHex(homeId, statusTone);
 
         homePreview.innerHTML = '';
         homePreview.style.display = '';
@@ -1287,6 +1349,7 @@
         if (!homeId) {
             liveHomeCache = {};
             updateLinkPlaceholder(0);
+            updateMarkerColorPlaceholder();
             renderTooltipPreview();
             return;
         }
@@ -1320,6 +1383,7 @@
                     homesById[homeId] = { id: homeId, title: res.homeSlug };
                 }
                 updateLinkPlaceholder(homeId, res.linkSuggest || '');
+                updateMarkerColorPlaceholder();
                 if (!opts.onlyPreview && titleInput && !(titleInput.value || '').trim() && res.titleSuggest) {
                     titleInput.value = res.titleSuggest;
                     if (selectedLayer && selectedLayer.genplanData) {
@@ -1431,6 +1495,10 @@
             show_apt_links: data.showAptLinks ? '1' : '0',
             home_id: homeId > 0 ? String(homeId) : '',
             link_url: data.linkUrl || '',
+            marker_color: data.markerColor || '',
+            cta_label: data.ctaLabel || '',
+            cta_url: data.ctaUrl || '',
+            show_cta: data.showCta ? '1' : '0',
             label_x: data.labelX != null ? String(data.labelX) : '',
             label_y: data.labelY != null ? String(data.labelY) : ''
         });
@@ -1841,6 +1909,10 @@
             homeId: null,
             title: '',
             linkUrl: '',
+            markerColor: '',
+            ctaLabel: '',
+            ctaUrl: '',
+            showCta: false,
             labelX: c[0],
             labelY: c[1],
             points: clonePoints(points),
@@ -1962,6 +2034,30 @@
             renderTooltipPreview();
         });
     }
+    function bindExtraMetaInput(el, key) {
+        if (!el) return;
+        el.addEventListener('input', function () {
+            if (suppressMetaSync) return;
+            if (selectedLayer && selectedLayer.genplanData) {
+                selectedLayer.genplanData[key] = (el.value || '').trim();
+            }
+            markMetaDirty();
+            renderTooltipPreview();
+        });
+    }
+    bindExtraMetaInput(markerColorInput, 'markerColor');
+    bindExtraMetaInput(ctaLabelInput, 'ctaLabel');
+    bindExtraMetaInput(ctaUrlInput, 'ctaUrl');
+    if (showCtaInput) {
+        showCtaInput.addEventListener('change', function () {
+            if (suppressMetaSync) return;
+            if (selectedLayer && selectedLayer.genplanData) {
+                selectedLayer.genplanData.showCta = !!showCtaInput.checked;
+            }
+            markMetaDirty();
+            renderTooltipPreview();
+        });
+    }
     if (homeSelect) {
         homeSelect.addEventListener('change', function () {
             if (suppressMetaSync) return;
@@ -1973,10 +2069,12 @@
             updateAptLinksUi();
             if (hid > 0) {
                 updateLinkPlaceholder(hid);
+                updateMarkerColorPlaceholder();
                 fetchHomeAutofill(hid, { onlyPreview: false });
             } else {
                 liveHomeCache = {};
                 updateLinkPlaceholder(0);
+                updateMarkerColorPlaceholder();
                 renderTooltipPreview();
                 if (homePreview && !selectedLayer) {
                     homePreview.innerHTML = '';
