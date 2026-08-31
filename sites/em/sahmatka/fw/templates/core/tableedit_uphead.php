@@ -30,6 +30,9 @@ $v=$data;
 </div>
 							
 	 
+							<div id="fw_lazy_more_wrap" style="text-align:center; padding:12px; <?= empty($this->ajcrud_more_button) ? 'display:none;' : '' ?>">
+								<button type="button" id="fw_lazy_more" class="btn">Показать ещё</button>
+							</div>
 							
 							<div style="width:100%; max-width:100vw; text-align:center; padding:50px; " id="progressbar"  >
 								 <img src="loader.gif" />
