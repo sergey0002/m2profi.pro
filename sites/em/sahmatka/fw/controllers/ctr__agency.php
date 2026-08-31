@@ -150,13 +150,8 @@ id элементам аякс редактироуемым для удален�
 	{
 		if(  $_SESSION['sh_login'] != 'admin' &&  $_SESSION['sh_login'] != 'demo_admin'){ die('Доступ запрещен'); }
 		
-		$data=$this->getfiltr($filtr);
-		$this->data=$data; // Сохраняем данные	
-		  
-		$data_nofiltr=$this->getfiltr([1]); // Данные без фильров для селектов?! очень ресуроемко ! по сути все брони перебирает циклом , но с другой стороны у нас все записи выводятся и ничего 
-		$this->data_nofiltr=$data_nofiltr; // Сохраняем данные
-		 
-		
+		$act = isset($_REQUEST['act']) ? $_REQUEST['act'] : '';
+
 		$titles[$this->key_filed] = 'id';
 		 
 		$titles['add_datetime'] = 'Регистрация';
@@ -177,7 +172,14 @@ id элементам аякс редактироуемым для удален�
 		$order['activ']='activ';
 		$order['usc']='usc';
 		$order['lastactiv']='lastactiv';
-		$this->ajcrud_table_order=$order; 
+		$this->ajcrud_table_order=$order;
+
+		if ($act === 'ajax_data' || $act === 'sel_dir') {
+			$this->data = $this->getfiltr($filtr);
+		} else {
+			$this->data = array();
+		}
+		$this->data_nofiltr = array();
 		 
 		// Не переносить по словам
 		$nowrap=array();
@@ -198,78 +200,184 @@ id элементам аякс редактироуемым для удален�
  	// БАзовый запрос  menu
 	function get_base_sql($where='')
 	{
-		$filtr_data =  $_REQUEST;
-	  
-		global $mysql;
-		$q = 'SELECT  
-		gl_user.login as gl_login,    gl_user.password as gl_password, gl_user.name as gl_name, gl_user.e_mail as gl_e_mail, gl_user.phone as gl_phone, users.*,
-		max(users_stat.date) as lastactiv, count(DISTINCT users_stat.date) as activ, count(DISTINCT users.id) as usc, agency.* 
-		FROM  agency    
-		LEFT JOIN users as gl_user ON agency.admin_user_id = gl_user.id 
-		LEFT JOIN users as users ON users.agency_id = agency.agency_id 
-		LEFT JOIN users_stat   ON users_stat.users_id = users.id  
-		WHERE 1=1 
-		/*
-		AND YEAR(users_stat.date )<"2024" 
-		
-		AND ( users.add_datetime="" OR year(users.add_datetime)<"2024")
-		 AND users.`password` LIKE "%!%" */
-		';
-		
-		// Удаленные
-		if( !$_REQUEST['show_dell']){ $q.=' AND '.$this->table.'.del = "0" '; }
-		else{ $q.=' AND '.$this->table.'.del = "1" '; }
-		
-		// Заблокированные 
-		if( !$_REQUEST['show_block']){ $q.=' AND '.$this->table.'.unactiv = "0" '; }
-		else{ $q.=' AND '.$this->table.'.unactiv = "1" '; }
-		
-		
-		if( $_REQUEST['act']!='sel_dir' || 1==1 )
-		{
-			$search_arr = array();
-			$search_arr[]=''.$this->table.'.caption';
-			if( $_REQUEST['search']){ $q.=$mysql->search($search_arr,$_REQUEST['search']); }			 
+		$filtr_data = $_REQUEST;
+		$search_term = isset($filtr_data['search']) ? trim((string) $filtr_data['search']) : '';
+		$search_frag = $this->agency_search_sql_fragments($search_term);
+
+		$q = 'SELECT
+		agency.*,
+		gl_user.login AS gl_login,
+		gl_user.password AS gl_password,
+		gl_user.login AS login,
+		gl_user.password AS password,
+		gl_user.name AS gl_name,
+		gl_user.e_mail AS gl_e_mail,
+		gl_user.phone AS gl_phone,
+		COALESCE(st.usc, 0) AS usc,
+		st.lastactiv,
+		COALESCE(st.activ, 0) AS activ';
+
+		if ($search_frag['has_search']) {
+			$q .= ', ' . $search_frag['select_tier'] . ' AS search_tier';
 		}
-		
-		if( $filtr_data['agency_id'] )
-		{
-			//$q.=' AND agency.agency_id = "'.$filtr_data['agency_id'].'" '; 
+
+		$q .= '
+		FROM agency
+		LEFT JOIN users AS gl_user ON agency.admin_user_id = gl_user.id
+		LEFT JOIN (
+			SELECT
+				u.agency_id,
+				COUNT(DISTINCT u.id) AS usc,
+				MAX(us.date) AS lastactiv,
+				COUNT(DISTINCT us.date) AS activ
+			FROM users u
+			LEFT JOIN users_stat us ON us.users_id = u.id
+			GROUP BY u.agency_id
+		) AS st ON st.agency_id = agency.agency_id
+		WHERE 1=1 ';
+
+		if (!$_REQUEST['show_dell']) {
+			$q .= ' AND ' . $this->table . '.del = "0" ';
+		} else {
+			$q .= ' AND ' . $this->table . '.del = "1" ';
 		}
-		if( $filtr_data['user_id'] )
-		{
-			//$q.=' AND users.id = "'.$filtr_data['user_id'].'" ';  
+
+		if (!$_REQUEST['show_block']) {
+			$q .= ' AND ' . $this->table . '.unactiv = "0" ';
+		} else {
+			$q .= ' AND ' . $this->table . '.unactiv = "1" ';
 		}
-		
-		$q.=' GROUP BY agency.agency_id  ';
-		
-	 
-		
-		if( $filtr_data['order_filed'] )
-		{
-			 $q.=' ORDER BY '.$filtr_data['order_filed']; // Только актуальные брони без истории
-			 if( $filtr_data['order_asc'] ) { $q.=' ASC '; } else { $q.=' DESC '; }
+
+		if ($_REQUEST['act'] != 'sel_dir' && $search_frag['has_search']) {
+			$q .= $search_frag['where'];
 		}
-		else
-		{
-			$q.=' ORDER BY agency.agency_id'; 
-			$q.=' DESC ';  	
+
+		$order_parts = array();
+		if ($search_frag['has_search']) {
+			$order_parts[] = 'search_tier ASC';
 		}
-		
-		// Лимиты
-		if( $filtr_data['start'] || $filtr_data['stop'] || 1==1 )
-		{
-			if( !$filtr_data['start'] ){ $filtr_data['start'] = 0; }  // Стартовая позиция
-			if( !$filtr_data['stop'] ){ $filtr_data['stop'] = 1000; } // Сколько выводим
- 
-			$q.=' LIMIT '.$filtr_data['start'].' , '.$filtr_data['stop'];
-			
+		$allowed_order = array_values($this->ajcrud_table_order);
+		if (!empty($filtr_data['order_filed']) && in_array($filtr_data['order_filed'], $allowed_order, true)) {
+			$order_parts[] = $filtr_data['order_filed'] . (!empty($filtr_data['order_asc']) ? ' ASC' : ' DESC');
+		} else {
+			$order_parts[] = 'agency.agency_id DESC';
 		}
-			
-		
-		// if($_GET['id']){$q.=''}
-		  //  print $q;
+		$q .= ' ORDER BY ' . implode(', ', $order_parts);
+
+		$start = isset($filtr_data['start']) ? (int) $filtr_data['start'] : 0;
+		$stop = isset($filtr_data['stop']) ? (int) $filtr_data['stop'] : 1000;
+		if ($stop <= 0) {
+			$stop = 1000;
+		}
+		$q .= ' LIMIT ' . $start . ' , ' . $stop;
+
 		return $q;
+	}
+
+	private function agency_sql_phone_digits($col)
+	{
+		return "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE({$col}, ' ', ''), '-', ''), '(', ''), ')', ''), '+', ''), '.', '')";
+	}
+
+	private function agency_sql_inn_digits($col)
+	{
+		return "REPLACE(REPLACE({$col}, ' ', ''), '-', '')";
+	}
+
+	private function agency_sql_like_contains($field, $escaped)
+	{
+		return "{$field} LIKE '%{$escaped}%' ESCAPE '\\\\'";
+	}
+
+	private function agency_sql_like_contains_ci($field, $escaped_lower)
+	{
+		return "LOWER({$field}) LIKE '%{$escaped_lower}%' ESCAPE '\\\\'";
+	}
+
+	private function agency_search_sql_fragments($term)
+	{
+		global $mysql;
+
+		$empty = array(
+			'has_search' => false,
+			'where' => '',
+			'select_tier' => '99',
+		);
+		if ($term === '') {
+			return $empty;
+		}
+
+		$escaped = $mysql->escape_like($term);
+		if ($escaped === '') {
+			return $empty;
+		}
+
+		$lower = function_exists('mb_strtolower') ? mb_strtolower($term, 'UTF-8') : strtolower($term);
+		$escaped_lower = $mysql->escape_like($lower);
+		$digits = preg_replace('/\D+/', '', $term);
+		$phone_suffix = strlen($digits) >= 10 ? substr($digits, -10) : $digits;
+		$phone_digits_esc = $mysql->escape_like($phone_suffix);
+		$inn_digits_esc = $mysql->escape_like($digits);
+
+		$has_jur = "(agency.caption_dogovor IS NOT NULL AND agency.caption_dogovor != '' AND agency.caption_dogovor != '0')";
+		$like_caption = $this->agency_sql_like_contains('agency.caption', $escaped);
+		$like_dogovor = $this->agency_sql_like_contains('agency.caption_dogovor', $escaped);
+		$like_inn = $this->agency_sql_like_contains('agency.inn', $escaped);
+		$like_gl_email = $this->agency_sql_like_contains_ci('gl_user.e_mail', $escaped_lower);
+		$gl_phone_col = $this->agency_sql_phone_digits('gl_user.phone');
+		$inn_col = $this->agency_sql_inn_digits('agency.inn');
+
+		$where_parts = array(
+			$like_caption,
+			"({$has_jur} AND {$like_dogovor})",
+			$like_inn,
+			$like_gl_email,
+			"EXISTS (SELECT 1 FROM users u_em WHERE u_em.agency_id = agency.agency_id AND " . $this->agency_sql_like_contains_ci('u_em.e_mail', $escaped_lower) . ')',
+			$this->agency_sql_like_contains('gl_user.name', $escaped),
+			"EXISTS (SELECT 1 FROM users u_nm WHERE u_nm.agency_id = agency.agency_id AND " . $this->agency_sql_like_contains('u_nm.name', $escaped) . ')',
+			"gl_user.phone LIKE '%{$escaped}%' ESCAPE '\\\\'",
+			"EXISTS (SELECT 1 FROM users u_ph2 WHERE u_ph2.agency_id = agency.agency_id AND u_ph2.phone LIKE '%{$escaped}%' ESCAPE '\\\\')",
+		);
+		if ($digits !== '') {
+			$where_parts[] = "{$inn_col} LIKE '%{$inn_digits_esc}%'";
+		}
+		if (strlen($phone_suffix) >= 3) {
+			$where_parts[] = "{$gl_phone_col} LIKE '%{$phone_digits_esc}%'";
+			$where_parts[] = "EXISTS (SELECT 1 FROM users u_ph WHERE u_ph.agency_id = agency.agency_id AND " . $this->agency_sql_phone_digits('u_ph.phone') . " LIKE '%{$phone_digits_esc}%')";
+		}
+
+		$match_dogovor = "( {$has_jur} AND {$like_dogovor} )";
+		$match_caption = "( {$like_caption} )";
+		$match_inn = "( {$like_inn}" . ($digits !== '' ? " OR {$inn_col} LIKE '%{$inn_digits_esc}%'" : '') . ' )';
+		$match_email = "( {$like_gl_email} OR EXISTS (SELECT 1 FROM users u_em_t WHERE u_em_t.agency_id = agency.agency_id AND " . $this->agency_sql_like_contains_ci('u_em_t.e_mail', $escaped_lower) . ') )';
+		$phone_match_parts = array(
+			"gl_user.phone LIKE '%{$escaped}%' ESCAPE '\\\\'",
+			"EXISTS (SELECT 1 FROM users u_ph_t WHERE u_ph_t.agency_id = agency.agency_id AND u_ph_t.phone LIKE '%{$escaped}%' ESCAPE '\\\\')",
+		);
+		if (strlen($phone_suffix) >= 3) {
+			$u_phone_col = $this->agency_sql_phone_digits('u_ph_d.phone');
+			$phone_match_parts[] = "{$gl_phone_col} LIKE '%{$phone_digits_esc}%'";
+			$phone_match_parts[] = "EXISTS (SELECT 1 FROM users u_ph_d WHERE u_ph_d.agency_id = agency.agency_id AND {$u_phone_col} LIKE '%{$phone_digits_esc}%')";
+		}
+		$match_phone = '( ' . implode(' OR ', $phone_match_parts) . ' )';
+
+		$select_tier = "LEAST(
+			CASE
+				WHEN {$match_dogovor} THEN 1
+				WHEN NOT {$has_jur} AND {$match_caption} THEN 1
+				WHEN {$has_jur} AND {$match_caption} THEN 2
+				ELSE 99
+			END,
+			CASE WHEN {$match_inn} THEN 3 ELSE 99 END,
+			CASE WHEN {$match_email} THEN 4 ELSE 99 END,
+			CASE WHEN {$match_phone} THEN 5 ELSE 99 END
+		)";
+
+		return array(
+			'has_search' => true,
+			'where' => ' AND ( ' . implode(' OR ', $where_parts) . ' ) ',
+			'select_tier' => $select_tier,
+		);
 	}
 	
 	
@@ -675,10 +783,14 @@ return ' <span  onclick="copytext(this)" style="cursor:pointer">
  
 	function ajcrud_filtr()
 	{
+		$search_val = '';
+		if (isset($_REQUEST['search'])) {
+			$search_val = htmlspecialchars((string) $_REQUEST['search'], ENT_QUOTES, 'UTF-8');
+		}
 		?>
 		<div class="filter-item"  > 
 			<span class="input_title">Поиск</span>
-			<input type="text" id="search" name="search" class="input_edit" value="" placeholder="">	
+			<input type="text" id="search" name="search" class="input_edit" value="<?=$search_val?>" placeholder="Юрлицо, название, ИНН, e-mail, телефон">	
 		</div>	
 		 
 		<div class="filter-item  filter-item-checkbox "> 

@@ -49,8 +49,10 @@ function sendAjaxForm(resultto,formid,url,append=1,progressid='progressbar',pred
 			// При загрузке dom
 			$('#'+resultto).ready(function() {
 				$('#'+progressid).hide();
-				// $('#'+resultto).css('opacity','1');
-				$('#'+resultto).show(500);
+				var tag = ($('#'+resultto).prop('tagName') || '').toLowerCase();
+				if (tag !== 'tbody' && tag !== 'tr' && tag !== 'td') {
+					$('#'+resultto).show(500);
+				}
 			}); 
 	 	
 			if(postcallback){ postcallback(resultto); }

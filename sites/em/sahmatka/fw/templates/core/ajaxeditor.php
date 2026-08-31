@@ -2,7 +2,180 @@
 
 
  $(document).ready(function(){
-		//  $('#progressbar').hide(); // Скрываем прогрессбар
+		var fwLazyIo = null;
+		var fwLazyLoading = false;
+		var fwHasMoreFlag = false;
+
+		function fwCrudLazyOn() {
+			return $('#filtrform').attr('data-lazy') !== '0';
+		}
+		function fwCrudUseButton() {
+			return $('#filtrform').attr('data-more-button') === '1';
+		}
+		function fwCrudPageSize() {
+			var n = parseInt($('#fw_crud_page_size').val(), 10);
+			if (!n) { n = parseInt($('#filtrform').attr('data-page-size'), 10) || 20; }
+			return n;
+		}
+		function fwCrudResetStart() {
+			$('#fw_crud_start').val(0);
+		}
+		function fwNoteHasMore(html) {
+			html = html ? String(html) : '';
+			if (/<!--fw_lazy:1-->/.test(html) || /data-has-more\s*=\s*["']1["']/.test(html)) {
+				fwHasMoreFlag = true;
+				return;
+			}
+			if (/<!--fw_lazy:0-->/.test(html) || /data-has-more\s*=\s*["']0["']/.test(html)) {
+				fwHasMoreFlag = false;
+				return;
+			}
+			var n = fwCrudPageSize();
+			var rows = (html.match(/<tr\b/gi) || []).length;
+			var hide = (html.match(/fw_hiderow/g) || []).length;
+			var dataRows = rows - hide;
+			if (dataRows > n) { dataRows = n; }
+			fwHasMoreFlag = dataRows >= n && n > 0;
+		}
+		function fwCrudHasMore() {
+			if (fwHasMoreFlag) { return true; }
+			var $m = $('#fw_ajaxdata .fw_lazy_mark, #fwcrudtable .fw_lazy_mark').last();
+			if ($m.length && String($m.attr('data-has-more')) === '1') { return true; }
+			return false;
+		}
+		function fwCrudAppendHtml(html) {
+			if ($('#fw_ajaxdata').is('tbody')) {
+				$('#fw_ajaxdata').append(html);
+			} else {
+				$('#fwcrudtable tbody').append(html);
+			}
+		}
+		function fwCrudAjaxUrl() {
+			return $('#filtrform').attr('data-ajaxurl');
+		}
+		function fwLazyScrollRoot(el) {
+			var node = el ? el.parentElement : null;
+			while (node && node !== document.body && node !== document.documentElement) {
+				var st = window.getComputedStyle(node);
+				var oy = st.overflowY || st.overflow;
+				if (oy === 'auto' || oy === 'scroll') {
+					return node;
+				}
+				node = node.parentElement;
+			}
+			return null;
+		}
+		function fwCrudLastVisible() {
+			var el = fwCrudLastDataRow().get(0);
+			if (!el) { return false; }
+			var r = el.getBoundingClientRect();
+			var vh = window.innerHeight || document.documentElement.clientHeight;
+			return r.top < vh + 120 && r.bottom > -80;
+		}
+		function fwCrudLastDataRow() {
+			var $root = $('#fw_ajaxdata');
+			var $rows;
+			if ($root.is('tbody')) {
+				$rows = $root.children('tr:not(.fw_hiderow):not(.fw_lazy_mark)');
+			} else {
+				$rows = $('#fwcrudtable tbody').children('tr:not(.fw_hiderow):not(.fw_lazy_mark)');
+			}
+			return $rows.last();
+		}
+		function fwLazyDisconnect() {
+			if (fwLazyIo) {
+				fwLazyIo.disconnect();
+				fwLazyIo = null;
+			}
+			$(window).off('scroll.fwlazy');
+			$('.fw-lazy-scroll').off('scroll.fwlazy').removeClass('fw-lazy-scroll');
+		}
+		function fwLazyObserve() {
+			fwLazyDisconnect();
+			if (!fwCrudLazyOn() || !fwCrudHasMore()) {
+				$('#fw_lazy_more_wrap').hide();
+				return;
+			}
+			$('#fw_lazy_more_wrap').show();
+			if (fwCrudUseButton()) {
+				return;
+			}
+			var last = fwCrudLastDataRow().get(0);
+			if (!last) { return; }
+			var rootEl = fwLazyScrollRoot(last);
+			if (typeof IntersectionObserver !== 'undefined') {
+				fwLazyIo = new IntersectionObserver(function (entries) {
+					if (fwLazyLoading) { return; }
+					if (entries[0] && entries[0].isIntersecting) {
+						fwCrudLoadMore();
+					}
+				}, { root: rootEl, rootMargin: '120px', threshold: 0 });
+				fwLazyIo.observe(last);
+			}
+			var $sc = rootEl ? $(rootEl).addClass('fw-lazy-scroll') : $(window);
+			$sc.on('scroll.fwlazy', function () {
+				if (fwLazyLoading || !fwCrudHasMore()) { return; }
+				if (fwCrudLastVisible()) {
+					fwCrudLoadMore();
+				}
+			});
+			setTimeout(function () {
+				if (!fwLazyLoading && fwCrudHasMore() && fwCrudLastVisible()) {
+					fwCrudLoadMore();
+				}
+			}, 50);
+		}
+		function fwCrudReload() {
+			fwCrudResetStart();
+			fwLazyDisconnect();
+			fwLazyLoading = true;
+			$('#progressbar').show();
+			$.ajax({
+				url: fwCrudAjaxUrl(),
+				type: 'POST',
+				dataType: 'html',
+				data: $('#filtrform').serialize(),
+				success: function (html) {
+					fwNoteHasMore(html);
+					$('#fw_ajaxdata').html(html);
+				},
+				complete: function () {
+					fwLazyLoading = false;
+					$('#progressbar').hide();
+					if (typeof postcallback === 'function') { postcallback(); }
+				}
+			});
+		}
+		function fwCrudLoadMore() {
+			if (!fwCrudLazyOn() || fwLazyLoading || !fwCrudHasMore()) { return; }
+			fwLazyLoading = true;
+			fwLazyDisconnect();
+			var n = fwCrudPageSize();
+			var start = parseInt($('#fw_crud_start').val(), 10) || 0;
+			$('#fw_crud_start').val(start + n);
+			$('#progressbar').show();
+			$.ajax({
+				url: fwCrudAjaxUrl(),
+				type: 'POST',
+				dataType: 'html',
+				data: $('#filtrform').serialize(),
+				success: function (html) {
+					$('.fw_lazy_mark').remove();
+					fwNoteHasMore(html);
+					fwCrudAppendHtml(html);
+				},
+				complete: function () {
+					fwLazyLoading = false;
+					$('#progressbar').hide();
+					if (typeof postcallback === 'function') { postcallback(); }
+				}
+			});
+		}
+
+		$('#fw_lazy_more').on('click', function (e) {
+			e.preventDefault();
+			fwCrudLoadMore();
+		});
     
 		// Перед аякс запросом
 		var predcallback = function (item){
@@ -22,44 +195,27 @@
 		 
 		
 			// ajax действия кнопки внутри контейнера 
-			$('.fw_ajaxlink').click(function() 
+			$('.fw_ajaxlink').off('click.fwcrud').on('click.fwcrud', function() 
 			{
 				var confirm = $(this).attr('data-confirm');
 				var datacontainer = $(this).parents('tr:first');
 				var url = $(this).attr('href');
 				var data_id =$(this).attr('data-id') ;
-				
-				 // alert(data_id);
-				// #ajaxitem_43
-				
-				
+
 				if(confirm)
 				{
 					if (window.confirm(confirm)) 
 					{
-						
 						$.ajax({  
 						   type: "POST",  
-						    dataType:"html", //формат данных
+						    dataType:"html",
 						    url: url,
 						    success: function(response){  
-							
-								/* Скрытие контейнера если указано */
 								if($(this).attr('data-actionhide'))
 								{
 									$(datacontainer).hide(500);
 								}
-								// alert(response);
-								//Обновляем данные
-								if( $(this).attr('data-reloadall') )
-								{
-									sendAjaxForm( 'fw_ajaxdata' , 'filtrform' , '',0,'',predcallback,predcallback2,postcallback); // Грузим содержимое селек
-								}
-								else
-								{
-									sendAjaxForm( 'fw_ajaxdata' , 'filtrform' , '',0,'',predcallback,predcallback2,postcallback); // Грузим содержимое селек
-								}
-								
+								fwCrudReload();
 								$('#ajaxitem_'+data_id).css('border-right','solid 5px #3C96E1');
 						   }  
 						 });  
@@ -69,33 +225,18 @@
 				{
 					$.ajax({  
 						  type: "POST",  
-						  dataType:"html", //формат данных
+						  dataType:"html",
 						  url: url,
 						  success: function(response){  
-						  
-							/* Скрытие контейнера если указано */
 							if($(this).attr('data-actionhide'))
 							{
 								$(datacontainer).hide(500);
 							}
-						
-							//alert(response);
-							//Обновляем данные
-							if( $(this).attr('data-reloadall') )
-							{
-								sendAjaxForm( 'fw_ajaxdata' , 'filtrform' , '',0,'',predcallback,predcallback2,postcallback); // Грузим содержимое селек
-							}
-							else
-							{
-								sendAjaxForm( 'fw_ajaxdata' , 'filtrform' , '',0,'',predcallback,predcallback2,postcallback); // Грузим содержимое селек
-							}
-							//alert('#ajaxitem_'+data_id);
+							fwCrudReload();
 							$('#ajaxitem_'+data_id).css('border-right','solid 5px #3C96E1');
 						}  
 					});  
 				}
-				
-				
 				return false;
 			});
  
@@ -103,14 +244,14 @@
  
 /* ПЛЮСИКИ РАЗВОРАЧИВАНИЯ ФОРМ */
 // Наведение на плюсик
-$('.aj_crud_rowplus').mouseover(function(e) 
+$('.aj_crud_rowplus').off('mouseover.fwcrud').on('mouseover.fwcrud', function(e) 
 {
 	var tr = $(this).parents('tr:first');
 	tr.addClass('fw_selrow');
 });
 
 // СНятие курсора с плюсика
-$('.aj_crud_rowplus').mouseout(function(e) 
+$('.aj_crud_rowplus').off('mouseout.fwcrud').on('mouseout.fwcrud', function(e) 
 {
 	var tr = $(this).parents('tr:first');
 	tr.removeClass('fw_selrow');
@@ -118,7 +259,7 @@ $('.aj_crud_rowplus').mouseout(function(e)
 
 
 // Клик по плюсику
-$('.aj_crud_rowplus').click(function(e) 
+$('.aj_crud_rowplus').off('click.fwcrud').on('click.fwcrud', function(e) 
 {
 	$('.fw_selrow').removeClass('fw_selrow');
 	$('.fw_selrow2').removeClass('fw_selrow2');
@@ -155,8 +296,7 @@ $('.aj_crud_rowplus').click(function(e)
 					},
 					close: function() {
 						// Перезагрузить отображение!
-						sendAjaxForm( 'fw_ajaxdata' , 'filtrform' , '',0,'',predcallback,predcallback2,postcallback); // Грузим содержимое селек	 
-						// ПЕРЕЗАГРУЗИТЬ ТОЛЬКО ИЗМЕНЕННЫЙ ЭЛЕМЕНТ!!! тут это развернутая строка!
+						fwCrudReload();
 					},
 					open: function() {
 						  location.href = location.href.split('#')[0] + "#pop";
@@ -243,7 +383,7 @@ $('.aj_crud_rowplus').click(function(e)
 					},
 					close: function() {
 						// Перезагрузить отображение!
-						sendAjaxForm( 'fw_ajaxdata' , 'filtrform' , '',0,'',predcallback,predcallback2,postcallback); // Грузим содержимое селек	 
+						fwCrudReload(); 
 					},
 					open: function() {
 						  location.href = location.href.split('#')[0] + "#pop";
@@ -251,7 +391,7 @@ $('.aj_crud_rowplus').click(function(e)
 					// e.t.c.
 				  }
 				  });
-				  
+				fwLazyObserve();
 		}
 		
 		
@@ -270,6 +410,10 @@ $('.aj_crud_rowplus').click(function(e)
 			
 			// ЗАГРУЗКА ДАННЫХ ПРИЛЮБОЙ ОБРАБОТКЕ ФОРМЫ!
 			$( "#filtrform input,#filtrform select" ).change(function() {
+				if ($(this).attr('id') === 'fw_crud_start' || $(this).attr('id') === 'fw_crud_page_size') {
+					return;
+				}
+				fwCrudResetStart();
 				// Меняем URL //////////////////////////////////////////////////
 				var form = $('#filtrform');
 				var action =  $(form).attr('action');
@@ -304,7 +448,7 @@ $('.aj_crud_rowplus').click(function(e)
 					// console.log(action+'?ctr='+params.ctr+'&act='+params.act+'&'+formdata);
 				}
 				////////////////////////////////////////////////////////////
-				sendAjaxForm( 'fw_ajaxdata' , 'filtrform','',0,'',predcallback,predcallback2,postcallback); // 
+				fwCrudReload();
 			});
 			
 			
@@ -317,7 +461,7 @@ $('.aj_crud_rowplus').click(function(e)
 					$this.data('timer', setTimeout(function(){
 							$this.removeData('timer');
 							// обновляем данные
-							sendAjaxForm( 'fw_ajaxdata' , 'filtrform','',0,'',predcallback,predcallback2,postcallback); //
+							fwCrudReload();
 					}, $delay));
 			});
 					
@@ -370,7 +514,7 @@ $('.aj_crud_rowplus').click(function(e)
 	//  sendAjaxForm( 'sel_dir' , 'filtrform' , '/sahmatka/ajax_router.php?ctr=<?=$this->ctr?>&act=sel_dir',1,'',predcallback,predcallback2,postcallback); // Грузим содержимое селек
 		  
 	// Контент - стартовая загрузка
-    sendAjaxForm( 'fw_ajaxdata' , 'filtrform' , '',0,'',predcallback,predcallback2,postcallback); // Грузим содержимое селек
+    fwCrudReload();
 	
 	
 		// Запрещаем отправку формы поиска по интер (так как там брад)

@@ -71,21 +71,42 @@ class m_mysql
 	$fileds[]='users.phone';
 	$fileds[]='users.login';
 	*/
-	function search($fileds,$search='')
+
+	// Экранирование строки для LIKE … ESCAPE '\'
+	function escape_like($raw)
 	{
- 
-		if(!$search){$search = urldecode( $_GET['search'] ); }
-		if($_GET['search'])
-		{
-			$search = $_GET['search'];
-			$sql.=' AND ( ';
-			$i=0;
-			foreach($fileds as $k=>$v)
-			{
-				if($i>0){$sql.=' OR ';} $i++;
-				$sql.=' '.$v.' LIKE "%'.$search.'%" ';
+		if ($raw === null || $raw === '') {
+			return '';
+		}
+		$s = trim((string) $raw);
+		if ($s === '') {
+			return '';
+		}
+		$s = mysqli_real_escape_string($this->c, $s);
+		$s = str_replace(array('\\', '%', '_'), array('\\\\', '\\%', '\\_'), $s);
+		return $s;
+	}
+
+	function search($fileds, $search = '')
+	{
+		$sql = '';
+		if ($search === '' || $search === null) {
+			if (isset($_GET['search'])) {
+				$search = $_GET['search'];
 			}
-			$sql .=' )';
+		}
+		$search = $this->escape_like($search);
+		if ($search !== '') {
+			$sql .= ' AND ( ';
+			$i = 0;
+			foreach ($fileds as $k => $v) {
+				if ($i > 0) {
+					$sql .= ' OR ';
+				}
+				$i++;
+				$sql .= ' ' . $v . " LIKE '%" . $search . "%' ESCAPE '\\\\' ";
+			}
+			$sql .= ' )';
 		}
 		return $sql;
 	}
@@ -358,11 +379,14 @@ class m_mysql
 			 return  $result;
 		 }
 		 else{
-			 print '--'.$sql.'--';
-			 print mysqli_error($this->c);
+			 $err = mysqli_error($this->c);
+			 $this->log[] = array('sql' => $sql, 'error' => $err);
+			 if (function_exists('error_log')) {
+				 error_log('MySQL error: ' . $err);
+			 }
 			 if(!$ign_error)
 			 {
-				die();
+				die('Ошибка запроса к базе данных.');
 			 }
 		 }
 	}

@@ -1,12 +1,75 @@
 <?
 class ctr__
 {
+	var $ajcrud_lazy = 1;
+	var $ajcrud_page_size = 20;
+	var $ajcrud_more_button = 0;
 
     function __construct()
     {
         $this->mysql = $GLOBALS['mysql'];
 
     }
+
+	function lazy_page_size()
+	{
+		$n = 0;
+		if (isset($_REQUEST['page_size']) && $_REQUEST['page_size'] !== '') {
+			$n = (int) $_REQUEST['page_size'];
+		} elseif (isset($_REQUEST['stop']) && $_REQUEST['stop'] !== '' && (int) $_REQUEST['stop'] > 0 && (int) $_REQUEST['stop'] <= 200) {
+			$n = (int) $_REQUEST['stop'];
+		}
+		if ($n <= 0) {
+			$n = isset($this->ajcrud_page_size) ? (int) $this->ajcrud_page_size : 20;
+		}
+		if ($n < 1) {
+			$n = 1;
+		}
+		if ($n > 200) {
+			$n = 200;
+		}
+		return $n;
+	}
+
+	function lazy_start()
+	{
+		$start = isset($_REQUEST['start']) ? (int) $_REQUEST['start'] : 0;
+		if ($start < 0) {
+			$start = 0;
+		}
+		return $start;
+	}
+
+	function lazy_is_active()
+	{
+		if (empty($this->ajcrud_lazy)) {
+			return false;
+		}
+		$act = isset($_REQUEST['act']) ? $_REQUEST['act'] : '';
+		return ($act === 'ajax_data');
+	}
+
+	function lazy_limit_sql($sql)
+	{
+		if (!$this->lazy_is_active()) {
+			return $sql;
+		}
+		$n = $this->lazy_page_size();
+		$start = $this->lazy_start();
+		$sql = rtrim((string) $sql);
+		$sql = preg_replace('/\sLIMIT\s+\d+\s*,\s*\d+\s*;?\s*$/i', '', $sql);
+		$sql = rtrim($sql, " \t\n\r;");
+		return $sql . ' LIMIT ' . $start . ', ' . ($n + 1);
+	}
+
+	function lazy_print_marker()
+	{
+		if (!$this->lazy_is_active()) {
+			return;
+		}
+		$more = !empty($this->ajcrud_has_more) ? '1' : '0';
+		print '<tr class="fw_lazy_mark" data-has-more="' . $more . '"><td colspan="100"><!--fw_lazy:' . $more . '--></td></tr>';
+	}
 	
 	
 	
@@ -323,7 +386,7 @@ function exportArrayToCsvFile(array $data, array $headers, string $filename = ''
 	{
 		global $filed;
 		?>
-		<form method="GET" action="" id="filtrform" data-controller="<?=$this->ctr?>" data-router="/admin/ajax_router.php" data-ajaxurl="/sahmatka/ajax_router.php?ctr=<?=$this->ctr?>&act=ajax_data" style="width:100%;" >
+		<form method="GET" action="" id="filtrform" data-controller="<?=$this->ctr?>" data-router="/admin/ajax_router.php" data-ajaxurl="/sahmatka/ajax_router.php?ctr=<?=$this->ctr?>&act=ajax_data" data-lazy="<?= !empty($this->ajcrud_lazy) ? '1' : '0' ?>" data-page-size="<?= (int) $this->lazy_page_size() ?>" data-more-button="<?= !empty($this->ajcrud_more_button) ? '1' : '0' ?>" style="width:100%;" >
 		<?=$this->form_sfileds('searchform')?>
 		<style>.admfiltr *{display:inline-block;}</style>
 		<div>
@@ -611,6 +674,7 @@ function exportArrayToCsvFile(array $data, array $headers, string $filename = ''
 			
             }
         }
+		$this->lazy_print_marker();
     }
 	
 	 
@@ -647,8 +711,20 @@ function exportArrayToCsvFile(array $data, array $headers, string $filename = ''
 	{
 		global $mysql;
 		$sql = $this->get_base_sql( $filtr );
+		$sql = $this->lazy_limit_sql($sql);
 		$data = $mysql->get_arr($sql);
-		return $data;	
+		if (!is_array($data)) {
+			$data = array();
+		}
+		$this->ajcrud_has_more = 0;
+		if ($this->lazy_is_active()) {
+			$n = $this->lazy_page_size();
+			if (count($data) > $n) {
+				$this->ajcrud_has_more = 1;
+				$data = array_slice($data, 0, $n);
+			}
+		}
+		return $data;
 	}
 	
 	
@@ -710,7 +786,9 @@ function exportArrayToCsvFile(array $data, array $headers, string $filename = ''
 		<input class="fw_ff_h" type="hidden" name="act" value="ajax_data">
 		<input class="fw_ff_h" type="hidden" name="formid" value="<?=$this->formid($fid)?>">
 		<input type="hidden" id="order_filed" name="order_filed" value="<?=$this->get_form_sval( $this->formid($fid)  ,'order_filed','request')?>">		
-		<input type="hidden" id="order_asc" name="order_asc" value="<?=$this->get_form_sval( $this->formid($fid)  ,'order_asc','request')?>">	
+		<input type="hidden" id="order_asc" name="order_asc" value="<?=$this->get_form_sval( $this->formid($fid)  ,'order_asc','request')?>">
+		<input class="fw_ff_h" type="hidden" id="fw_crud_start" name="start" value="<?= (int) $this->lazy_start() ?>">
+		<input class="fw_ff_h" type="hidden" id="fw_crud_page_size" name="page_size" value="<?= (int) $this->lazy_page_size() ?>">
 		<?
 	}
 	
@@ -744,8 +822,12 @@ function exportArrayToCsvFile(array $data, array $headers, string $filename = ''
 		}
 		else
 		{
-			// print '<tr><td colspan="10" style="text-align:center"> - нет данных -</td></tr>';
-			$this->tpl([],'core','tableedit_nulldata');
+			if ($this->lazy_is_active() && $this->lazy_start() > 0) {
+				$this->lazy_print_marker();
+			} else {
+				$this->tpl([],'core','tableedit_nulldata');
+				$this->lazy_print_marker();
+			}
 		}
 	}
 	
