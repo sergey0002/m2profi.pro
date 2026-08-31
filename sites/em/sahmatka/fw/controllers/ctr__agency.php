@@ -151,14 +151,7 @@ id элементам аякс редактироуемым для удален�
 		if(  $_SESSION['sh_login'] != 'admin' &&  $_SESSION['sh_login'] != 'demo_admin'){ die('Доступ запрещен'); }
 		
 		$act = isset($_REQUEST['act']) ? $_REQUEST['act'] : '';
-		if ($act === 'ajax_data' || $act === 'sel_dir') {
-			$this->data = $this->getfiltr($filtr);
-		} else {
-			$this->data = array();
-		}
-		$this->data_nofiltr = array();
-		 
-		
+
 		$titles[$this->key_filed] = 'id';
 		 
 		$titles['add_datetime'] = 'Регистрация';
@@ -179,7 +172,14 @@ id элементам аякс редактироуемым для удален�
 		$order['activ']='activ';
 		$order['usc']='usc';
 		$order['lastactiv']='lastactiv';
-		$this->ajcrud_table_order=$order; 
+		$this->ajcrud_table_order=$order;
+
+		if ($act === 'ajax_data' || $act === 'sel_dir') {
+			$this->data = $this->getfiltr($filtr);
+		} else {
+			$this->data = array();
+		}
+		$this->data_nofiltr = array();
 		 
 		// Не переносить по словам
 		$nowrap=array();
@@ -333,21 +333,33 @@ id элементам аякс редактироуемым для удален�
 			$like_inn,
 			$like_gl_email,
 			"EXISTS (SELECT 1 FROM users u_em WHERE u_em.agency_id = agency.agency_id AND " . $this->agency_sql_like_contains_ci('u_em.e_mail', $escaped_lower) . ')',
-			"{$gl_phone_col} LIKE '%{$phone_digits_esc}%'",
+			$this->agency_sql_like_contains('gl_user.name', $escaped),
+			"EXISTS (SELECT 1 FROM users u_nm WHERE u_nm.agency_id = agency.agency_id AND " . $this->agency_sql_like_contains('u_nm.name', $escaped) . ')',
 			"gl_user.phone LIKE '%{$escaped}%' ESCAPE '\\\\'",
-			"EXISTS (SELECT 1 FROM users u_ph WHERE u_ph.agency_id = agency.agency_id AND " . $this->agency_sql_phone_digits('u_ph.phone') . " LIKE '%{$phone_digits_esc}%')",
 			"EXISTS (SELECT 1 FROM users u_ph2 WHERE u_ph2.agency_id = agency.agency_id AND u_ph2.phone LIKE '%{$escaped}%' ESCAPE '\\\\')",
 		);
 		if ($digits !== '') {
 			$where_parts[] = "{$inn_col} LIKE '%{$inn_digits_esc}%'";
+		}
+		if (strlen($phone_suffix) >= 3) {
+			$where_parts[] = "{$gl_phone_col} LIKE '%{$phone_digits_esc}%'";
+			$where_parts[] = "EXISTS (SELECT 1 FROM users u_ph WHERE u_ph.agency_id = agency.agency_id AND " . $this->agency_sql_phone_digits('u_ph.phone') . " LIKE '%{$phone_digits_esc}%')";
 		}
 
 		$match_dogovor = "( {$has_jur} AND {$like_dogovor} )";
 		$match_caption = "( {$like_caption} )";
 		$match_inn = "( {$like_inn}" . ($digits !== '' ? " OR {$inn_col} LIKE '%{$inn_digits_esc}%'" : '') . ' )';
 		$match_email = "( {$like_gl_email} OR EXISTS (SELECT 1 FROM users u_em_t WHERE u_em_t.agency_id = agency.agency_id AND " . $this->agency_sql_like_contains_ci('u_em_t.e_mail', $escaped_lower) . ') )';
-		$u_phone_col = $this->agency_sql_phone_digits('u_ph_t.phone');
-		$match_phone = "( {$gl_phone_col} LIKE '%{$phone_digits_esc}%' OR gl_user.phone LIKE '%{$escaped}%' ESCAPE '\\\\' OR EXISTS (SELECT 1 FROM users u_ph_t WHERE u_ph_t.agency_id = agency.agency_id AND ( {$u_phone_col} LIKE '%{$phone_digits_esc}%' OR u_ph_t.phone LIKE '%{$escaped}%' ESCAPE '\\\\' )) )";
+		$phone_match_parts = array(
+			"gl_user.phone LIKE '%{$escaped}%' ESCAPE '\\\\'",
+			"EXISTS (SELECT 1 FROM users u_ph_t WHERE u_ph_t.agency_id = agency.agency_id AND u_ph_t.phone LIKE '%{$escaped}%' ESCAPE '\\\\')",
+		);
+		if (strlen($phone_suffix) >= 3) {
+			$u_phone_col = $this->agency_sql_phone_digits('u_ph_d.phone');
+			$phone_match_parts[] = "{$gl_phone_col} LIKE '%{$phone_digits_esc}%'";
+			$phone_match_parts[] = "EXISTS (SELECT 1 FROM users u_ph_d WHERE u_ph_d.agency_id = agency.agency_id AND {$u_phone_col} LIKE '%{$phone_digits_esc}%')";
+		}
+		$match_phone = '( ' . implode(' OR ', $phone_match_parts) . ' )';
 
 		$select_tier = "LEAST(
 			CASE
