@@ -30,7 +30,7 @@ $v=$data;
 </div>
 							
 	 
-							<div id="fw_lazy_more_wrap" style="text-align:center; padding:12px; <?= empty($this->ajcrud_more_button) ? 'display:none;' : '' ?>">
+							<div id="fw_lazy_more_wrap" style="text-align:center; padding:12px; display:none;">
 								<button type="button" id="fw_lazy_more" class="btn">Показать ещё</button>
 							</div>
 							

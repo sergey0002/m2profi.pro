@@ -70,7 +70,7 @@
 
 
 		<script src="/sahmatka/template/default/libs/jquery-3.3.1/jquery-3.3.1.min.js"></script>
-		<script src="/sahmatka/template/default/js/myfw_iframe.js"></script>
+		<script src="/sahmatka/template/default/js/myfw_iframe.js?v=19lazy"></script>
 		<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU&amp;apikey=9998badd-d4f7-462f-b4a5-9c3aa51768c0" type="text/javascript"></script>
 
 
