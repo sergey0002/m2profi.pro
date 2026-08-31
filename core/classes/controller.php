@@ -68,7 +68,7 @@ class ctr__
 			return;
 		}
 		$more = !empty($this->ajcrud_has_more) ? '1' : '0';
-		print '<tr class="fw_lazy_mark" data-has-more="' . $more . '"><td colspan="100" style="padding:0;border:0;height:0;line-height:0;font-size:0;overflow:hidden;">&nbsp;</td></tr>';
+		print '<tr class="fw_lazy_mark" data-has-more="' . $more . '"><td colspan="100"><!--fw_lazy:' . $more . '--></td></tr>';
 	}
 	
 	
