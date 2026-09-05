@@ -238,14 +238,27 @@
     color: #ff0000 !important;
 }
 
-/* Анимация подсветки */
+/* Анимация подсветки после загрузки / перемещения */
 @keyframes highlight-node {
-    0% { background-color: rgba(255, 255, 0, 0.5); }
-    100% { background-color: transparent; }
+    0%, 35% { background-color: #fff3a1 !important; box-shadow: 0 0 0 3px #ffc107, 0 0 18px rgba(255, 193, 7, 0.55); }
+    100% { background-color: #fff !important; box-shadow: none; }
+}
+
+@keyframes highlight-folder-node {
+    0%, 35% { background-color: #5a8a4a !important; box-shadow: 0 0 0 3px #ffc107, 0 0 18px rgba(255, 193, 7, 0.55); }
+    100% { background-color: #3d535f !important; box-shadow: none; }
+}
+
+.jstree-node.highlight-node > .jstree-anchor {
+    animation: highlight-node 3s ease-out;
+}
+
+.jstree-node.type-folder.highlight-node > .jstree-anchor {
+    animation: highlight-folder-node 3s ease-out;
 }
 
 .highlight-node > .jstree-wholerow {
-    animation: highlight-node 2s ease-out;
+    animation: none;
 }
 
 /* Стили для дат документа */
@@ -639,6 +652,70 @@
     .jstree-default-responsive .jstree-anchor,
     .jstree-default .jstree-anchor {
         font-size: 12px !important;
+    }
+}
+
+/* Doc modal overlay (not Magnific / not .iframe_r) */
+.doc-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 16px;
+    overflow: auto;
+    box-sizing: border-box;
+}
+.doc-modal {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    max-height: calc(100vh - 80px);
+    overflow: auto;
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+.doc-modal__close {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    background: transparent;
+    font-size: 28px;
+    line-height: 1;
+    color: #666;
+    cursor: pointer;
+}
+.doc-modal__close:hover {
+    color: #000;
+}
+.doc-modal__body {
+    min-height: 80px;
+}
+.doc-modal__toast {
+    margin: 0 20px 12px;
+    padding: 8px 12px;
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    color: #5d4037;
+    font-size: 13px;
+}
+@media screen and (max-width: 768px) {
+    .doc-modal-overlay {
+        padding: 0;
+        align-items: stretch;
+    }
+    .doc-modal {
+        max-width: none;
+        max-height: none;
+        min-height: 100%;
+        border-radius: 0;
     }
 }
 

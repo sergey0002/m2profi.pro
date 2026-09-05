@@ -3,7 +3,6 @@ $(document).ready(function() {
     var cfg = window.M2PROFI_CONFIG || {};
     var siteBase = cfg.baseUrl || '';
     var ajaxRouter = cfg.ajaxRouter || (siteBase + '/sahmatka/ajax_router.php');
-    var iframeRouter = cfg.iframeRouter || (siteBase + '/sahmatka/iframe_router.php');
     var tree = $('#doc_tree');
     var searchInput = $('#doc-search-input');
     var searchClear = $('#doc-search-clear');
@@ -11,6 +10,8 @@ $(document).ready(function() {
     var dateFrom = $('#date-from');
     var dateTo = $('#date-to');
     var searchTimeout = false;
+    var pendingReveal = null;
+    var highlightTimer = null;
 
     // Инициализация jQuery UI Datepicker с русской локализацией
     $.datepicker.regional['ru'] = {
@@ -56,20 +57,229 @@ $(document).ready(function() {
         }
     });
 
+    function getNodeEl(nodeId) {
+        if (!nodeId) {
+            return null;
+        }
+        var el = document.getElementById(nodeId);
+        if (el) {
+            return el;
+        }
+        var safe = String(nodeId).replace(/(:|\.|\[|\]|,|=|@)/g, '\\$1');
+        return tree.find('#' + safe)[0] || null;
+    }
+
     function highlightNode(nodeId) {
-        var node = tree.jstree(true).get_node(nodeId);
-        if (node) {
-            var el = $('#' + nodeId);
-            if (el.length) {
-                $('html, body').animate({
-                    scrollTop: el.offset().top - 100
-                }, 500);
-                el.addClass('highlight-node');
-                setTimeout(function() {
-                    el.removeClass('highlight-node');
-                }, 2000);
+        var inst = tree.jstree(true);
+        if (!inst || !nodeId || !inst.get_node(nodeId)) {
+            return;
+        }
+        addNodeElements();
+        var el = getNodeEl(nodeId);
+        if (!el) {
+            return;
+        }
+        var top = $(el).offset().top - Math.max(80, Math.round($(window).height() / 4));
+        $('html, body').stop(true).animate({ scrollTop: Math.max(0, top) }, 400);
+        tree.find('.highlight-node').removeClass('highlight-node');
+        $(el).addClass('highlight-node');
+        if (highlightTimer) {
+            clearTimeout(highlightTimer);
+        }
+        highlightTimer = setTimeout(function() {
+            $(el).removeClass('highlight-node');
+        }, 3500);
+    }
+
+    function isMagnificOpen() {
+        return !!(window.jQuery && $.magnificPopup && $.magnificPopup.instance && $.magnificPopup.instance.isOpen);
+    }
+
+    function isDocModalOpen() {
+        return $('#doc-modal-overlay').length > 0 && $('#doc-modal-overlay').is(':visible');
+    }
+
+    function whenLayoutReady(cb) {
+        var tries = 0;
+        function tick() {
+            if ((isMagnificOpen() || isDocModalOpen()) && tries < 40) {
+                tries += 1;
+                setTimeout(tick, 50);
+                return;
+            }
+            setTimeout(function() {
+                if (window.requestAnimationFrame) {
+                    requestAnimationFrame(function() { requestAnimationFrame(cb); });
+                } else {
+                    cb();
+                }
+            }, 150);
+        }
+        tick();
+    }
+
+    function closeDocModal() {
+        $(document).off('keydown.docModal');
+        $('#doc-modal-overlay').remove();
+        $('body').css('overflow', '');
+    }
+
+    function openDocModal(url) {
+        closeDocModal();
+        var $overlay = $(
+            '<div id="doc-modal-overlay" class="doc-modal-overlay" role="dialog" aria-modal="true">' +
+                '<div class="doc-modal">' +
+                    '<button type="button" class="doc-modal__close" title="Закрыть" aria-label="Закрыть">&times;</button>' +
+                    '<div class="doc-modal__body"><div style="padding:24px;color:#666;">Загрузка…</div></div>' +
+                '</div>' +
+            '</div>'
+        );
+        $('body').append($overlay).css('overflow', 'hidden');
+
+        $overlay.on('click', function(e) {
+            if (e.target === $overlay[0]) {
+                closeDocModal();
+            }
+        });
+        $overlay.find('.doc-modal__close').on('click', function() {
+            closeDocModal();
+        });
+        $(document).on('keydown.docModal', function(e) {
+            if (e.key === 'Escape' || e.keyCode === 27) {
+                closeDocModal();
+            }
+        });
+
+        $.ajax({
+            url: url,
+            type: 'GET',
+            dataType: 'html',
+            success: function(html) {
+                $overlay.find('.doc-modal__body').html(html);
+            },
+            error: function() {
+                $overlay.find('.doc-modal__body').html(
+                    '<div style="padding:24px;color:#c00;">Не удалось загрузить форму</div>'
+                );
+            }
+        });
+    }
+
+    function openDocEditModal(opts) {
+        var q = 'ctr=doc&act=edit&modal=1';
+        if (opts && opts.fileId) {
+            q += '&id=' + encodeURIComponent(opts.fileId);
+        }
+        if (opts && opts.dirId) {
+            q += '&dir_id=' + encodeURIComponent(opts.dirId);
+        }
+        openDocModal(ajaxRouter + '?' + q);
+    }
+
+    function openDocCardModal(fileId) {
+        openDocModal(ajaxRouter + '?ctr=doc&act=card&modal=1&id=' + encodeURIComponent(fileId));
+    }
+
+    function applySaveResult(response) {
+        if (!response || response.status !== 'success') {
+            alert((response && response.message) ? response.message : 'Не удалось сохранить');
+            return;
+        }
+        var fileId = parseInt(response.file_id, 10) || 0;
+        var dirId = parseInt(response.dir_id, 10) || 0;
+        pendingReveal = {
+            fileId: fileId ? ('file_' + fileId) : null,
+            dirId: dirId ? ('dir_' + dirId) : null,
+            warnDateFilter: !!(dateFrom.val() || dateTo.val()) && !!fileId && !response.deleted
+        };
+        if (response.deleted) {
+            pendingReveal.fileId = null;
+            pendingReveal.warnDateFilter = false;
+        }
+        closeDocModal();
+        refreshTree();
+    }
+
+    function openAncestors(inst, nodeId, done) {
+        var node = inst.get_node(nodeId);
+        if (!node) {
+            done(false);
+            return;
+        }
+        var path = [];
+        (node.parents || []).slice().reverse().forEach(function(id) {
+            if (id && id !== '#') {
+                path.push(id);
+            }
+        });
+        if (node.type === 'folder') {
+            path.push(node.id);
+        } else if (node.parent && node.parent !== '#') {
+            path.push(node.parent);
+        }
+
+        function openNext(i) {
+            if (i >= path.length) {
+                done(true);
+                return;
+            }
+            inst.open_node(path[i], function() {
+                openNext(i + 1);
+            }, false);
+        }
+        openNext(0);
+    }
+
+    function revealPendingNode() {
+        if (!pendingReveal) {
+            return;
+        }
+        var inst = tree.jstree(true);
+        if (!inst) {
+            return;
+        }
+        var fileId = pendingReveal.fileId;
+        var dirId = pendingReveal.dirId;
+        var warnDateFilter = !!pendingReveal.warnDateFilter;
+        var fileMissing = !!(warnDateFilter && fileId && !inst.get_node(fileId));
+        var targetId = (fileId && inst.get_node(fileId)) ? fileId : dirId;
+
+        function showDateFilterToast() {
+            var toast = $('<div class="doc-modal__toast doc-filter-toast" style="margin:8px 0;">Сохранено, но скрыто фильтром дат</div>');
+            $('.doc-filter-toast').remove();
+            var $box = $('.doc-controls-wrapper').first();
+            if ($box.length) {
+                $box.after(toast);
+                setTimeout(function() { toast.fadeOut(400, function() { toast.remove(); }); }, 5000);
             }
         }
+
+        if (fileMissing) {
+            showDateFilterToast();
+        }
+
+        if (!targetId || !inst.get_node(targetId)) {
+            pendingReveal = null;
+            return;
+        }
+        pendingReveal = null;
+
+        openAncestors(inst, targetId, function() {
+            if (typeof inst.save_state === 'function') {
+                inst.save_state();
+            }
+            addNodeElements();
+            whenLayoutReady(function() {
+                highlightNode(fileId && inst.get_node(fileId) ? fileId : targetId);
+            });
+        });
+    }
+
+    function refreshTree() {
+        tree.one('refresh.jstree', function() {
+            revealPendingNode();
+        });
+        tree.jstree(true).refresh();
     }
 
     function getTreeDataUrl() {
@@ -245,12 +455,7 @@ $(document).ready(function() {
         // Open file popup on click
         else if (data.node && data.node.type === 'file') {
             var fileId = data.node.id.replace('file_', '');
-            $.magnificPopup.open({
-                items: {
-                    src: iframeRouter + '?ctr=doc&act=card&id=' + fileId
-                },
-                type: 'iframe'
-            });
+            openDocCardModal(fileId);
             tree.jstree(true).deselect_node(data.node);
         }
     }).on('ready.jstree', function() {
@@ -271,6 +476,78 @@ $(document).ready(function() {
     });
 
     // ######### ДЕЛЕГИРОВАННЫЕ ОБРАБОТЧИКИ #########
+
+    window.addEventListener('message', function(event) {
+        var data = event.data;
+        if (!data || data.source !== 'm2profi-doc' || data.type !== 'doc-file-saved') {
+            return;
+        }
+        var fileId = parseInt(data.fileId, 10) || 0;
+        var dirId = parseInt(data.dirId, 10) || 0;
+        pendingReveal = {
+            fileId: fileId ? ('file_' + fileId) : null,
+            dirId: dirId ? ('dir_' + dirId) : null
+        };
+        if (data.deleted) {
+            pendingReveal.fileId = null;
+        }
+        closeDocModal();
+        if ($.magnificPopup && $.magnificPopup.instance && $.magnificPopup.instance.isOpen) {
+            $.magnificPopup.close();
+        } else {
+            refreshTree();
+        }
+    });
+
+    // Modal form save → JSON act=save (do not POST to ctrind)
+    $(document).on('submit', '#doc-modal-overlay form', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $form = $(this);
+        var $wrap = $form.closest('.doc-edit-form-wrap');
+        var fileId = parseInt($wrap.attr('data-file-id'), 10) || 0;
+        var dirId = parseInt($wrap.attr('data-dir-id'), 10) || 0;
+        var saveUrl = ajaxRouter + '?ctr=doc&act=save';
+        if (fileId) {
+            saveUrl += '&id=' + encodeURIComponent(fileId);
+        }
+        if (dirId) {
+            saveUrl += '&dir_id=' + encodeURIComponent(dirId);
+        }
+        var $submit = $form.find('[type=submit]');
+        $submit.prop('disabled', true);
+        $.ajax({
+            url: saveUrl,
+            type: 'POST',
+            data: $form.serialize(),
+            dataType: 'json',
+            success: function(response) {
+                applySaveResult(response);
+            },
+            error: function() {
+                alert('Ошибка соединения с сервером');
+            },
+            complete: function() {
+                $submit.prop('disabled', false);
+            }
+        });
+        return false;
+    });
+
+    // Card → edit inside same modal
+    $(document).on('click', '#doc-modal-overlay .doc-modal-edit-link', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var fileId = $(this).attr('data-file-id') || '';
+        if (!fileId) {
+            var m = ($(this).attr('href') || '').match(/[?&]id=(\d+)/);
+            fileId = m ? m[1] : '';
+        }
+        if (fileId) {
+            openDocEditModal({ fileId: fileId });
+        }
+        return false;
+    });
 
     tree.on('click', '.add-folder-btn', function(e) {
         e.stopPropagation(); e.preventDefault();
@@ -298,11 +575,7 @@ $(document).ready(function() {
         e.stopPropagation(); e.preventDefault();
         var nodeId = $(this).closest('.jstree-node').attr('id');
         var dirId = nodeId.replace('dir_', '');
-        $.magnificPopup.open({
-            items: { src: iframeRouter + '?ctr=doc&act=edit&dir_id=' + dirId },
-            type: 'iframe',
-            callbacks: { close: function() { tree.jstree(true).refresh(); } }
-        });
+        openDocEditModal({ dirId: dirId });
     });
 
     tree.on('click', '.rename-btn', function(e) {
@@ -310,20 +583,10 @@ $(document).ready(function() {
         var nodeId = $(this).closest('.jstree-node').attr('id');
         var node = tree.jstree(true).get_node(nodeId);
         
-        // For files: open edit form in Magnific Popup
+        // For files: open edit form in page modal
         if (node && node.type === 'file') {
             var fileId = nodeId.replace('file_', '');
-            $.magnificPopup.open({
-                items: { 
-                    src: iframeRouter + '?ctr=doc&act=edit&id=' + fileId 
-                },
-                type: 'iframe',
-                callbacks: { 
-                    close: function() { 
-                        tree.jstree(true).refresh(); 
-                    } 
-                }
-            });
+            openDocEditModal({ fileId: fileId });
         }
         // For folders: use prompt dialog (existing behavior)
         else if (node && node.type === 'folder') {

@@ -281,6 +281,104 @@ class ctr__doc extends ctr__
  
  
  ##########################
+
+	/**
+	 * Save files2node row (shared by iframe act__edit POST and JSON act__save).
+	 * @return array{status:string,file_id?:int,dir_id?:int,deleted?:int,message?:string}
+	 */
+	function save_doc_file()
+	{
+		global $mysql;
+
+		if ($_SESSION['users_group_id'] != "3" && $_SESSION['users_group_id'] != "1") {
+			return array('status' => 'error', 'message' => 'Нет прав');
+		}
+
+		$file_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+		$dir_id = isset($_GET['dir_id']) ? (int)$_GET['dir_id'] : 0;
+		$filex = isset($_POST['filex']) ? trim((string)$_POST['filex']) : '';
+
+		if (!$file_id && $filex === '') {
+			return array('status' => 'error', 'message' => 'Сначала загрузите файл');
+		}
+
+		$post_data = array();
+		$post_data['node_type'] = 'doc_dir';
+
+		$file_caption = isset($_POST['file_caption']) ? trim((string)$_POST['file_caption']) : '';
+		if ($file_caption === '' && $filex !== '') {
+			$file_caption = basename($filex);
+		}
+		$post_data['name'] = $file_caption;
+		$post_data['caption'] = $file_caption;
+
+		if ($filex !== '') {
+			$post_data['link'] = $GLOBALS['config']['base_url'] . '/' . $filex;
+			$post_data['puth'] = str_replace('/sahmatka/upload/', '', $filex);
+		}
+		$post_data['uptime'] = time();
+		$post_data['comment'] = isset($_POST['comment']) ? $_POST['comment'] : '';
+
+		if (!empty($_POST['docdate'])) {
+			$post_data['docdate'] = $_POST['docdate'];
+		}
+
+		if (!empty($_POST['del'])) {
+			$post_data['del'] = $_POST['del'];
+		}
+
+		if ($dir_id) {
+			$post_data['node_id'] = $dir_id;
+		}
+
+		$saved_file_id = 0;
+		if ($file_id) {
+			$mysql->update_for_key('files2node', 'files2node_id', $file_id, $post_data);
+			$saved_file_id = $file_id;
+		} else {
+			$dir_id_for_order = isset($post_data['node_id']) ? (int)$post_data['node_id'] : 0;
+			$max_row = $mysql->get_arr(
+				'SELECT MAX(`order`) AS max_order FROM files2node WHERE node_id = "' . $dir_id_for_order . '" AND node_type = "doc_dir" AND del = 0',
+				true
+			);
+			$post_data['order'] = isset($max_row['max_order']) && $max_row['max_order'] !== null
+				? ((int)$max_row['max_order'] + 1)
+				: 0;
+			$insert_id = $mysql->insert('files2node', $post_data);
+			$saved_file_id = (int)$insert_id;
+		}
+
+		$saved_dir_id = isset($post_data['node_id']) ? (int)$post_data['node_id'] : $dir_id;
+		$saved_deleted = !empty($post_data['del']) ? 1 : 0;
+		if ($saved_file_id && !$saved_dir_id) {
+			$saved_row = $mysql->get_arr('SELECT node_id, del FROM files2node WHERE files2node_id="' . $saved_file_id . '"', 1);
+			if ($saved_row) {
+				$saved_dir_id = (int)$saved_row['node_id'];
+				if (!$saved_deleted) {
+					$saved_deleted = (int)$saved_row['del'] ? 1 : 0;
+				}
+			}
+		}
+
+		if (!$saved_file_id) {
+			return array('status' => 'error', 'message' => 'Не удалось сохранить');
+		}
+
+		return array(
+			'status' => 'success',
+			'file_id' => $saved_file_id,
+			'dir_id' => $saved_dir_id,
+			'deleted' => $saved_deleted,
+		);
+	}
+
+	function act__save()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+		$result = $this->save_doc_file();
+		echo json_encode($result);
+		exit();
+	}
  
 	 function act__edit()
 	 {
@@ -293,94 +391,36 @@ class ctr__doc extends ctr__
 		 // Пред сохранение перед добавлением ! файлв с активностью =0! статус черновик!
 		 global $filed;
 		 global $mysql;
-		 $id = $_GET['id'];
+		 $id = isset($_GET['id']) ? $_GET['id'] : '';
+		 $v = array();
+		 $file_caption = '';
 		 
 		 
-		 if($_POST)
+		 $saved_file_id = 0;
+		 $saved_dir_id = 0;
+		 $saved_deleted = 0;
+
+		 // modal=1: only HTML fragment for parent overlay; save goes to act=save
+		 $is_modal = !empty($_GET['modal']);
+
+		 if($_POST && !$is_modal)
 		 {
-			// print 'обработка формы';
-			// print_r($_POST);
-			 
-			 $post_data=array();
-			 
-			 $post_data['node_type']='doc_dir';
-			 
-			 
-			 if(!$_POST['file_caption']){$_POST['file_caption'] = basename($_POST['filex']);}
-			 $post_data['name']=$_POST['file_caption'];
-			 $post_data['caption']=$_POST['file_caption'];
-			 
-			 $post_data['link'] = $GLOBALS['config']['base_url'].'/'.$_POST['filex'];
-			 $post_data['puth'] = str_replace('/sahmatka/upload/', '', $_POST['filex']);
-			 $post_data['uptime'] = time();
-			 $post_data['comment'] = $_POST['comment'];
-			 
-			if($_POST['docdate']){ $post_data['docdate'] = $_POST['docdate']; }
- 
-			 
-			 if($_POST['del'])
-			 {
-				 $post_data['del'] = $_POST['del'];
+			 $save = $this->save_doc_file();
+			 if (!empty($save['file_id'])) {
+				 $saved_file_id = (int)$save['file_id'];
+				 $saved_dir_id = (int)$save['dir_id'];
+				 $saved_deleted = !empty($save['deleted']) ? 1 : 0;
 			 }
-			 // $post_data['size'] = filesize( $_POST['filex'] );
-		     
-			 
-			 // ИД ПАПКИ В КОТОРУЮ ДОБАВЛЯЕТСЯ ФАЙЛ
-			 if( $_GET['dir_id'] ) { $post_data['node_id'] =  $_GET['dir_id']; }
-			 
-			 // $post_data['user'] = $_SESSION;
-			   
-			 if($_GET['id'])
-			 {
-				 $mysql->update_for_key('files2node','files2node_id',$_GET['id'],$post_data);
-			 }
-			 else
-			 {
-				 $dir_id_for_order = isset($post_data['node_id']) ? (int)$post_data['node_id'] : 0;
-				 $max_row = $mysql->get_arr(
-					 'SELECT MAX(`order`) AS max_order FROM files2node WHERE node_id = "' . $dir_id_for_order . '" AND node_type = "doc_dir" AND del = 0',
-					 true
-				 );
-				 $post_data['order'] = isset($max_row['max_order']) && $max_row['max_order'] !== null
-					 ? ((int)$max_row['max_order'] + 1)
-					 : 0;
-				 $mysql->insert('files2node',$post_data);
-			 }
-			   
 		 }
 		 
 		 if($id)
 		 {
 			$v = $mysql->get_arr('SELECT * FROM files2node WHERE files2node_id="'.$id.'"',1);
-			// print_r($data);
-			 
-			$file_caption = $v['caption'];
-			if(!$file_caption){$file_caption = $v['name'];}
-		 }
-		 else // добавляем черновик!
-		 {
-			 
-			 //Добавляем ноду с черновиком!
-			  
-			 
-			 $data =array();
-			 $data['node_type'] = 'file';
-			 $data['node_id'] = 'doc_dir';
-			 
-			 $data['dir_id'] = (int) $_GET['dir_id'];
-			  
-			  
-			 $data['node_type'] = '';
-			 $data['node_type'] = '';
-			 $data['node_type'] = '';
-			 $data['node_type'] = '';
-			 $data['node_type'] = '';
-			 $data['node_type'] = '';
-			 $data['node_type'] = '';
-			 $data['node_type'] = '';
-			 
-			// $mysql->
-			 // редирект на черновик!
+			if (!$v) {
+				$v = array();
+			}
+			$file_caption = isset($v['caption']) ? $v['caption'] : '';
+			if(!$file_caption && !empty($v['name'])){$file_caption = $v['name'];}
 		 }
 		 
 		 
@@ -388,6 +428,12 @@ class ctr__doc extends ctr__
 		$data['v'] = $v;
 		$data['file_caption'] = $file_caption;
 		$data['filed'] = $filed;
+		$data['saved_file_id'] = $saved_file_id;
+		$data['saved_dir_id'] = $saved_dir_id;
+		$data['saved_deleted'] = $saved_deleted;
+		$data['is_modal'] = $is_modal ? 1 : 0;
+		$data['edit_dir_id'] = isset($_GET['dir_id']) ? (int)$_GET['dir_id'] : 0;
+		$data['edit_file_id'] = $id ? (int)$id : 0;
 
 		$this->tpl($data, 'doc', 'edit_form');
 		

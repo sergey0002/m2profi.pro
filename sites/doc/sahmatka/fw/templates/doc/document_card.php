@@ -44,7 +44,7 @@ foreach($card_data as $k=>$v)
 		if($_SESSION['users_group_id']=="3" || $_SESSION['users_group_id']=="1")
 		{
 			?>
-			<a href="iframe_router.php?ctr=doc&act=edit&id=<?=$v['files2node_id']?>" style="font-size:12px; color:red">Редактировать</a>
+			<a href="iframe_router.php?ctr=doc&act=edit&id=<?=$v['files2node_id']?>" class="doc-modal-edit-link" data-file-id="<?=$v['files2node_id']?>" style="font-size:12px; color:red">Редактировать</a>
 			<?
 		}
 		?>
