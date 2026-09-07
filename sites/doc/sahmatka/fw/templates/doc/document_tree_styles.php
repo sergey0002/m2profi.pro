@@ -655,28 +655,54 @@
     }
 }
 
-/* Doc modal overlay (not Magnific / not .iframe_r) */
+/* Doc modal overlay (not Magnific / not .iframe_r). Open/close copies my-mfp-zoom-in. */
 .doc-modal-overlay {
     position: fixed;
     inset: 0;
     z-index: 10050;
-    background: rgba(0, 0, 0, 0.45);
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
-    padding: 40px 16px;
-    overflow: auto;
+    padding: 16px;
+    overflow: hidden;
     box-sizing: border-box;
+}
+.doc-modal-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #0b0b0b;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+    pointer-events: none;
+}
+.doc-modal-overlay.is-open::before {
+    opacity: 0.8;
+}
+.doc-modal-overlay.is-closing::before {
+    opacity: 0;
 }
 .doc-modal {
     position: relative;
+    z-index: 1;
     width: 100%;
     max-width: 560px;
-    max-height: calc(100vh - 80px);
+    min-height: 70vh;
+    max-height: 80vh;
     overflow: auto;
     background: #fff;
     border-radius: 4px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.2s ease-in-out;
+}
+.doc-modal-overlay.is-open .doc-modal {
+    opacity: 1;
+    transform: scale(1);
+}
+.doc-modal-overlay.is-closing .doc-modal {
+    opacity: 0;
+    transform: scale(0.8);
 }
 .doc-modal__close {
     position: absolute;
@@ -696,7 +722,39 @@
     color: #000;
 }
 .doc-modal__body {
-    min-height: 80px;
+    box-sizing: border-box;
+    padding-top: 12px;
+}
+.doc-modal .fw_fileupload {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+}
+.doc-modal .doc-edit-form-wrap {
+    padding-top: 36px;
+}
+#doc-modal-overlay .doc-card {
+    padding: 20px;
+    padding-top: 36px;
+}
+#doc-modal-overlay .doc-card .filelink {
+    border: solid 2px #3d535f;
+    display: inline-block;
+    padding: 10px;
+    color: #3d535f;
+    text-decoration: none;
+}
+#doc-modal-overlay .doc-card .filelink:hover {
+    color: #000;
+    border-color: #000;
+}
+#doc-modal-overlay .doc-card table {
+    border-collapse: collapse;
+    width: 100%;
+}
+#doc-modal-overlay .doc-card td {
+    border: solid 1px #000;
+    padding: 4px 8px;
 }
 .doc-modal__toast {
     margin: 0 20px 12px;
@@ -708,14 +766,13 @@
 }
 @media screen and (max-width: 768px) {
     .doc-modal-overlay {
-        padding: 0;
-        align-items: stretch;
+        padding: 12px;
+        align-items: center;
     }
     .doc-modal {
-        max-width: none;
-        max-height: none;
-        min-height: 100%;
-        border-radius: 0;
+        min-height: 70vh;
+        max-height: calc(100vh - 24px);
+        border-radius: 4px;
     }
 }
 

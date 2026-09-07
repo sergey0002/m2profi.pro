@@ -1,37 +1,41 @@
 <?
-// Для доступа к переменным из $data
 extract($data);
 ?>
 <style>
-.filelink
-{
-	border: solid 2px #3d535f; display: inline-block; padding: 10px;
-	color:#3d535f;
+.doc-card {
+    padding: 20px;
 }
-.filelink:hover
-{
-	color:#000;
-	border: solid 2px #000; 
+.doc-card .filelink {
+    border: solid 2px #3d535f;
+    display: inline-block;
+    padding: 10px;
+    color: #3d535f;
 }
-td{border:solid 1px #000;}
+.doc-card .filelink:hover {
+    color: #000;
+    border: solid 2px #000;
+}
+.doc-card td {
+    border: solid 1px #000;
+}
 </style>
-<div style="padding:20px;">
+<div class="doc-card">
 
 <?
 foreach($card_data as $k=>$v)
 {
-	// $user = 'Пользователь';
 	$editdate = $date = date('d.m.Y H:i:s', $v['uptime'] );
 	$file_caption = $v['caption'];
 	if(!$file_caption){$file_caption = $v['name'];}
 	
-	if(!$v['actual']) // Актуальная версия файла
+	if(!$v['actual'])
 	{
+		$dl = '/sahmatka/ajax_router.php?ctr=doc&act=download&id='.(int)$v['files2node_id'];
 		?> 
 
 		<div class="actfile" style="padding: 20px;text-align: center;padding-top: 30px; font-size: 20px;  font-weight: bold;">
 		
-		<a href="ajax_router.php?ctr=doc&act=download&id=<?=$v['files2node_id']?>" class="filelink" >
+		<a href="<?=$dl?>" class="filelink doc-card-download" target="_blank" rel="noopener">
 		 
 		Файл:<br/><?=$file_caption?><br/><br/>
 		<img src="/sahmatka/template/download.png" width="50"><br/><br/>
@@ -55,31 +59,27 @@ foreach($card_data as $k=>$v)
 		break;
 	}
 }
- 
- 
- 
 ?>
 <br/><br/>
 История:
 <table width="100%;">
 <?
-//История файла
 foreach($card_data as $k=>$v)
 {
-	//$user = 'Пользователь';
-	$editdate = $date = date('d.m.Y H:i:s', $v['uptime'] );;
+	$editdate = $date = date('d.m.Y H:i:s', $v['uptime'] );
 	$file_caption = $v['caption'];
 	if(!$file_caption){$file_caption = $v['name'];}
 	
-	if(!$v['actual']) // Актуальная версия файла
+	if(!$v['actual'])
 	{
+		$dl = '/sahmatka/ajax_router.php?ctr=doc&act=download&id='.(int)$v['files2node_id'];
 		?> 
 		 <tr>
 			 <td>
 				<?=$editdate?>
 			 </td>
 			 <td>
-				<a href="<?=$v['link']?>"><?=$file_caption?></a>
+				<a href="<?=$dl?>" class="doc-card-download" target="_blank" rel="noopener"><?=$file_caption?></a>
 			 </td>
 			 <td>
 				<?=$user?>
@@ -92,11 +92,4 @@ foreach($card_data as $k=>$v)
 }
 ?>
 </table>
-<?
-
-
-//print '<pre>';
-//print_r($data);
-//print '</pre>';
-?>
 </div>

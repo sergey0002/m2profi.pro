@@ -309,6 +309,7 @@ class ctr__doc extends ctr__
 		if ($file_caption === '' && $filex !== '') {
 			$file_caption = basename($filex);
 		}
+		$file_caption = $this->_doc_file_display_name($file_caption, $filex, $filex);
 		$post_data['name'] = $file_caption;
 		$post_data['caption'] = $file_caption;
 
@@ -385,6 +386,9 @@ class ctr__doc extends ctr__
 	 
 		if($_SESSION['users_group_id']!="3" && $_SESSION['users_group_id']!="1")
 		{
+			 if (!empty($_GET['modal'])) {
+				 echo '<div class="doc-edit-form-wrap" style="padding:20px">Нет прав на загрузку файла</div>';
+			 }
 			 return;
 		}
 		 
@@ -419,8 +423,11 @@ class ctr__doc extends ctr__
 			if (!$v) {
 				$v = array();
 			}
-			$file_caption = isset($v['caption']) ? $v['caption'] : '';
-			if(!$file_caption && !empty($v['name'])){$file_caption = $v['name'];}
+			$file_caption = $this->_doc_file_display_name(
+				isset($v['caption']) ? $v['caption'] : '',
+				isset($v['name']) ? $v['name'] : '',
+				isset($v['puth']) ? $v['puth'] : ''
+			);
 		 }
 		 
 		 
@@ -516,9 +523,10 @@ class ctr__doc extends ctr__
 		}
 		else
 		{
-			print 'файл не найден';
-	 
-			print $file;
+			http_response_code(404);
+			header('Content-Type: text/plain; charset=utf-8');
+			echo 'Файл не найден';
+			exit;
 		}
 	 }
 	 
@@ -533,6 +541,10 @@ class ctr__doc extends ctr__
 		 
 		global $mysql;
 		$data = $mysql->get_arr('SELECT * FROM files2node WHERE files2node_id="'.$id.'"',1);
+		if (!$data) {
+			$this->path_download('');
+			return;
+		}
 		$path = str_replace('/sahmatka/upload/', '', $data['puth']);
 		$path = str_replace('/sahmatka/', '', $path);
 		$path = ltrim($path, '/');
@@ -857,10 +869,11 @@ function show_tree()
 		}
 
 		foreach ($files as $file) {
-			$ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-			if(!$ext && $file['puth']) {
-				$ext = pathinfo($file['puth'], PATHINFO_EXTENSION);
-			}
+			$tree_label = htmlspecialchars(
+				$this->_doc_file_display_name($file['title'], $file['name'], $file['puth']),
+				ENT_QUOTES,
+				'UTF-8'
+			);
 			
             $docdate = $file['docdate'] ? date('d.m.Y', strtotime($file['docdate'])) : '';
             $uptime = $file['uptime'] ? date('d.m.Y H:i:s', $file['uptime']) : '';
@@ -870,7 +883,7 @@ function show_tree()
 			$tree_data[] = [
 				'id' => 'file_' . $file['id'],
 				'parent' => 'dir_' . $file['node_id'],
-				'text' => $file['title'] . ($ext ? '.' . $ext : '') . '<span class="mobile-menu-btn">⋮</span>',
+				'text' => $tree_label,
 				'type' => 'file',
 				'li_attr' => ['class' => 'type-file' . ($is_deleted ? ' node-deleted' : '')],
                 'data' => [
@@ -1101,6 +1114,50 @@ function show_tree()
     }
 
     /**
+     * Расширение файла с диска (name / puth), не из заголовка.
+     */
+    protected function _doc_file_ext($name = '', $puth = '')
+    {
+        foreach (array($puth, $name) as $src) {
+            $ext = pathinfo((string)$src, PATHINFO_EXTENSION);
+            if ($ext !== '' && preg_match('/^[a-z0-9]{2,8}$/i', $ext)) {
+                return $ext;
+            }
+        }
+        return '';
+    }
+
+    /**
+     * Один и тот же заголовок для дерева и поля «Заголовок».
+     * Убирает HTML ⋮, хвост !!!!! и повтор .pdf.pdf / .docx.docx.
+     */
+    protected function _doc_clean_file_label($label, $name = '', $puth = '')
+    {
+        $label = html_entity_decode(strip_tags((string)$label), ENT_QUOTES, 'UTF-8');
+        $label = str_replace("\xE2\x8B\xAE", '', $label);
+        $label = trim($label);
+        $label = preg_replace('/(\.[a-z0-9]{2,8})!+/i', '$1', $label);
+        $ext = $this->_doc_file_ext($name, $puth);
+        if ($ext !== '') {
+            $q = preg_quote($ext, '/');
+            $label = preg_replace('/(\.' . $q . ')+$/i', '.' . $ext, $label);
+        }
+        return is_string($label) ? $label : '';
+    }
+
+    protected function _doc_file_display_name($caption, $name = '', $puth = '')
+    {
+        $label = $this->_doc_clean_file_label($caption, $name, $puth);
+        if ($label === '') {
+            $label = $this->_doc_clean_file_label($name, $name, $puth);
+        }
+        if ($label === '' && $puth) {
+            $label = $this->_doc_clean_file_label(basename((string)$puth), $name, $puth);
+        }
+        return $label;
+    }
+
+    /**
      * Генерирует HTML для меню действий папки.
      * @param array $dir - Массив с данными о папке.
      * @return string - HTML-код меню.
@@ -1113,7 +1170,7 @@ function show_tree()
         $actions .= '<a href="#" class="action-btn add-doc-btn" title="Добавить документ">📄</a>';
         $actions .= '<a href="#" class="action-btn rename-btn" title="Переименовать">✏️</a>';
 
-        if (isset($dir['deleted']) && $dir['deleted']) {
+        if ((isset($dir['del']) && (int)$dir['del'] === 1) || !empty($dir['deleted'])) {
             $actions .= '<a href="#" class="action-btn restore-btn" title="Восстановить">♻️</a>';
         } else {
             $actions .= '<a href="#" class="action-btn delete-btn" title="Удалить">🗑</a>';
@@ -1133,7 +1190,7 @@ function show_tree()
         $actions = '';
         $actions .= '<a href="#" class="action-btn rename-btn" title="Переименовать">✏️</a>';
         
-        if (isset($file['deleted']) && $file['deleted']) {
+        if ((isset($file['del']) && (int)$file['del'] === 1) || !empty($file['deleted'])) {
             $actions .= '<a href="#" class="action-btn restore-btn" title="Восстановить">♻️</a>';
         } else {
             $actions .= '<a href="#" class="action-btn delete-btn" title="Удалить">🗑</a>';

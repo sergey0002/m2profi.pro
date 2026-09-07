@@ -96,7 +96,7 @@ $(document).ready(function() {
     }
 
     function isDocModalOpen() {
-        return $('#doc-modal-overlay').length > 0 && $('#doc-modal-overlay').is(':visible');
+        return $('#doc-modal-overlay').length > 0;
     }
 
     function whenLayoutReady(cb) {
@@ -118,14 +118,122 @@ $(document).ready(function() {
         tick();
     }
 
-    function closeDocModal() {
+    function captureInitialFilex($overlay) {
+        var $form = $overlay.find('form');
+        if (!$form.length) {
+            $overlay.removeAttr('data-initial-filex');
+            return;
+        }
+        var val = $form.find('input[name="filex"]').val() || '';
+        $overlay.attr('data-initial-filex', val);
+        $form.attr('data-initial-filex', val);
+    }
+
+    function isDocModalDirty() {
+        var $overlay = $('#doc-modal-overlay');
+        var $form = $overlay.find('form');
+        if (!$form.length) {
+            return false;
+        }
+        var initial = $form.attr('data-initial-filex');
+        if (initial === undefined) {
+            initial = $overlay.attr('data-initial-filex') || '';
+        }
+        var current = $form.find('input[name="filex"]').val() || '';
+        if (String(current) !== String(initial)) {
+            return true;
+        }
+        var $submit = $form.find('[type=submit]');
+        if ($submit.prop('disabled')) {
+            return true;
+        }
+        var submitVal = String($submit.val() || $submit.text() || '');
+        return submitVal.indexOf('Загрузка') !== -1;
+    }
+
+    function finishDocModalRemove($overlay) {
         $(document).off('keydown.docModal');
-        $('#doc-modal-overlay').remove();
+        $overlay.remove();
         $('body').css('overflow', '');
     }
 
+    function closeDocModal(opts) {
+        opts = opts || {};
+        var $overlay = $('#doc-modal-overlay');
+        if (!$overlay.length) {
+            return;
+        }
+        if ($overlay.hasClass('is-closing')) {
+            return;
+        }
+        if (!opts.force && isDocModalDirty()) {
+            if (!window.confirm('Файл ещё не сохранён в архив. Закрыть?')) {
+                return;
+            }
+        }
+        $(document).off('keydown.docModal');
+        $overlay.removeClass('is-open').addClass('is-closing');
+        var done = false;
+        function finish() {
+            if (done) {
+                return;
+            }
+            done = true;
+            finishDocModalRemove($overlay);
+        }
+        $overlay.one('transitionend', function(e) {
+            if (e.target === $overlay[0]) {
+                finish();
+            }
+        });
+        setTimeout(finish, 320);
+    }
+
+    function loadDocModalBody($overlay, url) {
+        $overlay.find('.doc-modal__body').html('<div style="padding:24px;color:#666;">Загрузка…</div>');
+        $overlay.removeAttr('data-initial-filex');
+        $.ajax({
+            url: url,
+            type: 'GET',
+            dataType: 'html',
+            success: function(html) {
+                $overlay.find('.doc-modal__body').html(html);
+                captureInitialFilex($overlay);
+            },
+            error: function() {
+                $overlay.find('.doc-modal__body').html(
+                    '<div style="padding:24px;color:#c00;">Не удалось загрузить форму</div>'
+                );
+            }
+        });
+    }
+
+    function bindDocModalChrome($overlay) {
+        $overlay.on('click.docModalBg', function(e) {
+            if (e.target === $overlay[0]) {
+                closeDocModal();
+            }
+        });
+        $overlay.find('.doc-modal__close').on('click', function() {
+            closeDocModal();
+        });
+        $(document).off('keydown.docModal').on('keydown.docModal', function(e) {
+            if (e.key === 'Escape' || e.keyCode === 27) {
+                closeDocModal();
+            }
+        });
+    }
+
     function openDocModal(url) {
-        closeDocModal();
+        var $existing = $('#doc-modal-overlay');
+        if ($existing.hasClass('is-closing')) {
+            finishDocModalRemove($existing);
+            $existing = $('#doc-modal-overlay');
+        }
+        if ($existing.length) {
+            loadDocModalBody($existing, url);
+            return;
+        }
         var $overlay = $(
             '<div id="doc-modal-overlay" class="doc-modal-overlay" role="dialog" aria-modal="true">' +
                 '<div class="doc-modal">' +
@@ -135,34 +243,18 @@ $(document).ready(function() {
             '</div>'
         );
         $('body').append($overlay).css('overflow', 'hidden');
-
-        $overlay.on('click', function(e) {
-            if (e.target === $overlay[0]) {
-                closeDocModal();
-            }
-        });
-        $overlay.find('.doc-modal__close').on('click', function() {
-            closeDocModal();
-        });
-        $(document).on('keydown.docModal', function(e) {
-            if (e.key === 'Escape' || e.keyCode === 27) {
-                closeDocModal();
-            }
-        });
-
-        $.ajax({
-            url: url,
-            type: 'GET',
-            dataType: 'html',
-            success: function(html) {
-                $overlay.find('.doc-modal__body').html(html);
-            },
-            error: function() {
-                $overlay.find('.doc-modal__body').html(
-                    '<div style="padding:24px;color:#c00;">Не удалось загрузить форму</div>'
-                );
-            }
-        });
+        bindDocModalChrome($overlay);
+        loadDocModalBody($overlay, url);
+        var markOpen = function() {
+            $overlay.addClass('is-open');
+        };
+        if (window.requestAnimationFrame) {
+            requestAnimationFrame(function() {
+                requestAnimationFrame(markOpen);
+            });
+        } else {
+            setTimeout(markOpen, 16);
+        }
     }
 
     function openDocEditModal(opts) {
@@ -193,10 +285,12 @@ $(document).ready(function() {
             warnDateFilter: !!(dateFrom.val() || dateTo.val()) && !!fileId && !response.deleted
         };
         if (response.deleted) {
-            pendingReveal.fileId = null;
+            if (!showDeletedCheckbox.is(':checked')) {
+                pendingReveal.fileId = null;
+            }
             pendingReveal.warnDateFilter = false;
         }
-        closeDocModal();
+        closeDocModal({ force: true });
         refreshTree();
     }
 
@@ -471,8 +565,11 @@ $(document).ready(function() {
             });
         }
         addNodeElements();
-    }).on('redraw.jstree open_node.jstree', function() {
+    }).on('redraw.jstree open_node.jstree create_node.jstree rename_node.jstree', function() {
         addNodeElements();
+    }).on('delete_node.jstree', function() {
+        // delete_node fires before redraw_node(parent); restore buttons after DOM rebuild
+        setTimeout(function() { addNodeElements(); }, 0);
     });
 
     // ######### ДЕЛЕГИРОВАННЫЕ ОБРАБОТЧИКИ #########
@@ -489,9 +586,11 @@ $(document).ready(function() {
             dirId: dirId ? ('dir_' + dirId) : null
         };
         if (data.deleted) {
-            pendingReveal.fileId = null;
+            if (!showDeletedCheckbox.is(':checked')) {
+                pendingReveal.fileId = null;
+            }
         }
-        closeDocModal();
+        closeDocModal({ force: true });
         if ($.magnificPopup && $.magnificPopup.instance && $.magnificPopup.instance.isOpen) {
             $.magnificPopup.close();
         } else {
@@ -612,24 +711,27 @@ $(document).ready(function() {
         e.stopPropagation(); e.preventDefault();
         var nodeId = $(this).closest('.jstree-node').attr('id');
         var node = tree.jstree(true).get_node(nodeId);
-        if (confirm("Вы уверены, что хотите удалить этот элемент?")) {
-            var nodeEl = $('#' + node.id);
-            nodeEl.fadeOut(500, function() {
-                $.ajax({
-                    type: 'POST',
-                    url: ajaxRouter + '?ctr=doc&act=delete_node',
-                    data: { 'id': node.id },
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            tree.jstree(true).delete_node(node);
-                        } else {
-                            nodeEl.show();
-                            alert('Ошибка: ' + (response.message || 'Не удалось удалить элемент'));
-                        }
-                    }, error: function() { nodeEl.show(); alert('Ошибка соединения с сервером'); }
-                });
-            });
+        if (!node || !confirm("Вы уверены, что хотите удалить этот элемент?")) {
+            return;
         }
+        $.ajax({
+            type: 'POST',
+            url: ajaxRouter + '?ctr=doc&act=delete_node',
+            data: { 'id': node.id },
+            success: function(response) {
+                if (response.status !== 'success') {
+                    alert('Ошибка: ' + (response.message || 'Не удалось удалить элемент'));
+                    return;
+                }
+                if (showDeletedCheckbox.is(':checked')) {
+                    tree.jstree(true).refresh();
+                } else {
+                    tree.jstree(true).delete_node(node);
+                    addNodeElements();
+                }
+            },
+            error: function() { alert('Ошибка соединения с сервером'); }
+        });
     });
 
     tree.on('click', '.restore-btn', function(e) {
