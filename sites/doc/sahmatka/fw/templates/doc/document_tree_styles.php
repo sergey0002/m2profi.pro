@@ -261,6 +261,54 @@
     animation: none;
 }
 
+/* Красная подсветка после успешного удаления */
+@keyframes highlight-delete-node {
+    0%, 100% {
+        background-color: #ffebee !important;
+        box-shadow: 0 0 0 3px #e53935, 0 0 18px rgba(229, 57, 53, 0.45);
+    }
+}
+
+@keyframes highlight-delete-folder-node {
+    0%, 100% {
+        background-color: #8b3a3a !important;
+        box-shadow: 0 0 0 3px #e53935, 0 0 18px rgba(229, 57, 53, 0.45);
+    }
+}
+
+.jstree-node.highlight-delete > .jstree-anchor {
+    animation: highlight-delete-node 0.45s ease-out;
+}
+
+.jstree-node.type-folder.highlight-delete > .jstree-anchor {
+    animation: highlight-delete-folder-node 0.45s ease-out;
+}
+
+.highlight-delete > .jstree-wholerow {
+    animation: none;
+}
+
+/* Collapse после красной вспышки (галочка «удалённые» выкл) */
+.jstree-node.doc-node-removing {
+    display: block !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+    opacity: 0;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    transition: opacity 0.45s ease-in, height 0.45s ease-in, margin 0.45s ease-in, padding 0.45s ease-in;
+}
+
+.jstree-node.doc-node-removing > .jstree-anchor {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    transition: padding 0.45s ease-in, min-height 0.45s ease-in;
+}
+
 /* Стили для дат документа */
 .doc-dates {
     display: block;

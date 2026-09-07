@@ -12,6 +12,7 @@ $(document).ready(function() {
     var searchTimeout = false;
     var pendingReveal = null;
     var highlightTimer = null;
+    var deletingIds = {};
 
     // Инициализация jQuery UI Datepicker с русской локализацией
     $.datepicker.regional['ru'] = {
@@ -89,6 +90,53 @@ $(document).ready(function() {
         highlightTimer = setTimeout(function() {
             $(el).removeClass('highlight-node');
         }, 3500);
+    }
+
+    function animateDeleteSuccess(node, keepVisible, onDone) {
+        var el = getNodeEl(node && node.id);
+        var inst = tree.jstree(true);
+        var finishGuard = function() {
+            if (typeof onDone === 'function') {
+                onDone();
+            }
+        };
+        if (!el || !inst) {
+            if (keepVisible) {
+                inst && inst.refresh();
+            } else if (node && inst) {
+                inst.delete_node(node);
+                addNodeElements();
+            }
+            finishGuard();
+            return;
+        }
+        $(el).addClass('highlight-delete');
+        setTimeout(function() {
+            if (keepVisible) {
+                inst.refresh();
+                finishGuard();
+                return;
+            }
+            var done = false;
+            var finish = function() {
+                if (done) {
+                    return;
+                }
+                done = true;
+                if (inst.get_node(node)) {
+                    inst.delete_node(node);
+                }
+                addNodeElements();
+                finishGuard();
+            };
+            el.style.display = 'block';
+            el.style.overflow = 'hidden';
+            el.style.height = el.offsetHeight + 'px';
+            void el.offsetHeight;
+            $(el).addClass('doc-node-removing');
+            el.style.height = '0px';
+            setTimeout(finish, 500);
+        }, 400);
     }
 
     function isMagnificOpen() {
@@ -714,23 +762,29 @@ $(document).ready(function() {
         if (!node || !confirm("Вы уверены, что хотите удалить этот элемент?")) {
             return;
         }
+        if (deletingIds[node.id]) {
+            return;
+        }
+        deletingIds[node.id] = true;
         $.ajax({
             type: 'POST',
             url: ajaxRouter + '?ctr=doc&act=delete_node',
+            dataType: 'json',
             data: { 'id': node.id },
             success: function(response) {
-                if (response.status !== 'success') {
-                    alert('Ошибка: ' + (response.message || 'Не удалось удалить элемент'));
+                if (!response || response.status !== 'success') {
+                    alert('Ошибка: ' + ((response && response.message) || 'Не удалось удалить элемент'));
+                    delete deletingIds[node.id];
                     return;
                 }
-                if (showDeletedCheckbox.is(':checked')) {
-                    tree.jstree(true).refresh();
-                } else {
-                    tree.jstree(true).delete_node(node);
-                    addNodeElements();
-                }
+                animateDeleteSuccess(node, showDeletedCheckbox.is(':checked'), function() {
+                    delete deletingIds[node.id];
+                });
             },
-            error: function() { alert('Ошибка соединения с сервером'); }
+            error: function() {
+                alert('Ошибка соединения с сервером');
+                delete deletingIds[node.id];
+            }
         });
     });
 
