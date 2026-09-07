@@ -13,6 +13,8 @@ $(document).ready(function() {
     var pendingReveal = null;
     var highlightTimer = null;
     var deletingIds = {};
+    var preSearchState = null;
+    var searchActive = false;
 
     // Инициализация jQuery UI Datepicker с русской локализацией
     $.datepicker.regional['ru'] = {
@@ -137,6 +139,78 @@ $(document).ready(function() {
             el.style.height = '0px';
             setTimeout(finish, 500);
         }, 400);
+    }
+
+    function decodeHtml(html) {
+        if (!html) {
+            return '';
+        }
+        return $('<textarea/>').html(html).text();
+    }
+
+    function wrapSaveState(inst) {
+        if (!inst || inst._docSaveStateWrapped) {
+            return;
+        }
+        inst._docSaveStateWrapped = true;
+        var saveStateOrig = inst.save_state.bind(inst);
+        inst.save_state = function () {
+            if (searchActive) {
+                return;
+            }
+            return saveStateOrig();
+        };
+    }
+
+    function endSearchSession() {
+        var inst = tree.jstree(true);
+        if (!inst) {
+            searchActive = false;
+            preSearchState = null;
+            return;
+        }
+        wrapSaveState(inst);
+        inst.clear_search();
+        inst.show_all(true);
+        if (!searchActive && !preSearchState) {
+            addNodeElements();
+            return;
+        }
+        var snap = preSearchState;
+        if (snap) {
+            tree.one('set_state.jstree', function () {
+                searchActive = false;
+                preSearchState = null;
+                inst.save_state();
+                addNodeElements();
+            });
+            inst.set_state($.extend(true, {}, snap));
+            return;
+        }
+        searchActive = false;
+        preSearchState = null;
+        inst.redraw(true);
+        inst.save_state();
+        addNodeElements();
+    }
+
+    function applyTreeSearch(raw) {
+        var q = $.trim(raw || '');
+        var inst = tree.jstree(true);
+        if (!inst) {
+            return;
+        }
+        wrapSaveState(inst);
+        if (!q) {
+            endSearchSession();
+            return;
+        }
+        if (!searchActive) {
+            preSearchState = $.extend(true, {}, inst.get_state());
+            searchActive = true;
+        }
+        inst.close_all(undefined, 0);
+        inst.search(q);
     }
 
     function isMagnificOpen() {
@@ -534,15 +608,20 @@ $(document).ready(function() {
             'file': { 'icon': 'jstree-icon jstree-themeicon-custom jstree-themeicon-file' }
         },
         'search': {
-            'ajax': {
-                'url': ajaxRouter + '?ctr=doc&act=search_tree',
-                'dataType': 'json',
-                'data': function (str) {
-                    return { 'search_query': str };
-                }
-            },
+            'ajax': false,
             'show_only_matches': true,
-            'search_leaves_only': true
+            'show_only_matches_children': false,
+            'search_leaves_only': false,
+            'fuzzy': false,
+            'case_sensitive': false,
+            'close_opened_onclear': false,
+            'search_callback': function (str, node) {
+                var needle = $.trim(str || '').toLowerCase();
+                if (!needle || !node) {
+                    return false;
+                }
+                return decodeHtml(node.text).toLowerCase().indexOf(needle) !== -1;
+            }
         }
     }).on('move_node.jstree', function (e, data) {
         var inst = data.instance;
@@ -601,6 +680,7 @@ $(document).ready(function() {
             tree.jstree(true).deselect_node(data.node);
         }
     }).on('ready.jstree', function() {
+        wrapSaveState(tree.jstree(true));
         // Open level 1 folders by default if no state is saved
         var hasState = localStorage.getItem('doc_tree_state');
         if (!hasState) {
@@ -613,6 +693,17 @@ $(document).ready(function() {
             });
         }
         addNodeElements();
+    }).on('search.jstree', function (e, data) {
+        var inst = tree.jstree(true);
+        if (inst && data && data.str && data.res && data.res.length === 0) {
+            inst.hide_all(true);
+            inst.redraw(true);
+        }
+        addNodeElements();
+    }).on('refresh.jstree', function () {
+        if (searchActive && $.trim(searchInput.val())) {
+            applyTreeSearch(searchInput.val());
+        }
     }).on('redraw.jstree open_node.jstree create_node.jstree rename_node.jstree', function() {
         addNodeElements();
     }).on('delete_node.jstree', function() {
@@ -860,16 +951,20 @@ $(document).ready(function() {
         }
     });
 
-    searchInput.on('keyup', function () {
-        if (searchTimeout) clearTimeout(searchTimeout);
+    function scheduleSearch() {
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
         searchTimeout = setTimeout(function () {
-            tree.jstree(true).search(searchInput.val());
+            applyTreeSearch(searchInput.val());
         }, 300);
-    });
-
+    }
+    searchInput.on('input', scheduleSearch);
+    searchInput.on('compositionend', scheduleSearch);
     searchClear.on('click', function () {
-        tree.jstree(true).clear_search();
-        searchInput.val('').focus();
+        searchInput.val('');
+        applyTreeSearch('');
+        searchInput.focus();
     });
 });
 </script>

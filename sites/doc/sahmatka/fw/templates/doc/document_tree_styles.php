@@ -288,6 +288,27 @@
     animation: none;
 }
 
+/* Синяя рамка + ареол найденных узлов (класс на якоре, не на li) */
+.jstree-default .jstree-anchor.jstree-search,
+.jstree-node.type-file > .jstree-anchor.jstree-search {
+    color: #0d47a1 !important;
+    font-style: normal;
+    font-weight: bold;
+    background-color: #e3f2fd !important;
+    box-shadow: 0 0 0 3px #1e88e5, 0 0 18px rgba(30, 136, 229, 0.45) !important;
+}
+
+.jstree-node.type-folder > .jstree-anchor.jstree-search {
+    color: #fff !important;
+    background-color: #1565c0 !important;
+    box-shadow: 0 0 0 3px #1e88e5, 0 0 18px rgba(30, 136, 229, 0.45) !important;
+}
+
+.jstree-node .jstree-anchor.jstree-search + .jstree-wholerow,
+.jstree-search + .jstree-wholerow {
+    animation: none;
+}
+
 /* Collapse после красной вспышки (галочка «удалённые» выкл) */
 .jstree-node.doc-node-removing {
     display: block !important;
