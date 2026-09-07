@@ -1,16 +1,9 @@
 <? 
 include('config.php');
 include('incudes_/header.php');
- 
- if(!$_GET['ctr'] )
- {
-	 $_GET['ctr'] = 'index';
-	 $_GET['act'] = 'index';
- }
- 
- 
- 
+
 # ПОлучаем результат работы контроллера--------
+# ctr/act без GET берутся из $r->default_controller / default_action (config.php)
 ob_start();
 if( $_SESSION['sh_login'] )
 { 

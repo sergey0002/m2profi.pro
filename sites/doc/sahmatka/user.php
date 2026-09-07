@@ -19,12 +19,14 @@ include('incudes_/header.php');
 ?>
 <script>
 $(document).ready(function(){
-    window.location.href = '<?=$GLOBALS['config']['base_url']?>/sahmatka/ctrind.php';
+    window.location.href = '<?=$GLOBALS['config']['base_url']?>/sahmatka/ctrind.php?ctr=<?=rawurlencode(!empty($r->default_controller) ? $r->default_controller : 'doc')?>&act=<?=rawurlencode(!empty($r->default_action) ? $r->default_action : 'index')?>';
 });
 </script>
 
 <?
-header("Location: ".$GLOBALS['config']['base_url']."/sahmatka/ctrind.php");
+$home_ctr = !empty($r->default_controller) ? $r->default_controller : 'doc';
+$home_act = !empty($r->default_action) ? $r->default_action : 'index';
+header("Location: ".$GLOBALS['config']['base_url']."/sahmatka/ctrind.php?ctr=".rawurlencode($home_ctr)."&act=".rawurlencode($home_act));
 exit( );
 
 
