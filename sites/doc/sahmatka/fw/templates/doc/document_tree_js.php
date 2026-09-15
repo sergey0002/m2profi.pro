@@ -3,7 +3,6 @@ $(document).ready(function() {
     var cfg = window.M2PROFI_CONFIG || {};
     var siteBase = cfg.baseUrl || '';
     var ajaxRouter = cfg.ajaxRouter || (siteBase + '/sahmatka/ajax_router.php');
-    var iframeRouter = cfg.iframeRouter || (siteBase + '/sahmatka/iframe_router.php');
     var tree = $('#doc_tree');
     var searchInput = $('#doc-search-input');
     var searchClear = $('#doc-search-clear');
@@ -11,6 +10,11 @@ $(document).ready(function() {
     var dateFrom = $('#date-from');
     var dateTo = $('#date-to');
     var searchTimeout = false;
+    var pendingReveal = null;
+    var highlightTimer = null;
+    var deletingIds = {};
+    var preSearchState = null;
+    var searchActive = false;
 
     // Инициализация jQuery UI Datepicker с русской локализацией
     $.datepicker.regional['ru'] = {
@@ -56,20 +60,442 @@ $(document).ready(function() {
         }
     });
 
+    function getNodeEl(nodeId) {
+        if (!nodeId) {
+            return null;
+        }
+        var el = document.getElementById(nodeId);
+        if (el) {
+            return el;
+        }
+        var safe = String(nodeId).replace(/(:|\.|\[|\]|,|=|@)/g, '\\$1');
+        return tree.find('#' + safe)[0] || null;
+    }
+
     function highlightNode(nodeId) {
-        var node = tree.jstree(true).get_node(nodeId);
-        if (node) {
-            var el = $('#' + nodeId);
-            if (el.length) {
-                $('html, body').animate({
-                    scrollTop: el.offset().top - 100
-                }, 500);
-                el.addClass('highlight-node');
-                setTimeout(function() {
-                    el.removeClass('highlight-node');
-                }, 2000);
+        var inst = tree.jstree(true);
+        if (!inst || !nodeId || !inst.get_node(nodeId)) {
+            return;
+        }
+        addNodeElements();
+        var el = getNodeEl(nodeId);
+        if (!el) {
+            return;
+        }
+        var top = $(el).offset().top - Math.max(80, Math.round($(window).height() / 4));
+        $('html, body').stop(true).animate({ scrollTop: Math.max(0, top) }, 400);
+        tree.find('.highlight-node').removeClass('highlight-node');
+        $(el).addClass('highlight-node');
+        if (highlightTimer) {
+            clearTimeout(highlightTimer);
+        }
+        highlightTimer = setTimeout(function() {
+            $(el).removeClass('highlight-node');
+        }, 3500);
+    }
+
+    function animateDeleteSuccess(node, keepVisible, onDone) {
+        var el = getNodeEl(node && node.id);
+        var inst = tree.jstree(true);
+        var finishGuard = function() {
+            if (typeof onDone === 'function') {
+                onDone();
+            }
+        };
+        if (!el || !inst) {
+            if (keepVisible) {
+                inst && inst.refresh();
+            } else if (node && inst) {
+                inst.delete_node(node);
+                addNodeElements();
+            }
+            finishGuard();
+            return;
+        }
+        $(el).addClass('highlight-delete');
+        setTimeout(function() {
+            if (keepVisible) {
+                inst.refresh();
+                finishGuard();
+                return;
+            }
+            var done = false;
+            var finish = function() {
+                if (done) {
+                    return;
+                }
+                done = true;
+                if (inst.get_node(node)) {
+                    inst.delete_node(node);
+                }
+                addNodeElements();
+                finishGuard();
+            };
+            el.style.display = 'block';
+            el.style.overflow = 'hidden';
+            el.style.height = el.offsetHeight + 'px';
+            void el.offsetHeight;
+            $(el).addClass('doc-node-removing');
+            el.style.height = '0px';
+            setTimeout(finish, 500);
+        }, 400);
+    }
+
+    function decodeHtml(html) {
+        if (!html) {
+            return '';
+        }
+        return $('<textarea/>').html(html).text();
+    }
+
+    function wrapSaveState(inst) {
+        if (!inst || inst._docSaveStateWrapped) {
+            return;
+        }
+        inst._docSaveStateWrapped = true;
+        var saveStateOrig = inst.save_state.bind(inst);
+        inst.save_state = function () {
+            if (searchActive) {
+                return;
+            }
+            return saveStateOrig();
+        };
+    }
+
+    function endSearchSession() {
+        var inst = tree.jstree(true);
+        if (!inst) {
+            searchActive = false;
+            preSearchState = null;
+            return;
+        }
+        wrapSaveState(inst);
+        inst.clear_search();
+        inst.show_all(true);
+        if (!searchActive && !preSearchState) {
+            addNodeElements();
+            return;
+        }
+        var snap = preSearchState;
+        if (snap) {
+            tree.one('set_state.jstree', function () {
+                searchActive = false;
+                preSearchState = null;
+                inst.save_state();
+                addNodeElements();
+            });
+            inst.set_state($.extend(true, {}, snap));
+            return;
+        }
+        searchActive = false;
+        preSearchState = null;
+        inst.redraw(true);
+        inst.save_state();
+        addNodeElements();
+    }
+
+    function applyTreeSearch(raw) {
+        var q = $.trim(raw || '');
+        var inst = tree.jstree(true);
+        if (!inst) {
+            return;
+        }
+        wrapSaveState(inst);
+        if (!q) {
+            endSearchSession();
+            return;
+        }
+        if (!searchActive) {
+            preSearchState = $.extend(true, {}, inst.get_state());
+            searchActive = true;
+        }
+        inst.close_all(undefined, 0);
+        inst.search(q);
+    }
+
+    function isMagnificOpen() {
+        return !!(window.jQuery && $.magnificPopup && $.magnificPopup.instance && $.magnificPopup.instance.isOpen);
+    }
+
+    function isDocModalOpen() {
+        return $('#doc-modal-overlay').length > 0;
+    }
+
+    function whenLayoutReady(cb) {
+        var tries = 0;
+        function tick() {
+            if ((isMagnificOpen() || isDocModalOpen()) && tries < 40) {
+                tries += 1;
+                setTimeout(tick, 50);
+                return;
+            }
+            setTimeout(function() {
+                if (window.requestAnimationFrame) {
+                    requestAnimationFrame(function() { requestAnimationFrame(cb); });
+                } else {
+                    cb();
+                }
+            }, 150);
+        }
+        tick();
+    }
+
+    function captureInitialFilex($overlay) {
+        var $form = $overlay.find('form');
+        if (!$form.length) {
+            $overlay.removeAttr('data-initial-filex');
+            return;
+        }
+        var val = $form.find('input[name="filex"]').val() || '';
+        $overlay.attr('data-initial-filex', val);
+        $form.attr('data-initial-filex', val);
+    }
+
+    function isDocModalDirty() {
+        var $overlay = $('#doc-modal-overlay');
+        var $form = $overlay.find('form');
+        if (!$form.length) {
+            return false;
+        }
+        var initial = $form.attr('data-initial-filex');
+        if (initial === undefined) {
+            initial = $overlay.attr('data-initial-filex') || '';
+        }
+        var current = $form.find('input[name="filex"]').val() || '';
+        if (String(current) !== String(initial)) {
+            return true;
+        }
+        var $submit = $form.find('[type=submit]');
+        if ($submit.prop('disabled')) {
+            return true;
+        }
+        var submitVal = String($submit.val() || $submit.text() || '');
+        return submitVal.indexOf('Загрузка') !== -1;
+    }
+
+    function finishDocModalRemove($overlay) {
+        $(document).off('keydown.docModal');
+        $overlay.remove();
+        $('body').css('overflow', '');
+    }
+
+    function closeDocModal(opts) {
+        opts = opts || {};
+        var $overlay = $('#doc-modal-overlay');
+        if (!$overlay.length) {
+            return;
+        }
+        if ($overlay.hasClass('is-closing')) {
+            return;
+        }
+        if (!opts.force && isDocModalDirty()) {
+            if (!window.confirm('Файл ещё не сохранён в архив. Закрыть?')) {
+                return;
             }
         }
+        $(document).off('keydown.docModal');
+        $overlay.removeClass('is-open').addClass('is-closing');
+        var done = false;
+        function finish() {
+            if (done) {
+                return;
+            }
+            done = true;
+            finishDocModalRemove($overlay);
+        }
+        $overlay.one('transitionend', function(e) {
+            if (e.target === $overlay[0]) {
+                finish();
+            }
+        });
+        setTimeout(finish, 320);
+    }
+
+    function loadDocModalBody($overlay, url) {
+        $overlay.find('.doc-modal__body').html('<div style="padding:24px;color:#666;">Загрузка…</div>');
+        $overlay.removeAttr('data-initial-filex');
+        $.ajax({
+            url: url,
+            type: 'GET',
+            dataType: 'html',
+            success: function(html) {
+                $overlay.find('.doc-modal__body').html(html);
+                captureInitialFilex($overlay);
+            },
+            error: function() {
+                $overlay.find('.doc-modal__body').html(
+                    '<div style="padding:24px;color:#c00;">Не удалось загрузить форму</div>'
+                );
+            }
+        });
+    }
+
+    function bindDocModalChrome($overlay) {
+        $overlay.on('click.docModalBg', function(e) {
+            if (e.target === $overlay[0]) {
+                closeDocModal();
+            }
+        });
+        $overlay.find('.doc-modal__close').on('click', function() {
+            closeDocModal();
+        });
+        $(document).off('keydown.docModal').on('keydown.docModal', function(e) {
+            if (e.key === 'Escape' || e.keyCode === 27) {
+                closeDocModal();
+            }
+        });
+    }
+
+    function openDocModal(url) {
+        var $existing = $('#doc-modal-overlay');
+        if ($existing.hasClass('is-closing')) {
+            finishDocModalRemove($existing);
+            $existing = $('#doc-modal-overlay');
+        }
+        if ($existing.length) {
+            loadDocModalBody($existing, url);
+            return;
+        }
+        var $overlay = $(
+            '<div id="doc-modal-overlay" class="doc-modal-overlay" role="dialog" aria-modal="true">' +
+                '<div class="doc-modal">' +
+                    '<button type="button" class="doc-modal__close" title="Закрыть" aria-label="Закрыть">&times;</button>' +
+                    '<div class="doc-modal__body"><div style="padding:24px;color:#666;">Загрузка…</div></div>' +
+                '</div>' +
+            '</div>'
+        );
+        $('body').append($overlay).css('overflow', 'hidden');
+        bindDocModalChrome($overlay);
+        loadDocModalBody($overlay, url);
+        var markOpen = function() {
+            $overlay.addClass('is-open');
+        };
+        if (window.requestAnimationFrame) {
+            requestAnimationFrame(function() {
+                requestAnimationFrame(markOpen);
+            });
+        } else {
+            setTimeout(markOpen, 16);
+        }
+    }
+
+    function openDocEditModal(opts) {
+        var q = 'ctr=doc&act=edit&modal=1';
+        if (opts && opts.fileId) {
+            q += '&id=' + encodeURIComponent(opts.fileId);
+        }
+        if (opts && opts.dirId) {
+            q += '&dir_id=' + encodeURIComponent(opts.dirId);
+        }
+        openDocModal(ajaxRouter + '?' + q);
+    }
+
+    function openDocCardModal(fileId) {
+        openDocModal(ajaxRouter + '?ctr=doc&act=card&modal=1&id=' + encodeURIComponent(fileId));
+    }
+
+    function applySaveResult(response) {
+        if (!response || response.status !== 'success') {
+            alert((response && response.message) ? response.message : 'Не удалось сохранить');
+            return;
+        }
+        var fileId = parseInt(response.file_id, 10) || 0;
+        var dirId = parseInt(response.dir_id, 10) || 0;
+        pendingReveal = {
+            fileId: fileId ? ('file_' + fileId) : null,
+            dirId: dirId ? ('dir_' + dirId) : null,
+            warnDateFilter: !!(dateFrom.val() || dateTo.val()) && !!fileId && !response.deleted
+        };
+        if (response.deleted) {
+            if (!showDeletedCheckbox.is(':checked')) {
+                pendingReveal.fileId = null;
+            }
+            pendingReveal.warnDateFilter = false;
+        }
+        closeDocModal({ force: true });
+        refreshTree();
+    }
+
+    function openAncestors(inst, nodeId, done) {
+        var node = inst.get_node(nodeId);
+        if (!node) {
+            done(false);
+            return;
+        }
+        var path = [];
+        (node.parents || []).slice().reverse().forEach(function(id) {
+            if (id && id !== '#') {
+                path.push(id);
+            }
+        });
+        if (node.type === 'folder') {
+            path.push(node.id);
+        } else if (node.parent && node.parent !== '#') {
+            path.push(node.parent);
+        }
+
+        function openNext(i) {
+            if (i >= path.length) {
+                done(true);
+                return;
+            }
+            inst.open_node(path[i], function() {
+                openNext(i + 1);
+            }, false);
+        }
+        openNext(0);
+    }
+
+    function revealPendingNode() {
+        if (!pendingReveal) {
+            return;
+        }
+        var inst = tree.jstree(true);
+        if (!inst) {
+            return;
+        }
+        var fileId = pendingReveal.fileId;
+        var dirId = pendingReveal.dirId;
+        var warnDateFilter = !!pendingReveal.warnDateFilter;
+        var fileMissing = !!(warnDateFilter && fileId && !inst.get_node(fileId));
+        var targetId = (fileId && inst.get_node(fileId)) ? fileId : dirId;
+
+        function showDateFilterToast() {
+            var toast = $('<div class="doc-modal__toast doc-filter-toast" style="margin:8px 0;">Сохранено, но скрыто фильтром дат</div>');
+            $('.doc-filter-toast').remove();
+            var $box = $('.doc-controls-wrapper').first();
+            if ($box.length) {
+                $box.after(toast);
+                setTimeout(function() { toast.fadeOut(400, function() { toast.remove(); }); }, 5000);
+            }
+        }
+
+        if (fileMissing) {
+            showDateFilterToast();
+        }
+
+        if (!targetId || !inst.get_node(targetId)) {
+            pendingReveal = null;
+            return;
+        }
+        pendingReveal = null;
+
+        openAncestors(inst, targetId, function() {
+            if (typeof inst.save_state === 'function') {
+                inst.save_state();
+            }
+            addNodeElements();
+            whenLayoutReady(function() {
+                highlightNode(fileId && inst.get_node(fileId) ? fileId : targetId);
+            });
+        });
+    }
+
+    function refreshTree() {
+        tree.one('refresh.jstree', function() {
+            revealPendingNode();
+        });
+        tree.jstree(true).refresh();
     }
 
     function getTreeDataUrl() {
@@ -182,15 +608,20 @@ $(document).ready(function() {
             'file': { 'icon': 'jstree-icon jstree-themeicon-custom jstree-themeicon-file' }
         },
         'search': {
-            'ajax': {
-                'url': ajaxRouter + '?ctr=doc&act=search_tree',
-                'dataType': 'json',
-                'data': function (str) {
-                    return { 'search_query': str };
-                }
-            },
+            'ajax': false,
             'show_only_matches': true,
-            'search_leaves_only': true
+            'show_only_matches_children': false,
+            'search_leaves_only': false,
+            'fuzzy': false,
+            'case_sensitive': false,
+            'close_opened_onclear': false,
+            'search_callback': function (str, node) {
+                var needle = $.trim(str || '').toLowerCase();
+                if (!needle || !node) {
+                    return false;
+                }
+                return decodeHtml(node.text).toLowerCase().indexOf(needle) !== -1;
+            }
         }
     }).on('move_node.jstree', function (e, data) {
         var inst = data.instance;
@@ -245,15 +676,11 @@ $(document).ready(function() {
         // Open file popup on click
         else if (data.node && data.node.type === 'file') {
             var fileId = data.node.id.replace('file_', '');
-            $.magnificPopup.open({
-                items: {
-                    src: iframeRouter + '?ctr=doc&act=card&id=' + fileId
-                },
-                type: 'iframe'
-            });
+            openDocCardModal(fileId);
             tree.jstree(true).deselect_node(data.node);
         }
     }).on('ready.jstree', function() {
+        wrapSaveState(tree.jstree(true));
         // Open level 1 folders by default if no state is saved
         var hasState = localStorage.getItem('doc_tree_state');
         if (!hasState) {
@@ -266,11 +693,99 @@ $(document).ready(function() {
             });
         }
         addNodeElements();
-    }).on('redraw.jstree open_node.jstree', function() {
+    }).on('search.jstree', function (e, data) {
+        var inst = tree.jstree(true);
+        if (inst && data && data.str && data.res && data.res.length === 0) {
+            inst.hide_all(true);
+            inst.redraw(true);
+        }
         addNodeElements();
+    }).on('refresh.jstree', function () {
+        if (searchActive && $.trim(searchInput.val())) {
+            applyTreeSearch(searchInput.val());
+        }
+    }).on('redraw.jstree open_node.jstree create_node.jstree rename_node.jstree', function() {
+        addNodeElements();
+    }).on('delete_node.jstree', function() {
+        // delete_node fires before redraw_node(parent); restore buttons after DOM rebuild
+        setTimeout(function() { addNodeElements(); }, 0);
     });
 
     // ######### ДЕЛЕГИРОВАННЫЕ ОБРАБОТЧИКИ #########
+
+    window.addEventListener('message', function(event) {
+        var data = event.data;
+        if (!data || data.source !== 'm2profi-doc' || data.type !== 'doc-file-saved') {
+            return;
+        }
+        var fileId = parseInt(data.fileId, 10) || 0;
+        var dirId = parseInt(data.dirId, 10) || 0;
+        pendingReveal = {
+            fileId: fileId ? ('file_' + fileId) : null,
+            dirId: dirId ? ('dir_' + dirId) : null
+        };
+        if (data.deleted) {
+            if (!showDeletedCheckbox.is(':checked')) {
+                pendingReveal.fileId = null;
+            }
+        }
+        closeDocModal({ force: true });
+        if ($.magnificPopup && $.magnificPopup.instance && $.magnificPopup.instance.isOpen) {
+            $.magnificPopup.close();
+        } else {
+            refreshTree();
+        }
+    });
+
+    // Modal form save → JSON act=save (do not POST to ctrind)
+    $(document).on('submit', '#doc-modal-overlay form', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $form = $(this);
+        var $wrap = $form.closest('.doc-edit-form-wrap');
+        var fileId = parseInt($wrap.attr('data-file-id'), 10) || 0;
+        var dirId = parseInt($wrap.attr('data-dir-id'), 10) || 0;
+        var saveUrl = ajaxRouter + '?ctr=doc&act=save';
+        if (fileId) {
+            saveUrl += '&id=' + encodeURIComponent(fileId);
+        }
+        if (dirId) {
+            saveUrl += '&dir_id=' + encodeURIComponent(dirId);
+        }
+        var $submit = $form.find('[type=submit]');
+        $submit.prop('disabled', true);
+        $.ajax({
+            url: saveUrl,
+            type: 'POST',
+            data: $form.serialize(),
+            dataType: 'json',
+            success: function(response) {
+                applySaveResult(response);
+            },
+            error: function() {
+                alert('Ошибка соединения с сервером');
+            },
+            complete: function() {
+                $submit.prop('disabled', false);
+            }
+        });
+        return false;
+    });
+
+    // Card → edit inside same modal
+    $(document).on('click', '#doc-modal-overlay .doc-modal-edit-link', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var fileId = $(this).attr('data-file-id') || '';
+        if (!fileId) {
+            var m = ($(this).attr('href') || '').match(/[?&]id=(\d+)/);
+            fileId = m ? m[1] : '';
+        }
+        if (fileId) {
+            openDocEditModal({ fileId: fileId });
+        }
+        return false;
+    });
 
     tree.on('click', '.add-folder-btn', function(e) {
         e.stopPropagation(); e.preventDefault();
@@ -298,11 +813,7 @@ $(document).ready(function() {
         e.stopPropagation(); e.preventDefault();
         var nodeId = $(this).closest('.jstree-node').attr('id');
         var dirId = nodeId.replace('dir_', '');
-        $.magnificPopup.open({
-            items: { src: iframeRouter + '?ctr=doc&act=edit&dir_id=' + dirId },
-            type: 'iframe',
-            callbacks: { close: function() { tree.jstree(true).refresh(); } }
-        });
+        openDocEditModal({ dirId: dirId });
     });
 
     tree.on('click', '.rename-btn', function(e) {
@@ -310,20 +821,10 @@ $(document).ready(function() {
         var nodeId = $(this).closest('.jstree-node').attr('id');
         var node = tree.jstree(true).get_node(nodeId);
         
-        // For files: open edit form in Magnific Popup
+        // For files: open edit form in page modal
         if (node && node.type === 'file') {
             var fileId = nodeId.replace('file_', '');
-            $.magnificPopup.open({
-                items: { 
-                    src: iframeRouter + '?ctr=doc&act=edit&id=' + fileId 
-                },
-                type: 'iframe',
-                callbacks: { 
-                    close: function() { 
-                        tree.jstree(true).refresh(); 
-                    } 
-                }
-            });
+            openDocEditModal({ fileId: fileId });
         }
         // For folders: use prompt dialog (existing behavior)
         else if (node && node.type === 'folder') {
@@ -349,24 +850,33 @@ $(document).ready(function() {
         e.stopPropagation(); e.preventDefault();
         var nodeId = $(this).closest('.jstree-node').attr('id');
         var node = tree.jstree(true).get_node(nodeId);
-        if (confirm("Вы уверены, что хотите удалить этот элемент?")) {
-            var nodeEl = $('#' + node.id);
-            nodeEl.fadeOut(500, function() {
-                $.ajax({
-                    type: 'POST',
-                    url: ajaxRouter + '?ctr=doc&act=delete_node',
-                    data: { 'id': node.id },
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            tree.jstree(true).delete_node(node);
-                        } else {
-                            nodeEl.show();
-                            alert('Ошибка: ' + (response.message || 'Не удалось удалить элемент'));
-                        }
-                    }, error: function() { nodeEl.show(); alert('Ошибка соединения с сервером'); }
-                });
-            });
+        if (!node || !confirm("Вы уверены, что хотите удалить этот элемент?")) {
+            return;
         }
+        if (deletingIds[node.id]) {
+            return;
+        }
+        deletingIds[node.id] = true;
+        $.ajax({
+            type: 'POST',
+            url: ajaxRouter + '?ctr=doc&act=delete_node',
+            dataType: 'json',
+            data: { 'id': node.id },
+            success: function(response) {
+                if (!response || response.status !== 'success') {
+                    alert('Ошибка: ' + ((response && response.message) || 'Не удалось удалить элемент'));
+                    delete deletingIds[node.id];
+                    return;
+                }
+                animateDeleteSuccess(node, showDeletedCheckbox.is(':checked'), function() {
+                    delete deletingIds[node.id];
+                });
+            },
+            error: function() {
+                alert('Ошибка соединения с сервером');
+                delete deletingIds[node.id];
+            }
+        });
     });
 
     tree.on('click', '.restore-btn', function(e) {
@@ -441,16 +951,20 @@ $(document).ready(function() {
         }
     });
 
-    searchInput.on('keyup', function () {
-        if (searchTimeout) clearTimeout(searchTimeout);
+    function scheduleSearch() {
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
         searchTimeout = setTimeout(function () {
-            tree.jstree(true).search(searchInput.val());
+            applyTreeSearch(searchInput.val());
         }, 300);
-    });
-
+    }
+    searchInput.on('input', scheduleSearch);
+    searchInput.on('compositionend', scheduleSearch);
     searchClear.on('click', function () {
-        tree.jstree(true).clear_search();
-        searchInput.val('').focus();
+        searchInput.val('');
+        applyTreeSearch('');
+        searchInput.focus();
     });
 });
 </script>

@@ -238,14 +238,96 @@
     color: #ff0000 !important;
 }
 
-/* Анимация подсветки */
+/* Анимация подсветки после загрузки / перемещения */
 @keyframes highlight-node {
-    0% { background-color: rgba(255, 255, 0, 0.5); }
-    100% { background-color: transparent; }
+    0%, 35% { background-color: #fff3a1 !important; box-shadow: 0 0 0 3px #ffc107, 0 0 18px rgba(255, 193, 7, 0.55); }
+    100% { background-color: #fff !important; box-shadow: none; }
+}
+
+@keyframes highlight-folder-node {
+    0%, 35% { background-color: #5a8a4a !important; box-shadow: 0 0 0 3px #ffc107, 0 0 18px rgba(255, 193, 7, 0.55); }
+    100% { background-color: #3d535f !important; box-shadow: none; }
+}
+
+.jstree-node.highlight-node > .jstree-anchor {
+    animation: highlight-node 3s ease-out;
+}
+
+.jstree-node.type-folder.highlight-node > .jstree-anchor {
+    animation: highlight-folder-node 3s ease-out;
 }
 
 .highlight-node > .jstree-wholerow {
-    animation: highlight-node 2s ease-out;
+    animation: none;
+}
+
+/* Красная подсветка после успешного удаления */
+@keyframes highlight-delete-node {
+    0%, 100% {
+        background-color: #ffebee !important;
+        box-shadow: 0 0 0 3px #e53935, 0 0 18px rgba(229, 57, 53, 0.45);
+    }
+}
+
+@keyframes highlight-delete-folder-node {
+    0%, 100% {
+        background-color: #8b3a3a !important;
+        box-shadow: 0 0 0 3px #e53935, 0 0 18px rgba(229, 57, 53, 0.45);
+    }
+}
+
+.jstree-node.highlight-delete > .jstree-anchor {
+    animation: highlight-delete-node 0.45s ease-out;
+}
+
+.jstree-node.type-folder.highlight-delete > .jstree-anchor {
+    animation: highlight-delete-folder-node 0.45s ease-out;
+}
+
+.highlight-delete > .jstree-wholerow {
+    animation: none;
+}
+
+/* Синяя рамка + ареол найденных узлов (класс на якоре, не на li) */
+.jstree-default .jstree-anchor.jstree-search,
+.jstree-node.type-file > .jstree-anchor.jstree-search {
+    color: #0d47a1 !important;
+    font-style: normal;
+    font-weight: bold;
+    background-color: #e3f2fd !important;
+    box-shadow: 0 0 0 3px #1e88e5, 0 0 18px rgba(30, 136, 229, 0.45) !important;
+}
+
+.jstree-node.type-folder > .jstree-anchor.jstree-search {
+    color: #fff !important;
+    background-color: #1565c0 !important;
+    box-shadow: 0 0 0 3px #1e88e5, 0 0 18px rgba(30, 136, 229, 0.45) !important;
+}
+
+.jstree-node .jstree-anchor.jstree-search + .jstree-wholerow,
+.jstree-search + .jstree-wholerow {
+    animation: none;
+}
+
+/* Collapse после красной вспышки (галочка «удалённые» выкл) */
+.jstree-node.doc-node-removing {
+    display: block !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+    opacity: 0;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    transition: opacity 0.45s ease-in, height 0.45s ease-in, margin 0.45s ease-in, padding 0.45s ease-in;
+}
+
+.jstree-node.doc-node-removing > .jstree-anchor {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    transition: padding 0.45s ease-in, min-height 0.45s ease-in;
 }
 
 /* Стили для дат документа */
@@ -639,6 +721,127 @@
     .jstree-default-responsive .jstree-anchor,
     .jstree-default .jstree-anchor {
         font-size: 12px !important;
+    }
+}
+
+/* Doc modal overlay (not Magnific / not .iframe_r). Open/close copies my-mfp-zoom-in. */
+.doc-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+.doc-modal-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #0b0b0b;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+    pointer-events: none;
+}
+.doc-modal-overlay.is-open::before {
+    opacity: 0.8;
+}
+.doc-modal-overlay.is-closing::before {
+    opacity: 0;
+}
+.doc-modal {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 560px;
+    min-height: 70vh;
+    max-height: 80vh;
+    overflow: auto;
+    background: #fff;
+    border-radius: 4px;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.2s ease-in-out;
+}
+.doc-modal-overlay.is-open .doc-modal {
+    opacity: 1;
+    transform: scale(1);
+}
+.doc-modal-overlay.is-closing .doc-modal {
+    opacity: 0;
+    transform: scale(0.8);
+}
+.doc-modal__close {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    background: transparent;
+    font-size: 28px;
+    line-height: 1;
+    color: #666;
+    cursor: pointer;
+}
+.doc-modal__close:hover {
+    color: #000;
+}
+.doc-modal__body {
+    box-sizing: border-box;
+    padding-top: 12px;
+}
+.doc-modal .fw_fileupload {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+}
+.doc-modal .doc-edit-form-wrap {
+    padding-top: 36px;
+}
+#doc-modal-overlay .doc-card {
+    padding: 20px;
+    padding-top: 36px;
+}
+#doc-modal-overlay .doc-card .filelink {
+    border: solid 2px #3d535f;
+    display: inline-block;
+    padding: 10px;
+    color: #3d535f;
+    text-decoration: none;
+}
+#doc-modal-overlay .doc-card .filelink:hover {
+    color: #000;
+    border-color: #000;
+}
+#doc-modal-overlay .doc-card table {
+    border-collapse: collapse;
+    width: 100%;
+}
+#doc-modal-overlay .doc-card td {
+    border: solid 1px #000;
+    padding: 4px 8px;
+}
+.doc-modal__toast {
+    margin: 0 20px 12px;
+    padding: 8px 12px;
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    color: #5d4037;
+    font-size: 13px;
+}
+@media screen and (max-width: 768px) {
+    .doc-modal-overlay {
+        padding: 12px;
+        align-items: center;
+    }
+    .doc-modal {
+        min-height: 70vh;
+        max-height: calc(100vh - 24px);
+        border-radius: 4px;
     }
 }
 

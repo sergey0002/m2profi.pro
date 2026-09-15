@@ -234,8 +234,7 @@ include($basedir.'fw/functions/permissions.php');
  
 $r = new router();
 
-// Настройка контроллера и экшена по умолчанию (если не указаны в URL)
-// Раскомментируйте и измените значения при необходимости:
+// Источник правды для «домашней» страницы кабинета (ctrind без ?ctr= и редиректы)
 $r->default_controller = 'doc';  // Контроллер по умолчанию
 $r->default_action = 'index';    // Экшен по умолчанию
 include('../../../core/classes/filed.php');

@@ -50,8 +50,10 @@ if (isset($_POST['submit'])) // Отлавливаем нажатие кнопк
 			$_SESSION['users_group_id'] = $result['users_group_id'];
 			add_log('Выполнен вход в систему');
 			
-			// РЕДИРЕКТ ПОСЛЕ УСПЕШНОГО ВХОДА
-			header("Location: ".$GLOBALS['config']['base_url']."/sahmatka/ctrind.php");
+			// РЕДИРЕКТ ПОСЛЕ УСПЕШНОГО ВХОДА — канонический URL из default_* конфига
+			$home_ctr = !empty($r->default_controller) ? $r->default_controller : 'doc';
+			$home_act = !empty($r->default_action) ? $r->default_action : 'index';
+			header("Location: ".$GLOBALS['config']['base_url']."/sahmatka/ctrind.php?ctr=".rawurlencode($home_ctr)."&act=".rawurlencode($home_act));
 			exit();
 		}     
 	}		
