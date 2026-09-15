@@ -53,7 +53,13 @@ input, select {
         <div class="col-md-5 col-xs-12 apartment-info-col xxx" style="text-align:left;">
             <div class="apartment-info-stats">
                 Количество комнат — <b><?=$apartment['rooms'];?></b><br>
-                Площадь — <b><?=$apartment['area'];?></b> м<sup>2</sup><br>
+                Площадь общая — <b><?=$apartment['area'];?></b> м<sup>2</sup><br>
+                <?php
+                $area_dog = (float)($apartment['area_small'] ?? 0);
+                if ($area_dog > 0):
+                ?>
+                Площадь по договору — <b><?= htmlspecialchars((string)$apartment['area_small']) ?></b> м<sup>2</sup><br>
+                <?php endif; ?>
                 Цена — <b><?=number_format($data['apartment']['price'], 0, '.', ' ')?> руб.</b>
             </div>
             <?php if (!empty($data['is_manual_mode'])) { ?>
