@@ -309,7 +309,8 @@ if(trim($_POST['newstatus']) &&  $_SESSION['sh_login'] == 'admin' ) // Масс�
 
 
 <?
-$secc = count($homes[$_GET['home']])-1;
+$d = '';
+$secc = count($homes[$_GET['home']] ?? []) - 1;
 if( $secc==2)
 {
 	$d='data-slick=\'{"slidesToShow": 2, "slidesToScroll": 1}\'';

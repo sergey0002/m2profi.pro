@@ -738,7 +738,7 @@ function act__order()
 
     // Извлекаем нужные части
     $apartment = array_filter($data, fn($k) => strpos($k, 'apartment_') === 0 || in_array($k, [
-        'apartament_id', 'section_id', 'floor', 'price', 'price_m', 'area', 'rooms',
+        'apartament_id', 'section_id', 'floor', 'price', 'price_m', 'area', 'area_small', 'rooms',
         'kitchen_area', 'text', 'adress', 'plan_code', 'status', 'status2',
         'status_broni_id', 'date', 'image_pb', 'plan_type', 'image', 'area2', 'area_t',
         'window_orient_1', 'window_orient_2'
@@ -859,7 +859,7 @@ function act__order()
             // Обновляем данные после изменений
             $data = $this->get_apartment($home_id, $apartment_num);
             $apartment = array_filter($data, fn($k) => strpos($k, 'apartment_') === 0 || in_array($k, [
-                'apartament_id', 'section_id', 'floor', 'price', 'price_m', 'area', 'rooms',
+                'apartament_id', 'section_id', 'floor', 'price', 'price_m', 'area', 'area_small', 'rooms',
                 'kitchen_area', 'text', 'adress', 'plan_code', 'status', 'status2',
                 'status_broni_id', 'date', 'image_pb', 'plan_type', 'image', 'area2', 'area_t',
                 'window_orient_1', 'window_orient_2'
