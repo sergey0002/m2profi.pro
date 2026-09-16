@@ -372,7 +372,7 @@
 					<span></span>
 					<?
 					// РАскрытие меню
-					if( $_GET['ctr']=='homeseditor' || $_GET['ctr']=='homes_kvartal' || $_GET['ctr']=='broni_clear' || $_GET['ctr']=='yandex_feed' || $_GET['ctr']=='avito_feed' )
+					if( $_GET['ctr']=='homeseditor' || $_GET['ctr']=='homes_kvartal' || $_GET['ctr']=='broni_clear' || $_GET['ctr']=='yandex_feed' || $_GET['ctr']=='avito_feed' || $_GET['ctr']=='domclick_feed' )
 					{
 						$statm=1;
 					}
@@ -385,6 +385,7 @@
 						<li><a href="ctrind.php?ctr=broni_clear&act=index">Снятие броней</a></li>
 						<li><a href="ctrind.php?ctr=yandex_feed&act=index">YandexFeed</a></li>
 						<li><a href="ctrind.php?ctr=avito_feed&act=index">AvitoFeed</a></li>
+						<li><a href="ctrind.php?ctr=domclick_feed&act=index">DomclickFeed</a></li>
 					</ul>
 				</li>
 				

@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/pbplans_raster.php';
 require_once __DIR__ . '/feed_fields.php';
+require_once __DIR__ . '/feed_preview.php';
 
 class em_yandex_feed
 {
@@ -47,7 +48,7 @@ class em_yandex_feed
 		return $floors;
 	}
 
-	private function apartments_sql($homeId = 0)
+	private function apartments_sql(array $filters = [])
 	{
 		$sql = 'SELECT apartaments.*,
 			homes.title as hcaption,
@@ -59,6 +60,8 @@ class em_yandex_feed
 			homes.wallmaterial,
 			homes.renovation,
 			homes.delivery_date,
+			homes.kvartal as kvartal_id,
+			homes_kvartal.title as kvartal_title,
 			`homes`.`yandex-house-id`,
 			`homes`.`yandex-building-id`,
 			`homes`.`complite`
@@ -67,10 +70,7 @@ class em_yandex_feed
 		LEFT JOIN `homes_kvartal` ON `homes_kvartal`.`homes_kvartal_id` = `homes`.`kvartal`
 		WHERE (`apartaments`.`status2`="2" OR `apartaments`.`status2`="0")
 		  AND `homes`.`show` = "1"';
-		$homeId = (int)$homeId;
-		if ($homeId > 0) {
-			$sql .= ' AND apartaments.home_id = ' . $homeId;
-		}
+		$sql .= feed_preview_sql_and_filters($filters);
 		return $sql;
 	}
 
@@ -232,14 +232,20 @@ class em_yandex_feed
 			'image' => $planImg,
 			'building' => (string)$homeId,
 			'home_id' => $homeId,
+			'kvartal_id' => (int)($result['kvartal_id'] ?? 0),
+			'rooms_n' => (int)$roomsRaw,
+			'area_n' => (float)str_replace(',', '.', (string)($result['area'] ?? 0)),
 		];
 	}
 
-	public function collect($homeId = 0)
+	public function collect($homeId = 0, array $filters = [])
 	{
+		if ($homeId > 0) {
+			$filters['building'] = (int)$homeId;
+		}
 		$date = (new DateTime())->format('c');
 		$floors = $this->floors_map();
-		$rows = $this->mysql->get_arr($this->apartments_sql($homeId));
+		$rows = $this->mysql->get_arr($this->apartments_sql($filters));
 		if (!is_array($rows)) {
 			return ['date' => $date, 'items' => []];
 		}

@@ -132,24 +132,19 @@ $fieldMeta = $data['field_meta'] ?? [];
 	<?php if (!$error): ?>
 		<div class="feed-summary">
 			<div class="feed-summary__grid">
-				<div><span>Объявлений всего:</span> <b><?= (int)($stats['total'] ?? 0) ?></b></div>
+				<div><span>Квартир всего:</span> <b><?= (int)($stats['total'] ?? 0) ?></b></div>
 				<div><span>В фид XML:</span> <b><?= (int)($stats['in_feed'] ?? $stats['valid'] ?? 0) ?></b></div>
 				<div><span>Не попадут в фид:</span> <b><?= (int)($stats['skipped'] ?? 0) ?></b></div>
 				<div><span>Валидных:</span> <b><?= (int)($stats['valid'] ?? 0) ?></b></div>
 				<div><span>Невалидных:</span> <b><?= (int)($stats['invalid'] ?? 0) ?></b></div>
-				<div><span>Уник. NewDevelopmentId:</span> <b><?= (int)($stats['developments'] ?? 0) ?></b></div>
-				<div><span>Уник. HouseType:</span> <b><?= (int)($stats['house_types'] ?? 0) ?></b></div>
+				<div><span>Уник. complex/id:</span> <b><?= (int)($stats['complexes'] ?? 0) ?></b></div>
+				<div><span>Уник. building/id:</span> <b><?= (int)($stats['buildings'] ?? 0) ?></b></div>
+				<div><span>Без complex_domclick:</span> <b><?= (int)($stats['empty_complex'] ?? 0) ?></b></div>
 				<div><span>Без картинки:</span> <b><?= (int)($stats['no_image'] ?? 0) ?></b></div>
-				<?php if (!empty($stats['format_version'])): ?>
-					<div><span>formatVersion:</span> <b><?= feed_preview_h($stats['format_version']) ?></b></div>
-				<?php endif; ?>
-				<?php if (!empty($stats['target'])): ?>
-					<div><span>target:</span> <b><?= feed_preview_h($stats['target']) ?></b></div>
-				<?php endif; ?>
 			</div>
 			<?php if (!empty($stats['rooms']) && is_array($stats['rooms'])): ?>
 				<div class="feed-summary__rooms">
-					Rooms:
+					Комнаты:
 					<?php
 					$parts = [];
 					foreach ($stats['rooms'] as $rk => $rc) {
@@ -162,12 +157,13 @@ $fieldMeta = $data['field_meta'] ?? [];
 			<?php if ($feedUrl !== ''): ?>
 				<div class="feed-summary__link">
 					Фид: <a href="<?= feed_preview_h($feedUrl) ?>" target="_blank" rel="noopener"><?= feed_preview_h($feedUrl) ?></a>
+					<span style="color:#888;"> (на каждый дом свой XML)</span>
 				</div>
 			<?php endif; ?>
 		</div>
 
 		<form method="get" action="/sahmatka/ctrind.php" class="feed-filters">
-			<input type="hidden" name="ctr" value="avito_feed">
+			<input type="hidden" name="ctr" value="domclick_feed">
 			<input type="hidden" name="act" value="index">
 			<div>
 				<label>Микрорайон</label>
@@ -219,7 +215,7 @@ $fieldMeta = $data['field_meta'] ?? [];
 			</div>
 			<div>
 				<button type="submit" class="filter-btn" style="padding:8px 16px; background:#00CDAD; color:#fff; border:none; border-radius:5px; font-weight:700; cursor:pointer;">Фильтр</button>
-				<a href="/sahmatka/ctrind.php?ctr=avito_feed&act=index" style="margin-left:10px;font-size:13px;">Все</a>
+				<a href="/sahmatka/ctrind.php?ctr=domclick_feed&act=index" style="margin-left:10px;font-size:13px;">Все</a>
 			</div>
 		</form>
 

@@ -11,7 +11,7 @@ class ctr__avito_feed extends ctr__
 {
 	var $ctr = 'avito_feed';
 	var $title = 'AvitoFeed';
-	private $limit = 500;
+	private $limit = 10000;
 
 	private function assert_access()
 	{
@@ -29,24 +29,16 @@ class ctr__avito_feed extends ctr__
 			return;
 		}
 		$t['h1'] = 'AvitoFeed';
-		@set_time_limit(120);
+		@set_time_limit(180);
 
-		$homeId = (int)($_GET['building'] ?? 0);
-		$onlyInvalid = !empty($_GET['only_invalid']);
+		$filters = feed_preview_read_filters();
+		$homeId = (int)$filters['building'];
+		$onlyInvalid = !empty($filters['only_invalid']);
 
 		$feed = new em_avito_feed($mysql, dirname(__DIR__, 2));
 		$options = $feed->homes_options();
-		$items = $feed->collect($homeId, true);
-
-		$filterNote = '';
-		if ($homeId > 0) {
-			foreach ($options as $opt) {
-				if ((int)$opt['value'] === $homeId) {
-					$filterNote = 'фильтр: ' . $opt['label'];
-					break;
-				}
-			}
-		}
+		$kvartals = feed_preview_kvartal_options($mysql);
+		$items = $feed->collect($homeId, true, $filters);
 
 		$stats = feed_preview_stats_avito(
 			$items,
@@ -75,8 +67,7 @@ class ctr__avito_feed extends ctr__
 				}
 			}
 		}
-		$truncated = count($filtered) > $this->limit;
-		if ($truncated) {
+		if (count($filtered) > $this->limit) {
 			$filtered = array_slice($filtered, 0, $this->limit);
 		}
 
@@ -86,13 +77,18 @@ class ctr__avito_feed extends ctr__
 			'stats' => $stats,
 			'cards' => $filtered,
 			'buildings' => $options,
+			'kvartals' => $kvartals,
+			'rooms_options' => feed_preview_rooms_select_options(),
+			'area_options' => feed_preview_area_select_options(),
 			'filters' => [
 				'building' => $homeId > 0 ? (string)$homeId : '',
+				'kvartal' => !empty($filters['kvartal']) ? (string)(int)$filters['kvartal'] : '',
+				'rooms_from' => $filters['rooms_from'] === null ? '' : (string)(int)$filters['rooms_from'],
+				'rooms_to' => $filters['rooms_to'] === null ? '' : (string)(int)$filters['rooms_to'],
+				'area_from' => $filters['area_from'] === null ? '' : (string)(int)$filters['area_from'],
+				'area_to' => $filters['area_to'] === null ? '' : (string)(int)$filters['area_to'],
 				'only_invalid' => $onlyInvalid ? 1 : 0,
 			],
-			'truncated' => $truncated,
-			'limit' => $this->limit,
-			'filter_note' => $filterNote,
 			'field_meta' => $feed->fields_spec()->index(),
 		], 'avito_feed', 'index');
 	}

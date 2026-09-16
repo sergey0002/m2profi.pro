@@ -486,3 +486,44 @@ class em_avito_feed_fields extends em_feed_fields
 		];
 	}
 }
+
+/**
+ * Поля квартиры / корпуса Домклик (domclick_feedx.php).
+ * https://domclick.ru/validation/requirements
+ */
+class em_domclick_feed_fields extends em_feed_fields
+{
+	public function catalog()
+	{
+		return [
+			['key' => 'complex/id', 'title' => 'complex/id', 'required' => 1, 'help' => 'ID ЖК в Домклик (homes.complex_domclick).'],
+			['key' => 'complex/name', 'title' => 'complex/name', 'required' => 0, 'help' => 'Название ЖК (homes.long_title).'],
+			['key' => 'complex/latitude', 'title' => 'complex/latitude', 'required' => 1, 'help' => 'Широта ЖК (homes.lat).'],
+			['key' => 'complex/longitude', 'title' => 'complex/longitude', 'required' => 1, 'help' => 'Долгота ЖК (homes.lon).'],
+			['key' => 'complex/address', 'title' => 'complex/address', 'required' => 0, 'help' => 'Адрес (homes.map_mapkeys_adress).'],
+			['key' => 'building/id', 'title' => 'building/id', 'required' => 1, 'help' => 'ID корпуса (homes.corpus_code_domclick).'],
+			['key' => 'building/name', 'title' => 'building/name', 'required' => 0, 'help' => 'Название корпуса.'],
+			['key' => 'building/floors', 'title' => 'building/floors', 'required' => 1, 'help' => 'Этажность дома.', 'numeric' => 1],
+			['key' => 'building/building_state', 'title' => 'building/building_state', 'required' => 1, 'help' => 'Стадия строительства.', 'enum' => ['built', 'hand-over', 'unfinished']],
+			['key' => 'building/built_year', 'title' => 'building/built_year', 'required' => 1, 'help' => 'Год сдачи.', 'pattern' => '/^\d{4}$/'],
+			['key' => 'building/ready_quarter', 'title' => 'building/ready_quarter', 'required' => 1, 'help' => 'Квартал сдачи.', 'enum' => ['1', '2', '3', '4']],
+			['key' => 'building/building_type', 'title' => 'building/building_type', 'required' => 0, 'help' => 'Тип дома (в фиде часто панельный).'],
+			['key' => 'flat/flat_id', 'title' => 'flat/flat_id', 'required' => 1, 'help' => 'ID квартиры (apartament_id).'],
+			['key' => 'flat/apartment', 'title' => 'flat/apartment', 'required' => 1, 'help' => 'Номер квартиры. Без него flat в фид не пишется.'],
+			['key' => 'flat/floor', 'title' => 'flat/floor', 'required' => 1, 'help' => 'Этаж.', 'numeric' => 1],
+			['key' => 'flat/room', 'title' => 'flat/room', 'required' => 1, 'help' => 'Число комнат (цифры). Студия — 0.'],
+			['key' => 'flat/plan', 'title' => 'flat/plan', 'required' => 1, 'help' => 'URL планировки (image_pb / png).'],
+			['key' => 'flat/balcony', 'title' => 'flat/balcony', 'required' => 0, 'help' => 'Балкон.'],
+			['key' => 'flat/renovation', 'title' => 'flat/renovation', 'required' => 0, 'help' => 'Отделка с дома (homes.renovation).'],
+			['key' => 'flat/price', 'title' => 'flat/price', 'required' => 1, 'help' => 'Цена.', 'numeric' => 1],
+			['key' => 'flat/area', 'title' => 'flat/area', 'required' => 1, 'help' => 'Общая площадь.', 'numeric' => 1],
+			['key' => 'flat/decoration', 'title' => 'flat/decoration', 'required' => 0, 'help' => 'Признак отделки (в текущем фиде 1).'],
+			['key' => 'flat/ready_housing', 'title' => 'flat/ready_housing', 'required' => 0, 'help' => 'Готовое жильё (в текущем фиде 0).'],
+			['key' => 'flat/kitchen_area', 'title' => 'flat/kitchen_area', 'required' => 0, 'help' => 'Площадь кухни.'],
+			['key' => 'flat/living_area', 'title' => 'flat/living_area', 'required' => 0, 'help' => 'Жилая площадь (сейчас = area).'],
+			['key' => 'flat/window_view', 'title' => 'flat/window_view', 'required' => 0, 'help' => 'Вид из окон.'],
+			['key' => 'flat/bathroom', 'title' => 'flat/bathroom', 'required' => 0, 'help' => 'Санузел.'],
+			['key' => 'feed_url', 'title' => 'feed_url', 'required' => 0, 'help' => 'Публичный XML этого дома: /sahmatka/domclick-{home_id}.xml'],
+		];
+	}
+}

@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/pbplans_raster.php';
 require_once __DIR__ . '/feed_fields.php';
+require_once __DIR__ . '/feed_preview.php';
 
 class em_avito_feed
 {
@@ -95,7 +96,7 @@ class em_avito_feed
 		return $floors;
 	}
 
-	private function apartments_sql($homeId = 0)
+	private function apartments_sql(array $filters = [])
 	{
 		$sql = '
 			SELECT apartaments.*,
@@ -109,6 +110,7 @@ class em_avito_feed
 				   homes.delivery_date,
 				   homes.wallmaterial,
 				   homes.floor as home_floor_desc,
+				   homes.kvartal as kvartal_id,
 				   homes_kvartal.title as kvartal_title,
 				   homes_kvartal.avito_complex_id as kvartal_avito_id,
 				   homes.avito_id as building_avito_id,
@@ -119,10 +121,7 @@ class em_avito_feed
 			WHERE (`apartaments`.`status` = "2" OR `apartaments`.`status` = "0" OR `apartaments`.`status` IS NULL)
 			  AND `homes`.`show` = "1"
 		';
-		$homeId = (int)$homeId;
-		if ($homeId > 0) {
-			$sql .= ' AND apartaments.home_id = ' . $homeId;
-		}
+		$sql .= feed_preview_sql_and_filters($filters);
 		return $sql;
 	}
 
@@ -272,16 +271,22 @@ class em_avito_feed
 			'image' => $image_url,
 			'building' => (string)(int)$result['home_id'],
 			'home_id' => (int)$result['home_id'],
+			'kvartal_id' => (int)($result['kvartal_id'] ?? 0),
+			'rooms_n' => (int)$roomsRaw,
+			'area_n' => (float)$area,
 		];
 	}
 
 	/**
 	 * @return array<int,array>
 	 */
-	public function collect($homeId = 0, $includeSkipped = false)
+	public function collect($homeId = 0, $includeSkipped = false, array $filters = [])
 	{
+		if ($homeId > 0) {
+			$filters['building'] = (int)$homeId;
+		}
 		$floors = $this->floors_map();
-		$rows = $this->mysql->get_arr($this->apartments_sql($homeId));
+		$rows = $this->mysql->get_arr($this->apartments_sql($filters));
 		if (!is_array($rows)) {
 			return [];
 		}

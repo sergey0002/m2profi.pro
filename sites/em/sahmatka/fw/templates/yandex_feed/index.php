@@ -3,12 +3,17 @@ $error = (string)($data['error'] ?? '');
 $stats = $data['stats'] ?? [];
 $cards = $data['cards'] ?? [];
 $buildings = $data['buildings'] ?? [];
+$kvartals = $data['kvartals'] ?? [];
+$roomsOptions = $data['rooms_options'] ?? [];
+$areaOptions = $data['area_options'] ?? [];
 $filters = $data['filters'] ?? [];
-$truncated = !empty($data['truncated']);
-$limit = (int)($data['limit'] ?? 500);
 $feedUrl = (string)($data['feed_url'] ?? ($stats['url'] ?? ''));
-$filterNote = (string)($data['filter_note'] ?? '');
 $building = (string)($filters['building'] ?? '');
+$kvartal = (string)($filters['kvartal'] ?? '');
+$roomsFrom = (string)($filters['rooms_from'] ?? '');
+$roomsTo = (string)($filters['rooms_to'] ?? '');
+$areaFrom = (string)($filters['area_from'] ?? '');
+$areaTo = (string)($filters['area_to'] ?? '');
 $onlyInvalid = !empty($filters['only_invalid']);
 $fieldMeta = $data['field_meta'] ?? [];
 ?>
@@ -41,14 +46,6 @@ $fieldMeta = $data['field_meta'] ?? [];
 	border-radius: 6px;
 	margin-bottom: 14px;
 }
-.feed-warn {
-	background: #fff3cd;
-	border: 1px solid #ffc107;
-	color: #856404;
-	padding: 10px 12px;
-	border-radius: 6px;
-	margin-bottom: 14px;
-}
 .feed-filters {
 	display: flex;
 	flex-wrap: wrap;
@@ -57,7 +54,7 @@ $fieldMeta = $data['field_meta'] ?? [];
 	margin-bottom: 16px;
 }
 .feed-filters label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
-.feed-filters select { min-width: 200px; padding: 6px 8px; }
+.feed-filters select { min-width: 140px; padding: 6px 8px; }
 .feed-filters .feed-check { display: flex; align-items: center; gap: 6px; padding-bottom: 6px; }
 .feed-card {
 	display: flex;
@@ -134,9 +131,6 @@ $fieldMeta = $data['field_meta'] ?? [];
 
 	<?php if (!$error): ?>
 		<div class="feed-summary">
-			<?php if ($filterNote !== ''): ?>
-				<div style="margin-bottom:8px;font-size:13px;color:#666;"><?= feed_preview_h($filterNote) ?></div>
-			<?php endif; ?>
 			<div class="feed-summary__grid">
 				<div><span>Офферов всего:</span> <b><?= (int)($stats['total'] ?? 0) ?></b></div>
 				<div><span>Валидных:</span> <b><?= (int)($stats['valid'] ?? 0) ?></b></div>
@@ -170,26 +164,49 @@ $fieldMeta = $data['field_meta'] ?? [];
 			<?php endif; ?>
 		</div>
 
-		<?php if ($truncated): ?>
-			<div class="feed-warn">Показаны первые <?= (int)$limit ?>; уточните фильтр.</div>
-		<?php endif; ?>
-
 		<form method="get" action="/sahmatka/ctrind.php" class="feed-filters">
 			<input type="hidden" name="ctr" value="yandex_feed">
 			<input type="hidden" name="act" value="index">
 			<div>
+				<label>Микрорайон</label>
+				<select name="kvartal">
+					<option value="">Все</option>
+					<?= feed_preview_select_options_html($kvartals, $kvartal) ?>
+				</select>
+			</div>
+			<div>
 				<label>Дом</label>
 				<select name="building">
 					<option value="">Все</option>
-					<?php foreach ($buildings as $b): ?>
-						<?php
-						$val = is_array($b) ? (string)($b['value'] ?? '') : (string)$b;
-						$lab = is_array($b) ? (string)($b['label'] ?? $val) : (string)$b;
-						?>
-						<option value="<?= feed_preview_h($val) ?>" <?= $building === $val ? 'selected' : '' ?>>
-							<?= feed_preview_h($lab) ?>
-						</option>
-					<?php endforeach; ?>
+					<?= feed_preview_select_options_html($buildings, $building) ?>
+				</select>
+			</div>
+			<div>
+				<label>Комнат от</label>
+				<select name="rooms_from">
+					<option value="">—</option>
+					<?= feed_preview_select_options_html($roomsOptions, $roomsFrom) ?>
+				</select>
+			</div>
+			<div>
+				<label>Комнат до</label>
+				<select name="rooms_to">
+					<option value="">—</option>
+					<?= feed_preview_select_options_html($roomsOptions, $roomsTo) ?>
+				</select>
+			</div>
+			<div>
+				<label>Площадь от</label>
+				<select name="area_from">
+					<option value="">—</option>
+					<?= feed_preview_select_options_html($areaOptions, $areaFrom) ?>
+				</select>
+			</div>
+			<div>
+				<label>Площадь до</label>
+				<select name="area_to">
+					<option value="">—</option>
+					<?= feed_preview_select_options_html($areaOptions, $areaTo) ?>
 				</select>
 			</div>
 			<div class="feed-check">

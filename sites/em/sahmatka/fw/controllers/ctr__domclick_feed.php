@@ -1,16 +1,17 @@
 <?php
 /**
- * Превью фида Яндекс.Недвижимость из БД (тот же em_yandex_feed, что XML).
- * URL: ctrind.php?ctr=yandex_feed&act=index
+ * Превью фида Домклик из БД (логика как domclick_feedx.php).
+ * URL: ctrind.php?ctr=domclick_feed&act=index
+ * Публичный XML: /sahmatka/domclick-{home_id}.xml
  * Задача #23.
  */
 require_once dirname(__DIR__, 2) . '/inc/feed_preview.php';
-require_once dirname(__DIR__, 2) . '/inc/yandex_feed.php';
+require_once dirname(__DIR__, 2) . '/inc/domclick_feed.php';
 
-class ctr__yandex_feed extends ctr__
+class ctr__domclick_feed extends ctr__
 {
-	var $ctr = 'yandex_feed';
-	var $title = 'YandexFeed';
+	var $ctr = 'domclick_feed';
+	var $title = 'DomclickFeed';
 	private $limit = 10000;
 
 	private function assert_access()
@@ -28,20 +29,35 @@ class ctr__yandex_feed extends ctr__
 		if (!$this->assert_access()) {
 			return;
 		}
-		$t['h1'] = 'YandexFeed';
+		$t['h1'] = 'DomclickFeed';
 		@set_time_limit(180);
 
 		$filters = feed_preview_read_filters();
 		$homeId = (int)$filters['building'];
 		$onlyInvalid = !empty($filters['only_invalid']);
 
-		$feed = new em_yandex_feed($mysql, dirname(__DIR__, 2));
+		$feed = new em_domclick_feed($mysql, dirname(__DIR__, 2));
 		$options = $feed->homes_options();
 		$kvartals = feed_preview_kvartal_options($mysql);
-		$pack = $feed->collect($homeId, $filters);
-		$items = $pack['items'];
+		$items = $feed->collect($homeId, true, $filters);
 
-		$stats = feed_preview_stats_yandex($items, feed_preview_origin() . '/sahmatka/yandex_feedx.php', $pack['date']);
+		$feedUrlPattern = feed_preview_origin() . '/sahmatka/domclick-{home_id}.xml';
+		$feedUrl = $homeId > 0
+			? feed_preview_origin() . '/sahmatka/domclick-' . $homeId . '.xml'
+			: $feedUrlPattern;
+
+		$stats = feed_preview_stats_domclick($items, $feedUrl);
+		$inFeed = 0;
+		$skipped = 0;
+		foreach ($items as $it) {
+			if (!empty($it['in_feed'])) {
+				$inFeed++;
+			} else {
+				$skipped++;
+			}
+		}
+		$stats['in_feed'] = $inFeed;
+		$stats['skipped'] = $skipped;
 
 		$filtered = $items;
 		if ($onlyInvalid) {
@@ -58,7 +74,7 @@ class ctr__yandex_feed extends ctr__
 
 		$this->tpl([
 			'error' => '',
-			'feed_url' => feed_preview_origin() . '/sahmatka/yandex_feedx.php',
+			'feed_url' => $feedUrl,
 			'stats' => $stats,
 			'cards' => $filtered,
 			'buildings' => $options,
@@ -75,6 +91,6 @@ class ctr__yandex_feed extends ctr__
 				'only_invalid' => $onlyInvalid ? 1 : 0,
 			],
 			'field_meta' => $feed->fields_spec()->index(),
-		], 'yandex_feed', 'index');
+		], 'domclick_feed', 'index');
 	}
 }
