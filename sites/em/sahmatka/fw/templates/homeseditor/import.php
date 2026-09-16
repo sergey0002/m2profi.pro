@@ -10,11 +10,6 @@ $token = $data['token'];
 $green_count = (int) $data['green_count'];
 $message = $data['message'];
 $report = $data['report'];
-
-$this->forminform = htmlspecialchars((string) $home_title) . ' (home_id=' . (int) $data['home_id'] . ')';
-if ($message) {
-    $this->forminform = htmlspecialchars($message);
-}
 ?>
 <style>
 .hi-preview-table tr.hi-ok { background: #e8f5e9; }
@@ -25,34 +20,42 @@ if ($message) {
 .hi-report-warn { color: #c45c00; }
 </style>
 
-<form action="<?= htmlspecialchars($parse_url) ?>" method="POST" id="editform">
+<p><a href="<?= htmlspecialchars($back_url) ?>">Назад</a>
+    — <?= htmlspecialchars((string) $home_title) ?>
+    (home_id=<?= (int) $data['home_id'] ?>)</p>
+
+<?php if ($message): ?>
+    <p class="hi-report-errors"><?= htmlspecialchars($message) ?></p>
+<?php endif; ?>
+
+<?php if ($report): ?>
+    <div class="hi-report">
+        <p><strong>Импорт выполнен</strong></p>
+        <ul>
+            <li>Квартир добавлено: <?= (int) $report['apartments'] ?></li>
+            <li>Новых секций: <?= (int) $report['sections'] ?></li>
+            <?php if (!empty($report['holes'])): ?>
+                <li>Пустых клеток на шахматке: <?= (int) $report['holes'] ?></li>
+            <?php endif; ?>
+            <li>Этажей дома обновлено: <?= !empty($report['floor_updated']) ? 'да' : 'нет' ?></li>
+        </ul>
+        <?php if (!empty($report['errors'])): ?>
+            <p class="hi-report-errors"><?= htmlspecialchars(implode('; ', $report['errors'])) ?></p>
+        <?php endif; ?>
+        <?php if (!empty($report['warnings'])): ?>
+            <p class="hi-report-warn"><?= htmlspecialchars(implode('; ', $report['warnings'])) ?></p>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
+
+<p>Формат: 7 колонок через таб — этаж, комнаты, секция, № квартиры, площадь, площадь по договору, цена.</p>
+
+<form action="<?= htmlspecialchars($parse_url) ?>" method="POST">
     <input type="hidden" name="do" value="parse">
-    <?php $this->formpanel($back_url); ?>
-
-    <p>Формат: 7 колонок через таб — этаж, комнаты, секция, № квартиры, площадь, площадь по договору, цена.</p>
-
-    <?php if ($report): ?>
-        <div class="hi-report">
-            <p><strong>Импорт выполнен</strong></p>
-            <ul>
-                <li>Квартир добавлено: <?= (int) $report['apartments'] ?></li>
-                <li>Новых секций: <?= (int) $report['sections'] ?></li>
-                <?php if (!empty($report['holes'])): ?>
-                    <li>Пустых клеток на шахматке: <?= (int) $report['holes'] ?></li>
-                <?php endif; ?>
-                <li>Этажей дома обновлено: <?= !empty($report['floor_updated']) ? 'да' : 'нет' ?></li>
-            </ul>
-            <?php if (!empty($report['errors'])): ?>
-                <p class="hi-report-errors"><?= htmlspecialchars(implode('; ', $report['errors'])) ?></p>
-            <?php endif; ?>
-            <?php if (!empty($report['warnings'])): ?>
-                <p class="hi-report-warn"><?= htmlspecialchars(implode('; ', $report['warnings'])) ?></p>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
-
     <label for="raw_text"><strong>Данные TSV</strong></label><br/>
     <textarea name="raw_text" id="raw_text" class="hi-raw input_edit"><?= htmlspecialchars($raw_text) ?></textarea>
+    <br/><br/>
+    <button type="submit" class="btn_2">Обработать</button>
 </form>
 
 <?php if (is_array($preview) && $preview): ?>
@@ -101,21 +104,12 @@ if ($message) {
         </div>
     </div>
 
+    <p>Зелёных строк: <strong><?= $green_count ?></strong></p>
     <?php if ($green_count > 0): ?>
-        <form action="<?= htmlspecialchars($approve_url) ?>" method="POST" id="approveform">
+        <form action="<?= htmlspecialchars($approve_url) ?>" method="POST">
             <input type="hidden" name="do" value="approve">
             <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
-            <p class="forminform">Зелёных строк: <strong><?= $green_count ?></strong></p>
-            <div class="row">
-                <div class="col-md-3"></div>
-                <div class="col-md-6"></div>
-                <div class="col-md-3" style="text-align:right;">
-                    <a href="#" onclick="document.getElementById('approveform').submit(); return false;"
-                       class="forminformpanel_link forminformpanel_link_save" style="text-align:right;">Сохранить</a>
-                </div>
-            </div>
-            <br/>
-            <hr/>
+            <button type="submit" class="btn_2">Импортировать</button>
         </form>
     <?php endif; ?>
 <?php endif; ?>
