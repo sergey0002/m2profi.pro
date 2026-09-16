@@ -1,7 +1,4 @@
-reports/report.html
-reports/report_*.html
-reports/last_run.jsonl
-reports/last_run*.jsonl
+reports/
 __pycache__/
 *.pyc
 _probe*

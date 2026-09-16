@@ -124,6 +124,8 @@ sites/*/sahmatka/pbplans_jpg/*
 !sites/*/sahmatka/pbplans_jpg/.gitkeep
 sites/*/sahmatka/pbplans_png/*
 !sites/*/sahmatka/pbplans_png/.gitkeep
+sites/*/sahmatka/pbplans-резерв/
+sites/*/sahmatka/pbplans_jpg-резерв/
 sites/*/sahmatka/pbplans -до мебели/
 sites/*/sahmatka/rent/*
 !sites/*/sahmatka/rent/.gitkeep
