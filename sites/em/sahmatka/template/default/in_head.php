@@ -372,7 +372,7 @@
 					<span></span>
 					<?
 					// РАскрытие меню
-					if( $_GET['ctr']=='homeseditor' || $_GET['ctr']=='homes_kvartal' || $_GET['ctr']=='broni_clear' )
+					if( $_GET['ctr']=='homeseditor' || $_GET['ctr']=='homes_kvartal' || $_GET['ctr']=='broni_clear' || $_GET['ctr']=='yandex_feed' || $_GET['ctr']=='avito_feed' )
 					{
 						$statm=1;
 					}
@@ -383,6 +383,8 @@
 						<li><a href="ctrind.php?ctr=homeseditor">Настройки объектов</a></li>
 						 <li><a href="ctrind.php?ctr=homes_kvartal">Настройки ЖК</a></li>
 						<li><a href="ctrind.php?ctr=broni_clear&act=index">Снятие броней</a></li>
+						<li><a href="ctrind.php?ctr=yandex_feed&act=index">YandexFeed</a></li>
+						<li><a href="ctrind.php?ctr=avito_feed&act=index">AvitoFeed</a></li>
 					</ul>
 				</li>
 				
