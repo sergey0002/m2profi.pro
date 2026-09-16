@@ -2,6 +2,7 @@
 header('Content-type: application/xml; charset=utf-8');
 
 include('config.php');
+require_once __DIR__ . '/inc/pbplans_raster.php';
 
 $home_id = isset($_GET['home_id']) ? (int)$_GET['home_id'] : null;
 
@@ -186,53 +187,13 @@ if (empty($image_url)) {
 }
 
 $base_url = 'https://em.m2profi.pro/sahmatka/';
-$base_path = __DIR__ . '/'; // Убедитесь, что это правильный путь к корню сайта
+// PNG из pbplans_png если есть на диске, иначе исходный SVG (не выкидываем объявление)
+$image_url = em_pbplans_prefer_png($image_url, __DIR__, $base_url);
 
-// Приводим URL к относительному пути
-if (strpos($image_url, $base_url) === 0) {
-    $relative_path = substr($image_url, strlen($base_url));
-} elseif (strpos($image_url, 'http') === 0) {
-    // Внешний URL — не можем проверить файл на сервере
-    continue;
-} else {
-    $relative_path = ltrim($image_url, '/');
+// Абсолютный URL на домен приложения при необходимости
+if (strpos($image_url, 'http') === false && strpos($image_url, '//') !== 0) {
+    $image_url = 'https://em.m2profi.pro/' . ltrim($image_url, '/');
 }
-// print $relative_path;
-// Работаем только с .svg
-if ( pathinfo($relative_path, PATHINFO_EXTENSION) === 'svg') {
-    // Заменяем директорию: pbplans → pbplans_jpg
-    $jpg_relative_path = str_replace('pbplans/', 'pbplans_jpg/', $relative_path);
-    
-    // Заменяем .svg на ..jpg (две точки!)
-    $jpg_relative_path = preg_replace('/\.svg$/i', '..jpg', $jpg_relative_path);
-    
-    $jpg_local_path = $base_path . $jpg_relative_path;
-
-    if (file_exists($jpg_local_path)) {
-        $image_url = $base_url . ltrim($jpg_relative_path, '/');
-    } else {
-		  $image_url = $base_url . ltrim($jpg_relative_path, '/');
-        // JPG-файл не найден → пропускаем объявление
-          continue;
-    }
-} else {
-    // Не SVG — используем как есть, но делаем абсолютным
-    if (strpos($image_url, 'http') !== 0) {
-        $image_url = $base_url . ltrim($relative_path, '/');
-    }
-}
-
-
-	 
-	
-	
-	
-	
-    // Не преобразуем .svg в .jpg, выводим оригинальный путь
-    if (strpos($image_url, 'http') === false && strpos($image_url, '//') !== 0) {
-        // Если путь относительный - добавляем базовый URL
-        $image_url = 'https://em.m2profi.pro/' . ltrim($image_url, '/');
-    }
     
     // 10. ОТДЕЛКА - по умолчанию "Чистовая"
     $decoration = get_decoration($result['renovation_type'] ?? '');

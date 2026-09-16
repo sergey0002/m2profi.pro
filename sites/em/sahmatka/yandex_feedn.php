@@ -32,12 +32,14 @@ print '<?xml version="1.0" encoding="utf-8"?>';
 
 
 <?
+require_once __DIR__ . '/inc/pbplans_raster.php';
 while ($result = mysqli_fetch_array($query)) 
 {	
 
 
 	if( ($result[home_id]==8   || $result[home_id]==3 || $result[home_id]==7 || $result[home_id]==6  || $result[home_id]==9  || $result[home_id]==10) && $result[rooms] && $result[image_pb] )
-	{		
+	{
+	$plan_img = em_pbplans_prefer_png($result['image_pb'] ?? '', __DIR__, 'https://em.m2profi.pro/sahmatka/');
 ?>
 <offer internal-id="<?=$result[apartament_id]?>">
 <type>продажа</type>
@@ -86,7 +88,7 @@ while ($result = mysqli_fetch_array($query))
 <building-phase><?=$building_phase[$result[home_id]]?></building-phase>
 
 
-<image><?=$result[image_pb]?></image>
+<image><?= htmlspecialchars($plan_img, ENT_XML1 | ENT_QUOTES, 'UTF-8') ?></image>
 <description>Продается <?=$result[rooms]?> к. кв., <?=$result[floor]?> этаж.</description>
 <area>
   <value><?=$result[area]?></value> 

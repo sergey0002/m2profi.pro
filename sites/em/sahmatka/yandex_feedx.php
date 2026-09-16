@@ -52,6 +52,7 @@ print '<?xml version="1.0" encoding="utf-8"?>';
 <generation-date><?=$date?></generation-date>   
 
 <?
+require_once __DIR__ . '/inc/pbplans_raster.php';
 $i=0;
 foreach($data_apartaments as $k=>$result) 
 {	 	
@@ -67,6 +68,8 @@ $i++;
  
 if(!$result['ready_quarter']){$result['ready_quarter'] = 1;}
 if(!$result['built_year']){$result['built_year'] = 2028;}
+
+$plan_img = em_pbplans_prefer_png($result['image_pb'] ?? '', __DIR__, 'https://em.m2profi.pro/sahmatka/');
  
 ?>
 <offer internal-id="<?=$result[apartament_id]?>">
@@ -114,7 +117,7 @@ if(!$result['built_year']){$result['built_year'] = 2028;}
 	<building-phase>1</building-phase>
 
 
-	<image tag="plan"><?=$result[image_pb]?></image>
+	<image tag="plan"><?= htmlspecialchars($plan_img, ENT_XML1 | ENT_QUOTES, 'UTF-8') ?></image>
 	<description>Продается <?=$result[rooms]?> к. кв., <?=$result[floor]?> этаж.</description>
 	<area>
 		<value><?=$result[area]?></value>

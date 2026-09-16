@@ -1,0 +1,8 @@
+reports/report.html
+reports/report_*.html
+reports/last_run.jsonl
+reports/last_run*.jsonl
+__pycache__/
+*.pyc
+_probe*
+bin/
