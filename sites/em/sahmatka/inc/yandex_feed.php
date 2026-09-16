@@ -11,11 +11,19 @@ class em_yandex_feed
 	private $mysql;
 	private $sahmatkaDir;
 	private $baseUrl = 'https://em.m2profi.pro/sahmatka/';
+	/** @var em_yandex_feed_fields */
+	private $fieldsSpec;
 
 	public function __construct($mysql, $sahmatkaDir)
 	{
 		$this->mysql = $mysql;
 		$this->sahmatkaDir = rtrim(str_replace('\\', '/', (string)$sahmatkaDir), '/') . '/';
+		$this->fieldsSpec = new em_yandex_feed_fields();
+	}
+
+	public function fields_spec()
+	{
+		return $this->fieldsSpec;
 	}
 
 	public static function xml_escape($str)
@@ -186,7 +194,7 @@ class em_yandex_feed
 			'kitchen-space/unit' => $kitchen !== '' ? 'кв. м' : '',
 			'image' => $planImg,
 			'image@tag' => $planImg !== '' ? 'plan' : '',
-			'renovation' => feed_map_yandex_renovation($result['renovation'] ?? ''),
+			'renovation' => $this->fieldsSpec->map_renovation($result['renovation'] ?? ''),
 			'description' => ($roomsRaw !== '' || $floor !== '')
 				? ('Продается ' . $roomsRaw . ' к. кв., ' . $floor . ' этаж.')
 				: '',
@@ -202,13 +210,12 @@ class em_yandex_feed
 			'ready-quarter' => $readyQuarter,
 			'key-handover-date' => $handover,
 			'building-state' => $buildingState,
-			'building-type' => feed_map_yandex_building_type($result['wallmaterial'] ?? ''),
+			'building-type' => $this->fieldsSpec->map_building_type($result['wallmaterial'] ?? ''),
 			'building-section' => $section,
 		];
 
-		$catalog = feed_fields_yandex_new();
-		$fields = feed_fields_apply($catalog, $values);
-		$reasons = feed_fields_validate($fields, $catalog);
+		$fields = $this->fieldsSpec->apply($values);
+		$reasons = $this->fieldsSpec->validate($fields);
 
 		$titleParts = array_filter([
 			$hcaption,
@@ -258,7 +265,7 @@ class em_yandex_feed
 	private function write_offer(array $f)
 	{
 		$el = function ($name, $key, $indent = "\t") use ($f) {
-			feed_xml_el($name, $f[$key] ?? '', $indent);
+			em_feed_fields::xml_el($name, $f[$key] ?? '', $indent);
 		};
 		echo '<offer internal-id="' . self::xml_escape($f['@internal-id'] ?? '') . "\">\n";
 		$el('type', 'type');
@@ -309,14 +316,22 @@ class em_yandex_feed
 		$el('value', 'area/value', "\t\t");
 		$el('unit', 'area/unit', "\t\t");
 		echo "\t</area>\n";
-		echo "\t<living-space>\n";
-		$el('value', 'living-space/value', "\t\t");
-		$el('unit', 'living-space/unit', "\t\t");
-		echo "\t</living-space>\n";
-		echo "\t<kitchen-space>\n";
-		$el('value', 'kitchen-space/value', "\t\t");
-		$el('unit', 'kitchen-space/unit', "\t\t");
-		echo "\t</kitchen-space>\n";
+		$living = trim((string)($f['living-space/value'] ?? ''));
+		$livingUnit = trim((string)($f['living-space/unit'] ?? ''));
+		if ($living !== '' || $livingUnit !== '') {
+			echo "\t<living-space>\n";
+			$el('value', 'living-space/value', "\t\t");
+			$el('unit', 'living-space/unit', "\t\t");
+			echo "\t</living-space>\n";
+		}
+		$kitchen = trim((string)($f['kitchen-space/value'] ?? ''));
+		$kitchenUnit = trim((string)($f['kitchen-space/unit'] ?? ''));
+		if ($kitchen !== '' || $kitchenUnit !== '') {
+			echo "\t<kitchen-space>\n";
+			$el('value', 'kitchen-space/value', "\t\t");
+			$el('unit', 'kitchen-space/unit', "\t\t");
+			echo "\t</kitchen-space>\n";
+		}
 		$tag = $f['image@tag'] ?? '';
 		$tagAttr = $tag !== '' ? ' tag="' . self::xml_escape($tag) . '"' : '';
 		echo "\t<image{$tagAttr}>" . self::xml_escape($f['image'] ?? '') . "</image>\n";

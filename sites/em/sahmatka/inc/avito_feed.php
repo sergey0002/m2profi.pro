@@ -11,11 +11,19 @@ class em_avito_feed
 	private $mysql;
 	private $sahmatkaDir;
 	private $baseUrl = 'https://em.m2profi.pro/sahmatka/';
+	/** @var em_avito_feed_fields */
+	private $fieldsSpec;
 
 	public function __construct($mysql, $sahmatkaDir)
 	{
 		$this->mysql = $mysql;
 		$this->sahmatkaDir = rtrim(str_replace('\\', '/', (string)$sahmatkaDir), '/') . '/';
+		$this->fieldsSpec = new em_avito_feed_fields();
+	}
+
+	public function fields_spec()
+	{
+		return $this->fieldsSpec;
 	}
 
 	public static function xml_escape($str)
@@ -25,29 +33,8 @@ class em_avito_feed
 
 	public static function get_house_type($material)
 	{
-		if (!$material) {
-			return '';
-		}
-		$material = strtolower(trim((string)$material));
-		if (strpos($material, 'кирпич') !== false) {
-			return 'Кирпичный';
-		}
-		if (strpos($material, 'панель') !== false) {
-			return 'Панельный';
-		}
-		if (strpos($material, 'блоч') !== false || strpos($material, 'блок') !== false) {
-			return 'Блочный';
-		}
-		if (strpos($material, 'монолит') !== false && strpos($material, 'кирпич') !== false) {
-			return 'Монолитно-кирпичный';
-		}
-		if (strpos($material, 'монолит') !== false) {
-			return 'Монолитный';
-		}
-		if (strpos($material, 'дерев') !== false) {
-			return 'Деревянный';
-		}
-		return '';
+		$spec = new em_avito_feed_fields();
+		return $spec->map_house_type($material);
 	}
 
 	public static function parse_floors($floor_desc)
@@ -88,7 +75,8 @@ class em_avito_feed
 
 	public static function get_decoration($renovation)
 	{
-		return feed_map_avito_decoration($renovation);
+		$spec = new em_avito_feed_fields();
+		return $spec->map_decoration($renovation);
 	}
 
 	public function floors_map()
@@ -208,15 +196,12 @@ class em_avito_feed
 			$skip[] = 'цена ≤ 0 (не попадает в фид)';
 		}
 
-		$is_new_building = $result['complite'] ? 'no' : 'yes';
 		$is_completed = (bool)$result['complite'];
-		$house_type = self::get_house_type($result['wallmaterial'] ?? '');
+		$house_type = $this->fieldsSpec->map_house_type($result['wallmaterial'] ?? '');
 		$building_avito_id = trim((string)($result['building_avito_id'] ?? ''));
 		if ($building_avito_id === '') {
 			$skip[] = 'нет avito_id корпуса (не попадает в фид)';
 		}
-
-		$address = trim((string)($result['full_address'] ?? ''));
 
 		$desc = 'Продается ' . $room_type . '-комнатная квартира от застройщика';
 		$desc .= $is_completed ? ' в сданном доме' : ' в строящемся доме';
@@ -234,33 +219,23 @@ class em_avito_feed
 			}
 		}
 
-		$decoration = self::get_decoration($result['renovation_type'] ?? '');
+		$decoration = $this->fieldsSpec->map_decoration($result['renovation_type'] ?? '');
 		$hcaption = trim((string)($result['hcaption'] ?? ''));
 		$id = (int)($result['apartament_id'] ?? 0);
 
 		$kitchen = trim((string)($result['kitchen_area'] ?? ''));
-		if ($kitchen === '0') {
+		if ($kitchen === '0' || $room_type === 'Студия' || $room_type === 'Своб. планировка') {
 			$kitchen = '';
 		}
 		$aptNum = trim((string)($result['apartment_num'] ?? ''));
-		$builtYear = !empty($result['built_year']) ? (string)(int)$result['built_year'] : '';
-		$lat = trim((string)($result['lat'] ?? ''));
-		$lon = trim((string)($result['lon'] ?? ''));
 
-		$catalog = feed_fields_avito_new();
-		$fields = feed_fields_apply($catalog, [
+		$fields = $this->fieldsSpec->apply([
 			'Id' => $id ? (string)$id : '',
 			'Category' => 'Квартиры',
 			'OperationType' => 'Продам',
 			'ContactPhone' => '+7 (383) 347-47-00',
-			'CompanyName' => 'ООО "Энергомонтаж"',
-			'Address' => $address,
-			'Latitude' => $lat,
-			'Longitude' => $lon,
-			'Title' => $hcaption,
 			'Description' => $desc,
 			'Price' => $price > 0 ? (string)$price : '',
-			'Url' => 'https://em-nsk.ru/',
 			'Rooms' => $room_type,
 			'ApartmentNumber' => $aptNum,
 			'Square' => $area > 0 ? number_format($area, 1, '.', '') : '',
@@ -270,16 +245,15 @@ class em_avito_feed
 			'HouseType' => $house_type,
 			'MarketType' => 'Новостройка',
 			'NewDevelopmentId' => $building_avito_id,
-			'NewBuilding' => $is_new_building,
+			'DevelopmentsBuildingName' => $hcaption,
 			'PropertyRights' => 'Застройщик',
 			'Decoration' => $decoration,
 			'Status' => 'Квартира',
-			'BuiltYear' => $builtYear,
-			'Images/Image@url' => $image_url,
+			'Images' => $image_url,
 		]);
 
 		$reasons = $skip;
-		$reasons = array_merge($reasons, feed_fields_validate($fields, $catalog));
+		$reasons = array_merge($reasons, $this->fieldsSpec->validate($fields));
 		$reasons = array_values(array_unique($reasons));
 
 		$titleParts = array_filter([
@@ -325,24 +299,10 @@ class em_avito_feed
 	public function output_xml($homeId = 0)
 	{
 		$items = $this->collect($homeId, false);
-		$catalog = feed_fields_avito_new();
 		echo '<?xml version="1.0" encoding="utf-8"?>';
 		echo "\n<Ads formatVersion=\"3\" target=\"Avito.ru\">\n";
 		foreach ($items as $item) {
-			$f = $item['fields'];
-			echo "  <Ad>\n";
-			foreach ($catalog as $meta) {
-				$key = $meta['key'];
-				$val = $f[$key] ?? '';
-				if ($key === 'Images/Image@url') {
-					echo "    <Images>\n";
-					echo '      <Image url="' . self::xml_escape($val) . "\" />\n";
-					echo "    </Images>\n";
-					continue;
-				}
-				feed_xml_el($key, $val, '    ');
-			}
-			echo "  </Ad>\n";
+			$this->fieldsSpec->write_ad_xml($item['fields']);
 		}
 		echo "</Ads>";
 	}

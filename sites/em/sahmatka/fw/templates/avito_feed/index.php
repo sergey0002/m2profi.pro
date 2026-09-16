@@ -71,10 +71,6 @@ $fieldMeta = $data['field_meta'] ?? [];
 	margin-bottom: 12px;
 	box-sizing: border-box;
 }
-.feed-card.is-invalid {
-	background: #fde8e8;
-	border-color: #e74c3c;
-}
 .feed-card__img {
 	flex: 0 0 200px;
 	max-width: 200px;
@@ -116,22 +112,19 @@ $fieldMeta = $data['field_meta'] ?? [];
 .feed-card__fields th {
 	width: 32%;
 	background: rgba(255,255,255,.5);
-	font-weight: 600;
-	color: #555;
+	font-weight: 400;
+	color: #111;
 	white-space: nowrap;
 	cursor: help;
 }
-.feed-card__fields td { cursor: help; word-break: break-word; }
-.feed-card__fields td.is-empty { color: #999; font-style: italic; }
-.feed-card.is-invalid .feed-card__fields th { background: rgba(255,255,255,.35); }
-.feed-card__reasons {
-	margin: 10px 0 0;
-	padding-left: 18px;
-	color: #b33a3a;
-	font-size: 13px;
-	font-weight: 600;
+.feed-card__fields th.is-req { font-weight: 700; color: #111; }
+.feed-card__fields td { cursor: help; word-break: break-word; color: #111; font-weight: 400; }
+.feed-card__fields td.is-empty { color: #999; font-style: italic; font-weight: 400; }
+.feed-card__fields tr.is-error th,
+.feed-card__fields tr.is-error td {
+	background: #f8d0d0;
+	color: #111;
 }
-.feed-card__reasons li { margin-bottom: 2px; }
 </style>
 
 <div class="feed-wrap">
@@ -235,13 +228,16 @@ $fieldMeta = $data['field_meta'] ?? [];
 					<?php if ($fields): ?>
 						<table class="feed-card__fields">
 							<tbody>
-							<?php foreach ($fields as $fk => $fv): ?>
-								<?php
+							<?php
+							list($fieldsOrdered, $errKeys) = em_feed_fields::card_order($fields, $reasons);
+							foreach ($fieldsOrdered as $fk => $fv):
 								$tip = (string)(($fieldMeta[$fk]['tooltip'] ?? ''));
 								$empty = trim((string)$fv) === '';
-								?>
-								<tr>
-									<th title="<?= feed_preview_h($tip) ?>"><?= feed_preview_h($fk) ?></th>
+								$isErr = isset($errKeys[$fk]);
+								$isReq = !empty($fieldMeta[$fk]['required']);
+							?>
+								<tr class="<?= $isErr ? 'is-error' : '' ?>">
+									<th class="<?= $isReq ? 'is-req' : '' ?>" title="<?= feed_preview_h($tip) ?>"><?= feed_preview_h($fk) ?></th>
 									<td class="<?= $empty ? 'is-empty' : '' ?>" title="<?= feed_preview_h($tip !== '' ? (($empty ? 'пусто. ' : 'значение: ' . (string)$fv . '. ') . $tip) : '') ?>">
 										<?= $empty ? '—' : feed_preview_h($fv) ?>
 									</td>
@@ -249,13 +245,6 @@ $fieldMeta = $data['field_meta'] ?? [];
 							<?php endforeach; ?>
 							</tbody>
 						</table>
-					<?php endif; ?>
-					<?php if ($invalid && $reasons): ?>
-						<ul class="feed-card__reasons">
-							<?php foreach ($reasons as $r): ?>
-								<li><?= feed_preview_h($r) ?></li>
-							<?php endforeach; ?>
-						</ul>
 					<?php endif; ?>
 				</div>
 			</div>

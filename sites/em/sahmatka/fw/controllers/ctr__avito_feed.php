@@ -93,7 +93,7 @@ class ctr__avito_feed extends ctr__
 			'truncated' => $truncated,
 			'limit' => $this->limit,
 			'filter_note' => $filterNote,
-			'field_meta' => feed_fields_index(feed_fields_avito_new()),
+			'field_meta' => $feed->fields_spec()->index(),
 		], 'avito_feed', 'index');
 	}
 }
