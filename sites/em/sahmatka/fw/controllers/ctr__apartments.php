@@ -706,6 +706,26 @@ function act__order()
         return;
     }
 
+    $is_system_admin = ($_SESSION['sh_login'] ?? '') === 'admin';
+    $sales_users = [];
+    $sales_user_ids = [];
+    $selected_sales_user_id = 0;
+    if ($is_system_admin) {
+        // Sales department users. User #1 must always be the first/default option.
+        $sales_users = $mysql->get_arr(
+            'SELECT id, login, name
+             FROM users
+             WHERE id = 1 OR (agency_id = 92 AND del = 0 AND user_group = \'agent\')
+             ORDER BY CASE WHEN id = 1 THEN 0 ELSE 1 END, login, name'
+        );
+        $sales_user_ids = array_map('intval', array_column((array)$sales_users, 'id'));
+        $current_apartment_status = (int)($data['status2'] ?? $data['status'] ?? 0);
+        $selected_sales_user_id = $current_apartment_status === 4 ? (int)($data['user_id'] ?? 0) : 0;
+        if (!in_array($selected_sales_user_id, $sales_user_ids, true)) {
+            $selected_sales_user_id = 1;
+        }
+    }
+
     $roomsType = trim((string)($data['rooms'] ?? ''));
     $isManualMode = booking_guard_is_manual_mode($home_id, $roomsType);
     $manualMessage = booking_guard_message();
@@ -819,6 +839,16 @@ function act__order()
                 $status = (int)$_POST['status'];
                 $comment = 'Изменение статуса админом';
                 $status_broni_id = isset($apartment['status_broni_id']) ? (int)$apartment['status_broni_id'] : 0;
+				$booking_user_id = 0;
+				if ($is_system_admin && $status === 4) {
+					$booking_user_id = isset($_POST['booking_user_id']) ? (int)$_POST['booking_user_id'] : 1;
+					$selected_sales_user_id = $booking_user_id;
+					if (!in_array($booking_user_id, $sales_user_ids, true)) {
+						$err_m[] = 'Выбранный сотрудник не относится к отделу продаж.';
+					}
+				} elseif ($is_system_admin) {
+					$selected_sales_user_id = 1;
+				}
 
                 $valid_bron = 0;
                 if ($status_broni_id > 0) {
@@ -826,14 +856,16 @@ function act__order()
                     if ($brn && $brn['broni_id'] == $status_broni_id) $valid_bron = 1;
                 }
 
-                if ($valid_bron) {
-                    $sa->up_broni($status_broni_id, $status, $comment);
-                } else {
-                    $sa->new_broni($home_id, $apartment_num, $status);
-                }
+				if (!$err_m) {
+					if ($valid_bron) {
+						$sa->up_broni($status_broni_id, $status, $comment, $booking_user_id);
+					} else {
+						$sa->new_broni($home_id, $apartment_num, $status, 0, $booking_user_id);
+					}
 
-                add_log('Статус квартиры изменён администратором');
-                $success = "Статус квартиры изменён!";
+					add_log('Статус квартиры изменён администратором');
+					$success = "Статус квартиры изменён!";
+				}
             }
 
             if (isset($_POST['window_orient_1'])) {
@@ -950,6 +982,9 @@ function act__order()
         'is_manual_mode' => $isManualMode,
         'manual_message' => $manualMessage,
         'manual_message_html' => $manualMessageHtml,
+		'sales_users' => $sales_users,
+		'selected_sales_user_id' => $selected_sales_user_id,
+		'is_system_admin' => $is_system_admin,
     ];
 
     if ($show_done_template) {

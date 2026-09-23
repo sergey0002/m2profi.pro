@@ -196,11 +196,14 @@ class sahmatka {
 	
 	
 	// Новая запись о броне выдает ид брони + меняет статус квартиры в аппартаментах
-	function new_broni($home_id, $apartment_num, $status, $apartments = 0)
+	function new_broni($home_id, $apartment_num, $status, $apartments = 0, $booking_user_id = 0)
 {
      
     add_log("new_broni: home_id=$home_id, apartment_num=$apartment_num, status=$status, apartments=$apartments");
 $user_id = isset($_SESSION['sh_id']) ? (int)$_SESSION['sh_id'] : 0;
+	if ((int)$booking_user_id > 0) {
+		$user_id = (int)$booking_user_id;
+	}
 
     $now = date("Y-m-d H:i:s");
 
@@ -266,7 +269,7 @@ $user_id = isset($_SESSION['sh_id']) ? (int)$_SESSION['sh_id'] : 0;
 	
 	
 	
-	function up_broni($broni_id, $status = '', $comment = '')
+	function up_broni($broni_id, $status = '', $comment = '', $booking_user_id = 0)
 {
     // 1. Текущий пользователь и его права
     $current_user_id   = isset($_SESSION['sh_id']) ? (int)$_SESSION['sh_id'] : 0;
@@ -324,6 +327,9 @@ $user_id = isset($_SESSION['sh_id']) ? (int)$_SESSION['sh_id'] : 0;
         $data['status'] = (int)$status;
     }
     $new_status = (int)$data['status'];
+	if ($new_status === 4 && (int)$booking_user_id > 0) {
+		$data['user_id'] = (int)$booking_user_id;
+	}
 
     // 6. Подготовка новой записи брони
     $new_date = date("Y-m-d H:i:s");

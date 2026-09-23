@@ -11,6 +11,9 @@ $curr_apart_status = (int)($apartment['status2'] ?? $apartment['status'] ?? 0);
 $o1 = (int)($apartment['window_orient_1'] ?? 0);
 $o2 = (int)($apartment['window_orient_2'] ?? 0);
 $window_orient = $GLOBALS['window_orient'] ?? [];
+$sales_users = $data['sales_users'] ?? [];
+$selected_sales_user_id = (int)($data['selected_sales_user_id'] ?? 1);
+$is_system_admin = !empty($data['is_system_admin']);
 ?>
 <div class="container-fluid">
     <div class="row">
@@ -54,6 +57,22 @@ $window_orient = $GLOBALS['window_orient'] ?? [];
                         <option value="6"<?=($curr_apart_status==6?' selected':'')?>>Квартира подрядчика</option>
                     </select>
                 </div>
+                <?php if ($is_system_admin): ?>
+                <div class="apartment-info-field" id="booking-user-field" style="<?=$curr_apart_status === 4 ? '' : 'display:none;'?>">
+                    <label class="apartment-info-field__label" for="booking-user">Сотрудник отдела продаж</label>
+                    <select id="booking-user" name="booking_user_id">
+                        <?php foreach ($sales_users as $sales_user): ?>
+                            <?php
+                            $sales_user_id = (int)($sales_user['id'] ?? 0);
+                            $sales_user_login = trim((string)($sales_user['login'] ?? ''));
+                            $sales_user_name = trim((string)($sales_user['name'] ?? ''));
+                            $sales_user_label = $sales_user_login . ($sales_user_name !== '' ? ' - ' . $sales_user_name : '');
+                            ?>
+                            <option value="<?=$sales_user_id?>"<?=($selected_sales_user_id === $sales_user_id ? ' selected' : '')?>><?=htmlspecialchars($sales_user_label, ENT_QUOTES, 'UTF-8')?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <?php endif; ?>
                 <div class="apartment-info-field">
                     <label class="apartment-info-field__label" for="apt-orient-1">Ориентация окон</label>
                     <select id="apt-orient-1" name="window_orient_1">
@@ -66,6 +85,18 @@ $window_orient = $GLOBALS['window_orient'] ?? [];
                 <?php /* Направление 2 — отключено */ ?>
                 <button type="submit" class="apartment-info-form__submit">Сохранить</button>
             </form>
+            <?php if ($is_system_admin): ?>
+            <script>
+                (function () {
+                    var status = document.getElementById('apt-status');
+                    var bookingUserField = document.getElementById('booking-user-field');
+                    if (!status || !bookingUserField) return;
+                    status.addEventListener('change', function () {
+                        bookingUserField.style.display = status.value === '4' ? '' : 'none';
+                    });
+                })();
+            </script>
+            <?php endif; ?>
 
             <?php
             if (!empty($_SESSION['sh_id']) && !empty($data['apartament_id'])) {
