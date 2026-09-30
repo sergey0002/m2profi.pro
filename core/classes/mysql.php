@@ -33,9 +33,9 @@ class m_mysql
 		//if( !$default ){ $default = false; }
 		
 		if( 
-			( !$val && $val!==false && $val!==0 ) 
+			( !$val && $val!==false && $val!==0 && $val!=='0' ) 
 			&& 
-			( $default || $defeult===false || $default === 0 )
+			( $default || $default===false || $default === 0 || $default === '0' )
 		  )
 		{
 			$val = $default;
@@ -150,7 +150,7 @@ class m_mysql
 			$vi = mysqli_real_escape_string($this->c,$v);
 			$i++;
 			
-			if( !$v && $v!==0 ){$vi='NULL';}
+			if( !$v && $v!==0 && $v!=='0' ){$vi='NULL';}
 			else{ $vi = '"'.$vi.'"'; }
 			
 			$q .= '`'.$k.'` = '.$vi.' ';

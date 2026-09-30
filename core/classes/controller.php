@@ -163,9 +163,9 @@ function exportArrayToCsvFile(array $data, array $headers, string $filename = ''
 		//if( !$default ){ $default = false; }
 		
 		if( 
-			( !$val && $val!==false && $val!==0 ) 
+			( !$val && $val!==false && $val!==0 && $val!=='0' ) 
 			&& 
-			( $default || $defeult===false || $default === 0 )
+			( $default || $default===false || $default === 0 || $default === '0' )
 		  )
 		{
 			$val = $default;

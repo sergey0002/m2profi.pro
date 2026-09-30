@@ -358,7 +358,7 @@ class ctr__homeseditor extends ctr__
 		$data['yandex-building-id'] = $this->data_value($_POST['yandex-building-id'], 0);
 		$data['title'] = $this->data_value($_POST['title'], '');
 		$data['long_title'] = $this->data_value($_POST['long_title'], '');
-		$data['show'] = $this->data_value($_POST['show'], 2);
+		$data['show'] = (isset($_POST['show']) && $_POST['show'] !== '') ? (int) $this->data_value($_POST['show'], 2) : 2;
 		$data['complite_text'] = $this->data_value($_POST['complite_text'], '');
 		$data['complite'] = $this->data_value($_POST['complite'], 0);
 		$data['img'] = $this->data_value($_POST['img'], '');
