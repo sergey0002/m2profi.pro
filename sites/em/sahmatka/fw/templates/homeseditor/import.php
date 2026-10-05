@@ -48,7 +48,7 @@ $report = $data['report'];
     </div>
 <?php endif; ?>
 
-<p>Формат: 7 колонок через таб — этаж, комнаты, секция, № квартиры, площадь, площадь по договору, цена.</p>
+<p>Формат: 7 колонок через таб — этаж, комнаты, секция, № квартиры, площадь приведенная, площадь общая, цена.</p>
 
 <form action="<?= htmlspecialchars($parse_url) ?>" method="POST">
     <input type="hidden" name="do" value="parse">

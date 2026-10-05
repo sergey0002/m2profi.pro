@@ -36,12 +36,12 @@ $is_system_admin = !empty($data['is_system_admin']);
         <div class="col-md-5 col-xs-12 apartment-info-col" style="text-align:left;">
             <div class="apartment-info-stats">
                 Количество комнат — <b><?=$apartment['rooms'];?></b><br>
-                Площадь общая — <b><?=$apartment['area'];?></b> м<sup>2</sup><br>
+                Площадь приведенная — <b><?=$apartment['area'];?></b> м<sup>2</sup><br>
                 <?php
                 $area_dog = (float)($apartment['area_small'] ?? 0);
                 if ($area_dog > 0):
                 ?>
-                Площадь по договору — <b><?= htmlspecialchars((string)$apartment['area_small']) ?></b> м<sup>2</sup><br>
+                Площадь общая — <b><?= htmlspecialchars((string)$apartment['area_small']) ?></b> м<sup>2</sup><br>
                 <?php endif; ?>
                 Цена — <b><?= number_format((int)($apartment['price'] ?? 0), 0, '.', ' ') ?> руб.</b>
             </div>

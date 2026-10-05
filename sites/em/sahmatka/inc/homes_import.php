@@ -85,10 +85,10 @@ class homes_import
                 $errors[] = 'Некорректный № квартиры';
             }
             if ($norm['area'] === null || (float) $norm['area'] <= 0) {
-                $errors[] = 'Некорректная площадь';
+                $errors[] = 'Некорректная площадь приведенная';
             }
             if ($norm['area_small'] === null || (float) $norm['area_small'] < 0) {
-                $errors[] = 'Некорректная площадь по договору';
+                $errors[] = 'Некорректная площадь общая';
             }
             if ($norm['price'] === null || $norm['price'] < 0) {
                 $errors[] = 'Некорректная цена';
@@ -126,8 +126,8 @@ class homes_import
             'rooms' => 'Комнаты',
             'section_id' => 'Секция',
             'apartment_num' => '№ квартиры',
-            'area' => 'Площадь',
-            'area_small' => 'Площадь по договору',
+            'area' => 'Площадь приведенная',
+            'area_small' => 'Площадь общая',
             'price' => 'Цена',
         );
     }
