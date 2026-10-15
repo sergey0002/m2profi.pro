@@ -125,11 +125,11 @@ function em_pbplans_no_furniture_url($image_url, $sahmatka_dir = null)
     }
 
     $relative = str_replace('\\', '/', $relative);
-    if (!preg_match('#^pbplans/#i', $relative)) {
+    if (!preg_match('#^pbplans/([^/]+)/(.+)$#i', $relative, $hm)) {
         return '';
     }
 
-    $nf_relative = preg_replace('#^pbplans/#i', 'pbplans/no_furniture/', $relative, 1);
+    $nf_relative = 'pbplans/' . $hm[1] . '/no_furniture/' . $hm[2];
 
     foreach (em_pbplans_path_variants($nf_relative) as $rel) {
         if (is_file($sahmatka_dir . $rel)) {
