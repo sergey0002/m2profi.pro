@@ -88,6 +88,59 @@ function em_pbplans_path_variants($relative)
 }
 
 /**
+ * Планировка без мебели: pbplans/... → pbplans/no_furniture/...
+ * Файл на диске есть — URL, иначе пустая строка (вкладку не показывать).
+ *
+ * @param string $image_url URL или путь из apartaments.image_pb
+ * @param string|null $sahmatka_dir Абсолютный путь к …/sahmatka
+ * @return string
+ */
+function em_pbplans_no_furniture_url($image_url, $sahmatka_dir = null)
+{
+    $image_url = trim((string) $image_url);
+    $image_url = preg_replace('/\?.*$/', '', $image_url);
+    if ($image_url === '' || strpos($image_url, '..') !== false) {
+        return '';
+    }
+
+    if ($sahmatka_dir === null || $sahmatka_dir === '') {
+        $sahmatka_dir = dirname(__DIR__);
+    }
+    $sahmatka_dir = rtrim(str_replace('\\', '/', $sahmatka_dir), '/') . '/';
+
+    if (preg_match('#^(https?://[^/]+/sahmatka/)#i', $image_url, $m)) {
+        $base = $m[1];
+        $relative = substr($image_url, strlen($base));
+    } elseif (preg_match('#/sahmatka/(.+)$#i', $image_url, $m)) {
+        $base = substr($image_url, 0, strlen($image_url) - strlen($m[1]));
+        $relative = $m[1];
+    } elseif (strpos($image_url, 'http://') === 0 || strpos($image_url, 'https://') === 0) {
+        return '';
+    } else {
+        $base = '/sahmatka/';
+        $relative = ltrim($image_url, '/');
+        if (stripos($relative, 'sahmatka/') === 0) {
+            $relative = substr($relative, strlen('sahmatka/'));
+        }
+    }
+
+    $relative = str_replace('\\', '/', $relative);
+    if (!preg_match('#^pbplans/([^/]+)/(.+)$#i', $relative, $hm)) {
+        return '';
+    }
+
+    $nf_relative = 'pbplans/' . $hm[1] . '/no_furniture/' . $hm[2];
+
+    foreach (em_pbplans_path_variants($nf_relative) as $rel) {
+        if (is_file($sahmatka_dir . $rel)) {
+            return rtrim($base, '/') . '/' . em_pbplans_encode_url_path($rel);
+        }
+    }
+
+    return '';
+}
+
+/**
  * Кодирует сегменты пути для URL, слэши не трогает.
  */
 function em_pbplans_encode_url_path($relative)

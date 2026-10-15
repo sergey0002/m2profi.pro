@@ -327,7 +327,44 @@ $apartment_num = 64;
 			 <div class="row">
 			 
 				<div class="col-md-6 col-xs-12" style="text-align:center;">
+                  <?php
+                  $nofurn_url = function_exists('em_pbplans_no_furniture_url')
+                      ? em_pbplans_no_furniture_url($result['image_pb'] ?? '')
+                      : '';
+                  if ($nofurn_url):
+                  ?>
+                  <style>
+                  .apt-plan-tabs { display:flex; gap:10px; justify-content:center; margin-bottom:10px; }
+                  .apt-plan-tabs__item { display:inline-flex; align-items:center; justify-content:center; height:31px; padding:5px 14px 7px; cursor:pointer; white-space:nowrap; font-size:16px; font-weight:600; line-height:1; color:#000; border:1px solid #e30613; border-radius:15px; background:#fff; }
+                  .apt-plan-tabs__item.active { background:#f7e8e8; pointer-events:none; }
+                  </style>
+                  <div class="apt-plan-tabs" data-tabs="apt-plan">
+                    <div class="apt-plan-tabs__item active" data-tabs-target="plan-main">Планировка</div>
+                    <div class="apt-plan-tabs__item" data-tabs-target="plan-nofurn">Без мебели</div>
+                  </div>
+                  <div data-tabs-content="plan-main"><img src="<?=$result['image_pb'];?>?x=178" style="max-height:400px; max-width:100%"></div>
+                  <div data-tabs-content="plan-nofurn" style="display:none;"><img src="<?=htmlspecialchars($nofurn_url)?>" style="max-height:400px; max-width:100%"></div>
+                  <script>
+                  (function () {
+                    var root = document.querySelector('[data-tabs="apt-plan"]');
+                    if (!root) return;
+                    var nav = root.querySelectorAll('[data-tabs-target]');
+                    nav.forEach(function (el) {
+                      el.addEventListener('click', function () {
+                        var id = el.getAttribute('data-tabs-target');
+                        nav.forEach(function (n) { n.classList.remove('active'); });
+                        el.classList.add('active');
+                        var box = root.parentNode;
+                        box.querySelectorAll('[data-tabs-content]').forEach(function (c) {
+                          c.style.display = c.getAttribute('data-tabs-content') === id ? '' : 'none';
+                        });
+                      });
+                    });
+                  })();
+                  </script>
+                  <?php else: ?>
                   <img src="<?=$result['image_pb'];?>?x=178" style="max-height:400px; max-width:100%"  >
+                  <?php endif; ?>
                 </div>
 			    <div class="col-md-6 col-xs-12" style="text-align:left; font-size:24px;">
 				 
