@@ -101,7 +101,44 @@ input, select {
                 <?= $html_compass ?>
             </div>
             <?php endif; ?>
+            <?php
+            $nofurn_url = function_exists('em_pbplans_no_furniture_url')
+                ? em_pbplans_no_furniture_url($apartment['image_pb'] ?? '')
+                : '';
+            if ($nofurn_url):
+            ?>
+            <style>
+            .apt-plan-tabs { display:flex; gap:10px; justify-content:center; margin-bottom:10px; }
+            .apt-plan-tabs__item { display:flex; align-items:center; justify-content:center; height:31px; padding:5px 14px 7px; cursor:pointer; white-space:nowrap; font-size:16px; font-weight:600; line-height:1; color:#000; border:1px solid #e30613; border-radius:15px; background:#fff; }
+            .apt-plan-tabs__item.active { background:#f7e8e8; pointer-events:none; }
+            </style>
+            <div class="apt-plan-tabs" data-tabs="apt-plan">
+                <div class="apt-plan-tabs__item active" data-tabs-target="plan-main">Планировка</div>
+                <div class="apt-plan-tabs__item" data-tabs-target="plan-nofurn">Без мебели</div>
+            </div>
+            <div data-tabs-content="plan-main"><?= render_plan_with_sun($apartment['image_pb'] ?? '', $o1, $o2) ?></div>
+            <div data-tabs-content="plan-nofurn" style="display:none;"><?= render_plan_with_sun($nofurn_url, $o1, $o2) ?></div>
+            <script>
+            (function () {
+                var root = document.querySelector('[data-tabs="apt-plan"]');
+                if (!root) return;
+                var nav = root.querySelectorAll('[data-tabs-target]');
+                nav.forEach(function (el) {
+                    el.addEventListener('click', function () {
+                        var id = el.getAttribute('data-tabs-target');
+                        nav.forEach(function (n) { n.classList.remove('active'); });
+                        el.classList.add('active');
+                        var box = root.parentNode;
+                        box.querySelectorAll('[data-tabs-content]').forEach(function (c) {
+                            c.style.display = c.getAttribute('data-tabs-content') === id ? '' : 'none';
+                        });
+                    });
+                });
+            })();
+            </script>
+            <?php else: ?>
             <?= render_plan_with_sun($apartment['image_pb'] ?? '', $o1, $o2) ?>
+            <?php endif; ?>
             <?php if ($o1 || $o2): ?>
             <div class="window-compass__label apartment-compas-caption">
                 Окна: <?= htmlspecialchars(window_orient_labels($o1, $o2)) ?>

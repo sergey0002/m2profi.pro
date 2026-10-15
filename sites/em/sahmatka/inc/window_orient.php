@@ -134,3 +134,4 @@ if (!function_exists('render_window_compass')) {
 }
 
 include_once __DIR__ . '/sun_path.php';
+include_once __DIR__ . '/pbplans_raster.php';

@@ -21,6 +21,9 @@
   $o1 = (int)($data['apartment']['window_orient_1'] ?? $data['data']['window_orient_1'] ?? 0);
   $o2 = (int)($data['apartment']['window_orient_2'] ?? $data['data']['window_orient_2'] ?? 0);
   $html_compass = render_window_compass_images($o1, $o2, 110);
+  $nofurn_url = function_exists('em_pbplans_no_furniture_url')
+      ? em_pbplans_no_furniture_url($data['data']['image_pb'] ?? '')
+      : '';
    
   ?>
 
@@ -1002,6 +1005,9 @@ html, body {
       <div class="mdl-body-top no-print">
         <div class="mdl-tabs" data-tabs-nav>
           <div class="mdl-tabs__item active" data-tabs-target="tab-1">Планировка</div>
+          <?php if ($nofurn_url): ?>
+          <div class="mdl-tabs__item" data-tabs-target="tab-nofurn">Без мебели</div>
+          <?php endif; ?>
           <div style="<? if(!$data['data']['image_pb_plan']){?>display:none;<?}?>" class="mdl-tabs__item" data-tabs-target="tab-2">На этаже</div>
           <div style="display:none;" class="mdl-tabs__item" data-tabs-target="tab-3">На карте</div>
         </div>
@@ -1032,6 +1038,28 @@ html, body {
       </div> 
 	  
 	  
+      <?php if ($nofurn_url): ?>
+      <div class="mdl-content" data-tabs-content="tab-nofurn">
+        <div class="mdl-main">
+          <?php if ($html_compass): ?>
+          <div class="mdl-compas">
+            <?= $html_compass ?>
+          </div>
+          <?php endif; ?>
+          <div class="mdl-pln">
+            <div class="mdl-pln__top"><?=$data['data']['homes_kvartal_title']?>  </div>
+            <?= render_plan_with_sun(
+                $nofurn_url,
+                $o1,
+                $o2,
+                ['img_style' => 'max-height:100%;max-width:100%;width:auto;height:auto;']
+            ) ?>
+            <div class="mdl-pln__bottom"><?=$data['data']['adress']?> </div>
+          </div>
+        </div>
+      </div>
+      <?php endif; ?>
+
       <div class="mdl-content" data-tabs-content="tab-2">
         <div class="mdl-main">
           <?php if ($html_compass): ?>
