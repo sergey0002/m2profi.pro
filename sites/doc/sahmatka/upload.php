@@ -55,7 +55,7 @@ error_reporting(1);
 	$input_name = 'file';
 	 
 	// Разрешенные расширения файлов.
-	$allow = array('svg','jpg','jpeg','png','zip','rar','pdf','tar','docx','doc','xlsx','xls');
+	$allow = array('svg','jpg','jpeg','png','zip','rar','pdf','tar','docx','doc','xlsx','xls','rtf','pptx','ppt','odt','ods','odp','txt','csv');
 	 
 	// Запрещенные расширения файлов.
 	$deny = array(
