@@ -20,7 +20,7 @@ fi
 exec bash -s
 EOF
 chmod +x "$t/bin/ssh";git config --global user.name tester;git config --global user.email test@example.org
-git init -q --bare "$t/remote";git init -qb test "$t/dev";printf 'first\n' > "$t/dev/index.txt";git -C "$t/dev" add .;git -C "$t/dev" commit -qm initial;git -C "$t/dev" push -q "$t/remote" test
+git init -q --bare "$t/remote";git init -qb test "$t/dev";printf 'first\n' > "$t/dev/index.txt";mkdir -p "$t/dev/admin/uploads/logo__190"; printf '!47.jpg\n' > "$t/dev/admin/uploads/logo__190/.gitignore";printf 'old' > "$t/dev/admin/uploads/logo__190/45.jpg";printf '.env\n/admin/uploads/logo__190/*.jpg\n' > "$t/dev/.gitignore";git -C "$t/dev" add -f admin/uploads/logo__190/45.jpg;git -C "$t/dev" add .;git -C "$t/dev" commit -qm initial;git -C "$t/dev" push -q "$t/remote" test
 url=https://github.com/example/fixture.git;git config --global url."$t/remote".insteadOf "$url"
 cat > "$t/panel/projects/demo.env" <<EOF
 DIRS=pilot:$t/site|test,legacy:$t/missing|test,live:$t/prod|prod
@@ -30,8 +30,6 @@ SSH_USER=fixture
 SSH_HOST=fixture.invalid
 SSH_PASS=abcdefgh234
 REPO_URL=$url
-FTP_WRITE_BRANCHES=test,test/*
-FTP_NEW_FILES=src/*
 EOF
 php "$root/tests/suite.php"
 # The journal stays beside index.php even when open_basedir allows ONLY public_html.

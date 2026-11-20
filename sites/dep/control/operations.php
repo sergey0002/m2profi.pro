@@ -70,7 +70,8 @@ function opsReason($s) {
 function opsReply($r) {
     $a=$GLOBALS['ops_action'];$ok=($r['status'] ?? '')==='ok';$extra=[];
     if (!$ok) $extra['reason']=opsReason($r['message'] ?? 'Ответ без сообщения');
-    foreach (['run','source'] as $field) if(isset($r[$field])) $extra[$field]=$r[$field];
+    if($a==='fc_check' && isset($r['changed']))$extra['comparison']=$r['changed']?'changed':'clean';
+    foreach (['run','source','state'] as $field) if(isset($r[$field])) $extra[$field]=$r[$field];
     $state=$ok?'ok':'error';
     if ($a==='directory_statuses' && $ok) {
         foreach ($r['targets'] ?? [] as $v) {

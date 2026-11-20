@@ -12,15 +12,18 @@ function fcRun($action,$target,$dir,$env,$user,$project) {
     }
     $q=['action'=>$action,'target'=>$target,'user'=>$user,'path'=>$dir['path'],'repo'=>$repo,'other'=>$other,
         'name'=>trim($env['GIT_COMMIT_NAME'] ?? '') ?: 'fromserver','email'=>trim($env['GIT_COMMIT_EMAIL'] ?? '') ?: 'from@server.ru',
-        'write_branches'=>fcList($env['FTP_WRITE_BRANCHES'] ?? ''),'accept_missing'=>($_POST['accept_missing'] ?? '')==='1',
-        'allow'=>fcList($env['FTP_NEW_FILES'] ?? ''),'branch'=>$_POST['branch'] ?? '','token'=>$_POST['token'] ?? '','base_oid'=>$_POST['base_oid'] ?? '', 'maintenance'=>($_POST['maintenance'] ?? '')==='1'];
+        'accept_missing'=>($_POST['accept_missing'] ?? '')==='1',
+        'branch'=>$_POST['branch'] ?? '','token'=>$_POST['token'] ?? '','base_oid'=>$_POST['base_oid'] ?? '', 'maintenance'=>($_POST['maintenance'] ?? '')==='1'];
     if (!is_string($q['branch']) || strlen($q['branch'])>220) throw new Exception('Недопустимая ветка.');
     if ($action==='status') {
         $q['targets']=[['name'=>$target,'path'=>$dir['path'],'guard'=>true]];
         $r=fcRemote('inspect.sh',$q,$env);
         $item=$r['targets'][0];
-        if (isset($item['reason']) || in_array($item['state'],['busy','incomplete'],true)) throw new Exception($item['reason'] ?? 'Цель занята или выкладка не завершена.');
-        return ['status'=>'ok','bound'=>$item['bound'] ?? false,'message'=>!empty($item['bound'])?'Привязано к Git':'Не привязано'];
+        if(isset($item['reason']))throw new RuntimeException($item['reason']);
+        $state=$item['state'];
+        if($state==='busy' || $state==='incomplete')return ['status'=>'ok','state'=>$state,'bound'=>null,
+            'message'=>$state==='busy'?($item['message'] ?? 'Каталог занят другой операцией.'):'Выкладка не завершена. Требуется ручная сверка.'];
+        return ['status'=>'ok','state'=>$state,'bound'=>$item['bound'] ?? false,'message'=>!empty($item['bound'])?'Привязано к Git':'Не привязано'];
     }
     return fcRemote('worker.sh',$q,$env);
 }
@@ -47,6 +50,10 @@ function fcRemote($file,$q,$env) {
         $f=explode("\0",$raw);
         if(count($f)===5 && $f[4]==='' && in_array($f[0],['ok','error'],true)) {
             $r=['status'=>$f[0],'message'=>$f[1]];
+            if($q['action']==='check' && $f[0]==='ok') {
+                if(!in_array($f[2],['clean','changed'],true))throw new Exception('Не получен результат сравнения. Обновите worker.sh.');
+                $r['changed']=$f[2]==='changed';
+            }
             if($q['action']==='preview' && $f[0]==='ok') {$r['token']=$f[2];$r['missing']=$f[3]==='1';}
         }
     }
@@ -59,9 +66,9 @@ function fcRemote($file,$q,$env) {
 
 // POSIX literals for data in the stdin script, never interpolated into the SSH command.
 function fcWorkerInput($q) {
-    $text='';$args=['live'=>'path','url'=>'repo','action'=>'action','branch'=>'branch','target'=>'target','name'=>'name','email'=>'email','token'=>'token','base_oid'=>'base_oid'];
+    $text='';$args=['user'=>'user','live'=>'path','url'=>'repo','action'=>'action','branch'=>'branch','target'=>'target','name'=>'name','email'=>'email','token'=>'token','base_oid'=>'base_oid'];
     foreach($args as $var=>$field)$text.=$var.'='.bashLiteral($q[$field] ?? '')."\n";
-    foreach(['other','allow','write_branches'] as $var) $text.=$var.'=('.implode(' ',array_map('bashLiteral',$q[$var] ?? [])).")\n";
+    foreach(['other'] as $var) $text.=$var.'=('.implode(' ',array_map('bashLiteral',$q[$var] ?? [])).")\n";
     foreach(['maintenance','accept_missing'] as $var)$text.=$var.'='.(!empty($q[$var])?'1':'0')."\n";
     return $text;
 }
@@ -78,7 +85,12 @@ function fcInspectResponse($q,$raw) {
     foreach($q['targets'] as $i=>$target){
         [$code,$head,$branch,$json,$origin]=array_slice($fields,5*$i,5);
         $row=['name'=>$target['name'],'state'=>'none','bound'=>false];
-        if(in_array($code,['busy','incomplete'],true)) $row['state']=$code;
+        if(in_array($code,['busy','incomplete'],true)) {
+            $row['state']=$code;
+            $actions=['check'=>'Контроль','sync'=>'Синхронизация','deploy'=>'Деплой','preview'=>'Предпросмотр','bind'=>'Привязка'];
+            if($code==='busy' && isset($actions[$head]) && preg_match('/^\d{2}:\d{2}:\d{2}$/D',$origin))
+                $row['message']='Выполняется: '.$actions[$head].' · '.$branch.' · ветка '.$json.' · с '.$origin.' UTC.';
+        }
         elseif(!in_array($code,['ok','unborn'],true)) $row+=['reason'=>$errors[$code] ?? 'Ошибка чтения каталога.'];
         else {
             $s=$json===''?[]:json_decode($json,true);

@@ -1,5 +1,5 @@
 $(document).ready(function () {
-    let statusVersion = 0;
+    let statusVersion = 0, waitingTarget = null;
     const terminalNames={directory_statuses:'Ветки в каталогах',get_branches:'Список веток',fc_status:'Привязка',fc_branches:'Ветки remote',fc_preview:'Предпросмотр',fc_bind:'Привязка',fc_check:'Контроль',fc_sync:'Синхронизация',deploy:'Деплой'};
     let terminalStarted=false;
     function terminalLine(context,text,time) {
@@ -55,12 +55,18 @@ $(document).ready(function () {
                 const target=$(this).find('input').val(), item=values.get(target) || {};
                 if (!item.state && !error) clientIssue('directory_statuses','missing_target',200,target);
                 const text=item.state==='branch'?item.branch:(labels[item.state] || labels.unavailable);
-                const reason=item.reason || error || (!item.state
+                const reason=item.reason || item.message || error || (!item.state
                     ? 'Сервер не вернул статус этой цели. Проверьте запись DIRS и права на цель.'
                     : item.state==='unavailable' ? 'Хостинг не передал причину. Проверьте версию control/inspect.sh.'
                     : !Object.prototype.hasOwnProperty.call(labels,item.state) && item.state!=='branch' ? 'Получен неизвестный статус от сервера.' : '');
                 $(this).find('.dest-branch').text(text+(reason?' — '+reason:'')).attr('title',
                     item.sha ? (item.source==='publish'?'Подтверждённая выкладка: ':'HEAD каталога: ')+item.sha : text);
+                // Recover via the existing read-only refresh, never by replaying an operation.
+                if(waitingTarget===target && target===choice().val() && !busy && !error && item.state && item.state!=='busy') {
+                    if(item.state==='unavailable') {$('#fc_info').text(reason || text);return;}
+                    applyTargetState(item);
+                    if(typeof bound==='boolean')terminalLine(target,'Каталог освободился. Можно продолжить.');
+                }
             });
         }
         $.ajax({url:'ajax.php',method:'POST',dataType:'json',timeout:20000,
@@ -73,7 +79,10 @@ $(document).ready(function () {
     $('#dest_refresh').on('click',refreshDestinations);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden) refreshDestinations();});
     refreshDestinations();
-    setInterval(()=>{if(!document.hidden && !$('#dest_refresh').prop('disabled')) refreshDestinations();},60000);
+    let nextRefresh=Date.now()+60000;
+    setInterval(()=>{if(!document.hidden && (waitingTarget || Date.now()>=nextRefresh) && !$('#dest_refresh').prop('disabled')) {
+        nextRefresh=Date.now()+60000;refreshDestinations();
+    }},10000);
 
     /**
      * Управление блокировкой элементов управления
@@ -111,13 +120,27 @@ $(document).ready(function () {
     const choice = () => $('.target-radio:checked');
     const guarded = () => choice().attr('data-guard') === '1';
     let bound = null, busy = false;
+    function paintCheck(state='unknown') {
+        const styles={unknown:['btn-outline-secondary','Контроль'],pending:['btn-outline-secondary','Контроль: проверка…'],
+            changed:['btn-warning','Контроль: есть различия'],clean:['btn-success','Контроль: без различий'],error:['btn-danger','Контроль: ошибка']};
+        $('#fc_check').removeClass('btn-outline-primary btn-outline-secondary btn-success btn-warning btn-danger')
+            .addClass(styles[state][0]).text(styles[state][1]);
+    }
+    async function checkSelection() {
+        paintCheck('pending');
+        try {
+            const result=await request('fc_check');
+            if(typeof result.changed!=='boolean')throw Error('Панель не подтвердила результат сравнения.');
+            paintCheck(result.changed?'changed':'clean');return result;
+        } catch(e){paintCheck('error');throw e;}
+    }
     function rules() {
         $('#fc_box').prop('hidden', !guarded());
         const hasBranch = !!$('#branch_select').val();
         $('#fc_bind').prop('disabled', busy || bound !== false || !hasBranch)
             .toggleClass('btn-success', bound === true).toggleClass('btn-outline-secondary', bound !== true)
             .text(bound === true ? 'Привязано к Git' : 'Привязать к Git');
-        $('#fc_check').prop('disabled', busy || bound !== true);
+        $('#fc_check').prop('disabled', busy || bound !== true || !hasBranch);
         $('#fc_sync').prop('disabled', busy || bound !== true || !hasBranch);
         $('#btn_deploy').prop('disabled', busy || !hasBranch || (guarded() && bound !== true));
     }
@@ -146,30 +169,51 @@ $(document).ready(function () {
                 if(!confirm(r.message+'\nПодтвердить исходную ревизию и перечисленные отличия? Файлы сайта не изменятся.')) {$('#status_text').text('Отменено');return;}
                 if(r.missing && !confirm('Отдельное подтверждение: отсутствующие в каталоге отслеживаемые файлы из списка D будут считаться удалениями при синхронизации. Принять?')) {$('#status_text').text('Отменено');return;}
                 r=await request('fc_bind',{token:r.token,base_oid:base.trim(),accept_missing:r.missing?'1':'0'}); bound=true; $('#fc_info').text(r.message);
+            } else if(which==='check') {
+                r=await checkSelection();
             } else {
                 if(guarded() && which!=='check' && !confirm(choice().val()+' → '+$('#branch_select').val()+'\nОстановлены внешние записи (FTP, редактор, cron)? '+(which==='deploy'?'Подтвердить выкладку в окно обслуживания.':'Сохранить и объединить правки в выбранной ветке.'))) {$('#status_text').text('Отменено');return;}
+                paintCheck();
                 r=await request(which==='deploy'?'deploy':'fc_'+which,guarded()?{maintenance:'1'}:{});
             }
             feedback(r.message,true);
+            if(guarded() && which!=='check' && bound && $('#branch_select').val()) {
+                try {await checkSelection();} catch(e){feedback('Повторный контроль: '+(e.message || 'нет ответа'),false);}
+            }
         } catch(e) {feedback(e.message || 'Связь прервана; результат неизвестен.',false);}
         finally {busyGuard(false);if(which==='deploy' || which==='bind') refreshDestinations();}
     }
-    async function loadTarget() {
-        bound=null; rules();
+    function applyTargetState(s) {
+        waitingTarget=s.state==='busy'?choice().val():null;
+        const blocked=s.state==='busy' || s.state==='incomplete';
+        bound=blocked?null:s.bound;
+        const msg=s.state==='busy'?(s.message || 'Каталог занят другой операцией.')+' Повторная проверка статуса через 10 с.':
+            s.state==='incomplete'?'Выкладка не завершена. Нужна ручная сверка перед продолжением.':(s.message || (bound?'Привязано к Git':'Не привязано'));
+        $('#fc_info').text(msg);rules();
+        if(blocked)terminalLine(choice().val(),msg);
+    }
+    async function loadTarget(autoCheck=false) {
+        waitingTarget=null; bound=null; paintCheck(); rules();
         const select=$('#branch_select');select.empty();
         busyGuard(true);
         try {
-            if(guarded()) {
+            // Neither reading binding status nor taking a target lock is a prerequisite for the catalogue.
+            const statusTask=guarded() ? (async()=>{
                 $('#fc_info').text('Проверка состояния…');
-                const s=await request('fc_status'); bound=s.bound; $('#fc_info').text(s.message);
-            }
-            const res=await request('get_branches');
-            res.data.forEach(b=>select.append(new Option(`${b.name} - ${b.hash} - ${b.date} (${b.author})`,b.name)));
-            if(res.data.length)select.prop('selectedIndex',0);
+                try {applyTargetState(await request('fc_status'));}
+                catch(e){const msg=e.message || 'Нет подтверждения состояния каталога.';$('#fc_info').text(msg);feedback(msg,false);}
+            })() : Promise.resolve();
+            const branchesTask=(async()=>{
+                const res=await request('get_branches');
+                res.data.forEach(b=>select.append(new Option(`${b.name} - ${b.hash} - ${b.date} (${b.author})`,b.name)));
+                if(res.data.length)select.prop('selectedIndex',0);
+            })();
+            try {await branchesTask;} finally {await statusTask;}
+            if(autoCheck && guarded() && bound && select.val())await checkSelection();
         } catch(e) {feedback(e.message || 'Не удалось проверить хостинг.',false);}
         finally {busyGuard(false);}
     }
-    $('.target-radio').on('change',loadTarget); $('#branch_select').on('change',rules);
+    $('.target-radio').on('change',()=>loadTarget(true)); $('#branch_select').on('change',()=>{paintCheck();rules();if(guarded() && bound && $('#branch_select').val())act('check');});
     $('#fc_bind').click(()=>act('bind')); $('#fc_check').click(()=>act('check')); $('#fc_sync').click(()=>act('sync'));
     loadTarget();
     $('#btn_deploy').click(()=>act('deploy'));

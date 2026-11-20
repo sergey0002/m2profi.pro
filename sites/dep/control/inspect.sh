@@ -16,11 +16,6 @@ inspect() (
     [[ -d "$path" && -r "$path" && -x "$path" && "$(cd -- "$path" && pwd -P)" == "$path" ]] || { emit path; return; }
     if [[ $2 != '-' ]]; then
         key=$2; root="$HOME/.dep-control/$key"
-        if [[ -e "$root/lock" ]]; then
-            exec 9<"$root/lock" || { emit denied; return; }
-            command -v flock >/dev/null || { emit noflock; return; }
-            flock -sn 9 || { emit busy; return; }
-        fi
         [[ ! -e "$root/incomplete.json" ]] || { emit incomplete; return; }
         if [[ -f "$root/state.v2" ]]; then
             mapfile -t parts < "$root/state.v2" || { emit denied;return; }
