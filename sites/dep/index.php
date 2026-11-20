@@ -210,7 +210,7 @@ if (empty($_SESSION['fc_csrf'])) $_SESSION['fc_csrf']=bin2hex(random_bytes(24));
                         <input class="target-radio" type="radio" name="deploy_target" id="target_<?= $idx ?>" data-guard="<?= $d['guard'] ? 1 : 0 ?>" value="<?= htmlspecialchars($d['name']) ?>" <?= $idx===0?'checked':'' ?>>
                         <span class="dest-card">
                             <span class="dest-folder" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
-                            <span class="dest-body"><strong><?= htmlspecialchars($d['name']) ?></strong><small>Контроль FTP: <?= $d['guard'] ? 'включён' : 'выключен' ?></small><small>Ветка: <span class="dest-branch" aria-live="polite">не проверена</span></small></span>
+                            <span class="dest-body"><strong><?= htmlspecialchars($d['name']) ?></strong><small>Контроль FTP: <?= $d['guard'] ? 'включён' : 'выключен' ?></small><small>Ветка на сайте: <span class="dest-branch" aria-live="polite">не проверена</span></small><small>Путь из конфига: <code class="dest-path"><?= htmlspecialchars($d['path'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></code></small></span>
                             <span class="dest-env <?= $prod?'is-prod':'' ?>"><?= $prod?'PROD':'TEST' ?></span><span class="dest-dot" aria-hidden="true"></span>
                         </span>
                     </label>

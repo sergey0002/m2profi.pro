@@ -6,7 +6,7 @@ $(document).ready(function () {
         const box=document.getElementById('log_box');if(!box || typeof text!=='string') return;
         const follow=!terminalStarted || box.scrollHeight-box.scrollTop-box.clientHeight<40;
         if(!terminalStarted){box.textContent='';terminalStarted=true;}
-        box.appendChild(document.createTextNode('['+(time || new Date().toISOString().slice(11,19))+' UTC] '+context+'  '+text+'\n'));
+        box.appendChild(document.createTextNode((context ? '['+(time || new Date().toISOString().slice(11,19))+' UTC] '+context+'  ' : '')+text+'\n'));
         if(follow)box.scrollTop=box.scrollHeight;
     }
     // All operations use the existing API; trace frames and result share that one response.
@@ -15,14 +15,18 @@ $(document).ready(function () {
         const params=new URLSearchParams(opts.data || ''), op=params.get('action');
         if(!Object.prototype.hasOwnProperty.call(terminalNames,op))return;
         const label=terminalNames[op]+(op!=='directory_statuses' && params.get('target')?' · '+params.get('target'):'');
-        let offset=0;
+        let offset=0, started=false;
         function consume(raw) {
             let end;
             while((end=raw.indexOf('\n',offset))>=0){
                 const line=raw.slice(offset,end);let f;
                 try{f=JSON.parse(line);}catch(_){break;}
                 if(f.event!=='trace')break;
-                offset=end+1;terminalLine(label+' #'+String(f.id).slice(0,6),f.text,f.time);
+                offset=end+1;
+                // Keep status polling out of the console unless its HTTP request fails.
+                if(op==='directory_statuses' || op==='fc_status')continue;
+                if(!started){terminalLine(label,'',f.time);started=true;}
+                if(f.text!=='Начало операции')terminalLine('',f.text);
             }
         }
         opts.data+=(opts.data?'&':'')+'terminal=1';
@@ -145,8 +149,8 @@ $(document).ready(function () {
         $('#btn_deploy').prop('disabled', busy || !hasBranch || (guarded() && bound !== true));
     }
     function request(action, fields = {}) {
-        return $.post('ajax.php', Object.assign({project:currentProject,target:choice().val(),csrf:fcCsrf,
-            action,branch:$('#branch_select').val() || ''},fields),null,'json')
+        return $.ajax({url:'ajax.php',method:'POST',dataType:'json',timeout:195000,data:Object.assign({project:currentProject,target:choice().val(),csrf:fcCsrf,
+            action,branch:$('#branch_select').val() || ''},fields)})
             .then(res => { if(res.status !== 'ok') throw Error(res.message); return res; });
     }
     function busyGuard(on) {
@@ -176,10 +180,7 @@ $(document).ready(function () {
                 paintCheck();
                 r=await request(which==='deploy'?'deploy':'fc_'+which,guarded()?{maintenance:'1'}:{});
             }
-            feedback(r.message,true);
-            if(guarded() && which!=='check' && bound && $('#branch_select').val()) {
-                try {await checkSelection();} catch(e){feedback('Повторный контроль: '+(e.message || 'нет ответа'),false);}
-            }
+            feedback(which==='check'?(r.changed?'Есть различия — список выше.':'Расхождений нет.'):r.message,true);
         } catch(e) {feedback(e.message || 'Связь прервана; результат неизвестен.',false);}
         finally {busyGuard(false);if(which==='deploy' || which==='bind') refreshDestinations();}
     }
@@ -192,7 +193,7 @@ $(document).ready(function () {
         $('#fc_info').text(msg);rules();
         if(blocked)terminalLine(choice().val(),msg);
     }
-    async function loadTarget(autoCheck=false) {
+    async function loadTarget() {
         waitingTarget=null; bound=null; paintCheck(); rules();
         const select=$('#branch_select');select.empty();
         busyGuard(true);
@@ -209,11 +210,10 @@ $(document).ready(function () {
                 if(res.data.length)select.prop('selectedIndex',0);
             })();
             try {await branchesTask;} finally {await statusTask;}
-            if(autoCheck && guarded() && bound && select.val())await checkSelection();
         } catch(e) {feedback(e.message || 'Не удалось проверить хостинг.',false);}
         finally {busyGuard(false);}
     }
-    $('.target-radio').on('change',()=>loadTarget(true)); $('#branch_select').on('change',()=>{paintCheck();rules();if(guarded() && bound && $('#branch_select').val())act('check');});
+    $('.target-radio').on('change',()=>loadTarget()); $('#branch_select').on('change',()=>{paintCheck();rules();});
     $('#fc_bind').click(()=>act('bind')); $('#fc_check').click(()=>act('check')); $('#fc_sync').click(()=>act('sync'));
     loadTarget();
     $('#btn_deploy').click(()=>act('deploy'));

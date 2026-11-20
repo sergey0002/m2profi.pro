@@ -83,7 +83,7 @@ if [[ $action == check && -n $head ]];then
         plumb -C "$live" ls-files --others -z -- .gitignore ':(glob)**/.gitignore' > "$tmp/new-ignore"
         if [[ ! -s $tmp/new-ignore ]] && { [[ ! -s $excludes ]] || ! grep -qvE '^(#|$)' "$excludes"; } &&
            plumb -C "$live" diff --quiet HEAD -- .gitignore ':(glob)**/.gitignore';then
-            cmd git -C "$live" status --porcelain=v1 --untracked-files=all
+            cmd git -C "$live" -c core.excludesFile=/dev/null -c core.fsmonitor=false -c core.untrackedCache=false -c core.quotePath=false -c status.renames=false status --porcelain=v1 --untracked-files=all
             plumb -C "$live" -c core.excludesFile=/dev/null -c core.fsmonitor=false -c core.untrackedCache=false -c core.quotePath=false -c status.renames=false status --porcelain=v1 --untracked-files=all > "$tmp/status"
             : > "$tmp/diff"
             while IFS= read -r line;do
@@ -96,9 +96,13 @@ if [[ $action == check && -n $head ]];then
     fi
 fi
 [[ -d $repo/.git ]] || g init -q "$repo"; cd -- "$repo"
-g fetch --no-tags --prune "$url" '+refs/heads/*:refs/remotes/source/*'
+[[ -n $branch && $branch != -* && $branch != ftp-snapshots/* ]] && g check-ref-format "refs/heads/$branch" || fail 'Недопустимая ветка.'
+if [[ $action == check && ( -n $base || -z $head ) ]];then
+    g fetch --progress --no-tags "$url" "+refs/heads/$branch:refs/remotes/source/$branch"
+else
+    g fetch --progress --no-tags --prune "$url" '+refs/heads/*:refs/remotes/source/*'
+fi
 {
-    [[ -n $branch && $branch != -* && $branch != ftp-snapshots/* ]] && g check-ref-format "refs/heads/$branch" || fail 'Недопустимая ветка.'
     dst=$(g rev-parse --verify "refs/remotes/source/$branch^{commit}")
     if [[ -n $base_oid && ( $action == preview || $action == bind ) ]]; then [[ $base_oid =~ ^[a-fA-F0-9]{40}$ ]] && g merge-base --is-ancestor "$base_oid" "$dst" || fail 'База не принадлежит ветке.'; dst=$(g rev-parse "${base_oid}^{commit}"); fi
 }
@@ -176,13 +180,13 @@ if [[ $action == check ]];then finish_check;fi
 printf 'Правки сайта для ветки %s:\n%s\n' "$branch" "${report:-Правок нет.}"
 if (( ! empty )) && [[ -s $tmp/diff ]];then
     newsnap=$(g commit-tree "$tree" -p "$snap" -m "Server edits: $target"); ref=ftp-snapshots/$key/$newsnap
-    g push "$url" "$newsnap:refs/heads/$ref";snap=$newsnap;active=1;save_state
+    g push --progress "$url" "$newsnap:refs/heads/$ref";snap=$newsnap;active=1;save_state
 fi
 ref=ftp-snapshots/$key/$snap
 if ((active)) && ! g merge-base --is-ancestor "$snap" "$dst";then
     g checkout --force --detach "$dst"
     if ! g merge --no-edit --no-ff "$snap";then conflicts=$(g diff --name-only --diff-filter=U);g merge --abort || :;fail "Разрешите конфликт merge-коммитом в $branch с $ref ($snap). Сайт не изменён."$'\n'"$conflicts";fi
-    dst=$(g rev-parse HEAD);g push "$url" "$dst:refs/heads/$branch" || fail "Push отклонён; снимок сохранён: $ref"
+    dst=$(g rev-parse HEAD);g push --progress "$url" "$dst:refs/heads/$branch" || fail "Push отклонён; снимок сохранён: $ref"
 fi
 if [[ $action == sync ]];then reply ok "Синхронизация завершена: $branch @ $dst";exit;fi
 # Prepare the exact objects outside the site before creating the interrupted-publication marker.

@@ -27,3 +27,6 @@ body {
 .dest-body{min-width:0;flex:1;overflow-wrap:anywhere}.dest-body strong,.dest-body small{display:block}.dest-body small{font-size:.8rem;color:#526275;margin-top:3px}.dest-branch{font-family:ui-monospace,monospace}
 .dest-env{font-size:.66rem;letter-spacing:.05em;padding:3px 7px;border-radius:5px;background:#e4f3ec;color:#235e48;font-weight:700}.dest-env.is-prod{background:#fff0dc;color:#854710}
 .dest-dot{width:14px;height:14px;flex:none;border:1px solid #94a6b5;border-radius:100%}.dest-row input:checked+.dest-card .dest-dot{background:#356da5;border:3px solid white;outline:1px solid #356da5}
+
+.dest-body { min-width: 0; }
+.dest-path { overflow-wrap: anywhere; }
