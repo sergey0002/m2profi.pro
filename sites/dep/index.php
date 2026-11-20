@@ -1,8 +1,11 @@
 <?php
 session_start();
+require_once __DIR__.'/control/operations.php';
+opsInit('panel');
 
 // Обработка выхода
 if (isset($_GET['logout'])) {
+    opsWrite('logout','ok');
     session_destroy();
     header("Location: index.php");
     exit;
@@ -37,9 +40,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (isset($usersDict[$login]) && $usersDict[$login] === $pass) {
             $_SESSION['user'] = $login;
+            opsWrite('login','ok');
             header("Location: index.php");
             exit;
         } else {
+            opsWrite('login','error',['attempted_login'=>$login,'reason'=>'Неверные учётные данные']);
             $errorMsg = 'Неверный логин или пароль!';
         }
     }
@@ -47,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Проверка сессии, если нет - выводим форму логина
 if (empty($_SESSION['user'])) {
+    if ($_SERVER['REQUEST_METHOD']==='GET') opsWrite('open_login','ok');
     ?>
     <!DOCTYPE html>
     <html lang="ru">
@@ -132,6 +138,7 @@ if (is_dir($projectsDir)) {
 }
 
 if (empty($availableProjects)) {
+    opsWrite('open_project','error',['reason'=>'Нет доступных проектов']);
     die("У вас нет доступа ни к одному из проектов.");
 }
 
@@ -182,7 +189,12 @@ foreach ($dirs as $d) {
 $dirs = $filteredDirs;
 require_once __DIR__.'/control/api.php';
 $fcEnv=[];foreach ($lines as $line) { $pair=explode('=',trim($line),2);if(count($pair)===2) $fcEnv[trim($pair[0])]=trim($pair[1]); }
-try {$fc=fcConfig($fcEnv);}catch(Throwable $e){die(htmlspecialchars($e->getMessage()));}
+try {$fc=fcConfig($fcEnv);}catch(Throwable $e){opsWrite('open_project','error',['project'=>$currentProject,'reason'=>$e->getMessage()]);die(htmlspecialchars($e->getMessage()));}
+opsWrite('open_project','ok',['project'=>$currentProject]);
+function panelAsset($path) {
+    $file=__DIR__.'/'.$path;
+    return htmlspecialchars($path.'?v='.(is_file($file) ? substr(hash_file('sha256',$file),0,12) : 'missing'), ENT_QUOTES, 'UTF-8');
+}
 if (empty($_SESSION['fc_csrf'])) $_SESSION['fc_csrf']=bin2hex(random_bytes(24));
 
 ?>
@@ -193,7 +205,7 @@ if (empty($_SESSION['fc_csrf'])) $_SESSION['fc_csrf']=bin2hex(random_bytes(24));
     <meta charset="UTF-8">
     <title>Xuyak2production - <?= htmlspecialchars($currentProject) ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="accet/css/style.css" rel="stylesheet">
+    <link href="<?= panelAsset('accet/css/style.css') ?>" rel="stylesheet">
     <script>
         // Передаем токен проекта в JS
         const fcCsrf = <?= json_encode($_SESSION['fc_csrf']) ?>;
@@ -256,14 +268,14 @@ if (empty($_SESSION['fc_csrf'])) $_SESSION['fc_csrf']=bin2hex(random_bytes(24));
                         <input class="target-radio" type="radio" name="deploy_target" id="target_<?= $idx ?>" data-guard="<?= isset($fc[$d['name']]) ? 1 : 0 ?>" value="<?= htmlspecialchars($d['name']) ?>" <?= $idx===0?'checked':'' ?>>
                         <span class="dest-card">
                             <span class="dest-folder" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
-                            <span class="dest-body"><strong><?= htmlspecialchars($d['name']) ?></strong><small>Ветка: <span class="dest-branch" aria-live="polite">проверка…</span></small></span>
+                            <span class="dest-body"><strong><?= htmlspecialchars($d['name']) ?></strong><small>Контроль FTP: <?= isset($fc[$d['name']]) ? 'включён' : 'выключен' ?></small><small>Ветка: <span class="dest-branch" aria-live="polite">не проверена</span></small></span>
                             <span class="dest-env <?= $prod?'is-prod':'' ?>"><?= $prod?'PROD':'TEST' ?></span><span class="dest-dot" aria-hidden="true"></span>
                         </span>
                     </label>
                     <?php endforeach; ?>
                 </fieldset>
 
-                <div id="fc_box" hidden class="mt-3 border rounded p-3">
+                <div id="fc_box" <?= isset($dirs[0]) && isset($fc[$dirs[0]['name']]) ? '' : 'hidden' ?> class="mt-3 border rounded p-3">
                     <button type="button" id="fc_bind" class="btn btn-outline-secondary" disabled>Привязать к Git</button>
                     <button type="button" id="fc_check" class="btn btn-outline-primary" disabled>Контроль</button>
                     <button type="button" id="fc_sync" class="btn btn-outline-primary" disabled>Синхронизация</button>
@@ -288,8 +300,10 @@ if (empty($_SESSION['fc_csrf'])) $_SESSION['fc_csrf']=bin2hex(random_bytes(24));
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="accet/js/app.js"></script>
+    <div id="asset_warning" role="alert" hidden class="container alert alert-warning">Не загрузились скрипты панели. Проверьте файлы в accet/js/ и обновите страницу.</div>
+    <noscript><p class="container">Для проверки веток включите JavaScript.</p></noscript>
+    <script src="<?= panelAsset('accet/js/jquery-3.6.0.min.js') ?>" onerror="document.getElementById('asset_warning').hidden=false"></script>
+    <script src="<?= panelAsset('accet/js/app.js') ?>" onerror="document.getElementById('asset_warning').hidden=false"></script>
 </body>
 
 </html>

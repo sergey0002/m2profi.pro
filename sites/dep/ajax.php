@@ -1,12 +1,15 @@
 <?php
+ini_set('display_errors','0'); // never render PHP stack arguments/credentials into an AJAX response
 session_start();
 header('Content-Type: application/json');
 
 $action = $_POST['action'] ?? '';
 $project = $_POST['project'] ?? 'noffprod';
+require_once __DIR__.'/control/operations.php';
+opsInit($action,true);
 
 if (empty($_SESSION['user'])) {
-    echo json_encode(['status' => 'error', 'message' => 'Несанкционированный доступ']);
+    echo opsReply(['status' => 'error', 'message' => 'Несанкционированный доступ']);
     exit;
 }
 $user = $_SESSION['user'];
@@ -30,7 +33,7 @@ function loadEnv($file)
 }
 
 require_once __DIR__.'/control/api.php';
-if (!is_string($project) || !preg_match('/^[A-Za-z0-9_-]+$/D',$project)) {echo json_encode(['status'=>'error','message'=>'Некорректный проект']); exit;}
+if (!is_string($project) || !preg_match('/^[A-Za-z0-9_-]+$/D',$project)) {echo opsReply(['status'=>'error','message'=>'Некорректный проект']); exit;}
 $env = loadEnv(__DIR__ . "/projects/{$project}.env");
 
 // Проверка прав доступа к проекту
@@ -39,7 +42,7 @@ $allowedUsersStr = $env['ALLOWED_USERS'] ?? '';
 if (!empty($allowedUsersStr)) {
     $allowedArr = array_map('trim', explode(',', $allowedUsersStr));
     if (!in_array($user, $allowedArr)) {
-        echo json_encode(['status' => 'error', 'message' => 'У вас нет доступа к проекту: ' . $project]);
+        echo opsReply(['status' => 'error', 'message' => 'У вас нет доступа к проекту: ' . $project]);
         exit;
     }
 }
@@ -47,24 +50,30 @@ if (!empty($allowedUsersStr)) {
 try {
     $fc=fcConfig($env); $target=$_POST['target'] ?? '';
     if (!is_string($target) || !is_string($action)) throw new Exception('Некорректный запрос.');
-    if ($action==='directory_statuses') {echo json_encode(directoryStatuses($env,$fc,$user));exit;}
+    if ($action==='client_error') {
+        if (!is_string($_POST['csrf'] ?? null) || empty($_SESSION['fc_csrf']) || !hash_equals($_SESSION['fc_csrf'],$_POST['csrf'])) throw new Exception('Отказ CSRF.');
+        $op=$_POST['operation'] ?? ''; $kind=$_POST['kind'] ?? '';
+        if (!in_array($op,['directory_statuses','fc_status','fc_branches','fc_check','fc_preview','fc_bind','fc_sync','fc_deploy','get_branches','deploy','get_log'],true) || !in_array($kind,['timeout','network','http','json','missing_target'],true)) throw new Exception('Неизвестная диагностика.');
+        opsWrite($op,'client_error',['reason'=>$kind,'http'=>(int)($_POST['http'] ?? 0)]);echo opsReply(['status'=>'ok']);exit;
+    }
+    if ($action==='directory_statuses') {echo opsReply(directoryStatuses($env,$fc,$user));exit;}
     if (strpos($action,'fc_')===0 || ($action==='deploy' && isset($fc[trim($target)]))) {
         $op=$action==='deploy' ? 'deploy' : substr($action,3);
         if (!isset($fc[$target]) || !in_array($op,['status','branches','preview','bind','check','sync','deploy'],true)) throw new Exception('Режим недоступен для цели.');
-        echo json_encode(fcRun($op,$target,$fc[$target],$env,$user,$project));exit;
+        echo opsReply(fcRun($op,$target,$fc[$target],$env,$user,$project));exit;
     }
-} catch (Throwable $e) {echo json_encode(['status'=>'error','message'=>$e->getMessage()]);exit;}
+} catch (Throwable $e) {echo opsReply(['status'=>'error','message'=>$e->getMessage()]);exit;}
 if ($action === 'get_branches') {
     $githubToken = $env['GITHUB_TOKEN'] ?? '';
     $repoUrl = $env['REPO_URL'] ?? '';
 
     if (empty($githubToken) || empty($repoUrl)) {
-        echo json_encode(['status' => 'error', 'message' => 'GITHUB_TOKEN или REPO_URL не задан']);
+        echo opsReply(['status' => 'error', 'message' => 'GITHUB_TOKEN или REPO_URL не задан']);
         exit;
     }
 
     if (!preg_match('#github\.com/([^/]+)/([^/]+)#i', $repoUrl, $matches)) {
-        echo json_encode(['status' => 'error', 'message' => 'Неверный формат REPO_URL. Ожидается URL GitHub.']);
+        echo opsReply(['status' => 'error', 'message' => 'Неверный формат REPO_URL. Ожидается URL GitHub.']);
         exit;
     }
 
@@ -98,6 +107,7 @@ if ($action === 'get_branches') {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         }
 
+        opsStep('GitHub GraphQL: запрос веток (HTTPS POST)');
         $result = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
@@ -152,7 +162,9 @@ if ($action === 'get_branches') {
             }
         }
 
-        $output = (string) shell_exec($cmd);
+        opsStep('$ ssh '.$sshUser.'@'.$sshHost.' bash -lc '.opsRedact($remoteBash));
+        $output = opsRedact((string) shell_exec($cmd));
+        opsFrame($output);
         return ['ok' => $output !== '', 'output' => $output, 'error' => ''];
     }
 
@@ -275,12 +287,13 @@ GQL;
 
     // api.github.com с сервера часто timeout — fallback на git по SSH (как деплой)
     if (!empty($response['error'])) {
+        opsWrite('get_branches','fallback',['reason'=>'GraphQL не вернул список веток','http'=>$response['code']]);
         $fallback = getBranchesViaRemoteGit($env, $repoUrl, $githubToken);
         if (($fallback['status'] ?? '') === 'ok') {
-            echo json_encode($fallback);
+            echo opsReply($fallback);
             exit;
         }
-        echo json_encode([
+        echo opsReply([
             'status' => 'error',
             'message' => 'Сетевая ошибка cURL: ' . $response['error']
                 . ' | Fallback: ' . ($fallback['message'] ?? 'недоступен'),
@@ -290,22 +303,23 @@ GQL;
 
     if ($response['code'] === 401 || $response['code'] === 403) {
         $msg = $response['data']['message'] ?? 'Неизвестная ошибка';
-        echo json_encode(['status' => 'error', 'message' => "Ошибка доступа к API ({$response['code']}): {$msg}"]);
+        echo opsReply(['status' => 'error', 'message' => "Ошибка доступа к API ({$response['code']}): {$msg}"]);
         exit;
     }
 
     if ($response['code'] !== 200 || !empty($response['data']['errors']) || !is_array($response['data']['data']['repository']['refs']['nodes'] ?? null)) {
+        opsWrite('get_branches','fallback',['reason'=>'GraphQL не вернул список веток','http'=>$response['code']]);
         $fallback = getBranchesViaRemoteGit($env, $repoUrl, $githubToken);
         if (($fallback['status'] ?? '') === 'ok') {
-            echo json_encode($fallback);
+            echo opsReply($fallback);
             exit;
         }
         if (!empty($response['data']['errors'])) {
             $msg = $response['data']['errors'][0]['message'] ?? 'GraphQL error';
-            echo json_encode(['status' => 'error', 'message' => "GitHub GraphQL: {$msg}"]);
+            echo opsReply(['status' => 'error', 'message' => "GitHub GraphQL: {$msg}"]);
             exit;
         }
-        echo json_encode(['status' => 'error', 'message' => 'Ошибка GraphQL GitHub. Код: ' . $response['code']]);
+        echo opsReply(['status' => 'error', 'message' => 'Ошибка GraphQL GitHub. Код: ' . $response['code']]);
         exit;
     }
 
@@ -333,7 +347,7 @@ GQL;
         return $b['timestamp'] <=> $a['timestamp'];
     });
 
-    echo json_encode(['status' => 'ok', 'data' => $branches, 'source' => 'graphql']);
+    echo opsReply(['status' => 'ok', 'data' => $branches, 'source' => 'graphql']);
     exit;
 }
 
@@ -342,7 +356,7 @@ if ($action === 'deploy') {
     $targetName = $_POST['target'] ?? '';
 
     if (!$branch || !$targetName) {
-        echo json_encode(['status' => 'error', 'message' => 'Не указаны ветка или цель']);
+        echo opsReply(['status' => 'error', 'message' => 'Не указаны ветка или цель']);
         exit;
     }
 
@@ -363,7 +377,7 @@ if ($action === 'deploy') {
     }
 
     if (!$targetFolder) {
-        echo json_encode(['status' => 'error', 'message' => 'Целевая папка не найдена']);
+        echo opsReply(['status' => 'error', 'message' => 'Целевая папка не найдена']);
         exit;
     }
 
@@ -371,7 +385,7 @@ if ($action === 'deploy') {
     if ($isProd) {
         $allowedUsers = array_map('trim', explode(',', $prodAllowedUsersStr));
         if (!in_array($user, $allowedUsers)) {
-            echo json_encode(['status' => 'error', 'message' => 'У вас нет прав на деплой в PROD окружения']);
+            echo opsReply(['status' => 'error', 'message' => 'У вас нет прав на деплой в PROD окружения']);
             exit;
         }
     }
@@ -389,23 +403,32 @@ if ($action === 'deploy') {
     if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
         $plink = __DIR__ . '/plink.exe';
         if (file_exists($plink)) {
-            $cmd = "\"$plink\" -ssh -batch -pw \"$sshPass\" $sshUser@$sshHost $remoteCommand < \"$remoteScript\" >> \"$logFile\" 2>&1";
+            $cmd = "\"$plink\" -ssh -batch -pw \"$sshPass\" $sshUser@$sshHost $remoteCommand < \"$remoteScript\"";
         } else {
-            $cmd = "ssh -o StrictHostKeyChecking=no $sshUser@$sshHost $remoteCommand < \"$remoteScript\" >> \"$logFile\" 2>&1";
+            $cmd = "ssh -o StrictHostKeyChecking=no $sshUser@$sshHost $remoteCommand < \"$remoteScript\"";
         }
     } else {
         // Linux
         if (trim(shell_exec("which sshpass"))) {
-            $cmd = "sshpass -p " . escapeshellarg($sshPass) . " ssh -o StrictHostKeyChecking=no $sshUser@$sshHost $remoteCommand < " . escapeshellarg($remoteScript) . " >> " . escapeshellarg($logFile) . " 2>&1";
+            $cmd = "sshpass -p " . escapeshellarg($sshPass) . " ssh -o StrictHostKeyChecking=no $sshUser@$sshHost $remoteCommand < " . escapeshellarg($remoteScript);
         } else {
-            $cmd = "ssh -o StrictHostKeyChecking=no $sshUser@$sshHost $remoteCommand < " . escapeshellarg($remoteScript) . " >> " . escapeshellarg($logFile) . " 2>&1";
+            $cmd = "ssh -o StrictHostKeyChecking=no $sshUser@$sshHost $remoteCommand < " . escapeshellarg($remoteScript);
         }
     }
 
     // Синхронное выполнение для простоты (можно реализовать асинхронное)
-    shell_exec($cmd);
+    session_write_close();
+    $capture=tmpfile();$reader=fopen(stream_get_meta_data($capture)['uri'],'rb');
+    opsStep('$ ssh '.$sshUser.'@'.$sshHost.' '.$remoteCommand.' < deploy_remote.sh');
+    $proc=proc_open($cmd,[['file',PHP_OS_FAMILY==='Windows'?'NUL':'/dev/null','r'],$capture,$capture],$pipes);
+    if (!is_resource($proc)) {echo opsReply(['status'=>'error','message'=>'Не удалось запустить SSH']);exit;}
+    do {opsDrain($reader);$st=proc_get_status($proc);if(!$st['running'])break;usleep(50000);}while(true);
+    $exitCode=$st['exitcode'];proc_close($proc);opsDrain($reader,[],true);fclose($reader);
+    rewind($capture);$compat=fopen($logFile,'ab');if($compat){fwrite($compat,opsRedact(stream_get_contents($capture)));fclose($compat);}fclose($capture);
+    opsStep('Завершение SSH: код '.$exitCode);
+    if ($exitCode!==0) {echo opsReply(['status'=>'error','message'=>'SSH/Git завершился с ошибкой. Код: '.$exitCode]);exit;}
 
-    echo json_encode(['status' => 'ok', 'message' => 'Деплой завершен']);
+    echo opsReply(['status' => 'ok', 'message' => 'Деплой завершен']);
     exit;
 }
 
@@ -414,8 +437,8 @@ if ($action === 'get_log') {
     if (file_exists(__DIR__ . '/lastlog.log')) {
         $log = file_get_contents(__DIR__ . '/lastlog.log');
     }
-    echo json_encode(['status' => 'ok', 'log' => $log]);
+    echo opsReply(['status' => 'ok', 'log' => $log]);
     exit;
 }
 
-echo json_encode(['status' => 'error', 'message' => 'Неизвестное действие']);
+echo opsReply(['status' => 'error', 'message' => 'Неизвестное действие']);

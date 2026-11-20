@@ -1,6 +1,7 @@
 #!/bin/bash
 # Скрипт деплоя
 # Этот скрипт будет передаваться по SSH на целевой сервер и исполняться там.
+git() { printf '$ git' >&2; printf ' %q' "$@" >&2; printf '\n' >&2; command git "$@"; }
 FOLDER=$1
 BRANCH=$2
 USER_LOGIN=$3
