@@ -76,7 +76,7 @@ $(document).ready(function () {
                 offset=end+1;
                 // Keep status polling out of the console unless its HTTP request fails.
                 if(op==='directory_statuses' || op==='fc_status')continue;
-                if(!started){terminalLine(label,'Панель отвечает — выполнение начато.',f.time,'progress');started=true;
+                if(!started){terminalLine(label,'Получен ответ панели — выполнение началось.',undefined,'progress');started=true;
                     terminalStatus('Выполняется','primary');showWork('Панель выполняет запрос…');}
                 const count=/^Проверено путей: (\d+) из (\d+)$/.exec(f.text);
                 if(count)showWork(f.text,Number(count[2])?100*Number(count[1])/Number(count[2]):0);
@@ -260,6 +260,7 @@ $(document).ready(function () {
     async function act(which) {
         if(busy || (which!=='deploy' && !guarded())) return;
         const started=performance.now();
+        let executionStarted=started;
         busyGuard(true);
         try {
             let r;
@@ -278,12 +279,16 @@ $(document).ready(function () {
                 const fields=guarded()?{maintenance:'1'}:{};
                 r=await request(action,fields);
                 if(r.confirmation) {
+                    const waitingSince=performance.now();
+                    terminalLine('Предпросмотр','Готов · '+duration(started),undefined,'success');
                     if(!await terminalConfirm({title:which==='deploy'?'Подтверждение деплоя':'Подтверждение синхронизации',text:r.message,yes:'Да, продолжить',no:'Нет, отменить'})){feedback(null,false,started,true);return;}
+                    terminalLine('Подтверждение','Ожидание оператора · '+duration(waitingSince),undefined,'warning');
+                    executionStarted=performance.now();
                     r=await request(action,Object.assign({},fields,{confirmation:r.confirmation}));
                 }
             }
-            feedback(which==='check'?null:r.message,true,started);
-        } catch(e) {feedback(e.message || 'Связь прервана; результат неизвестен.',false,started);}
+            feedback(which==='check'?null:r.message,true,executionStarted);
+        } catch(e) {feedback(e.message || 'Связь прервана; результат неизвестен.',false,executionStarted);}
         finally {busyGuard(false);if(which==='deploy' || which==='bind') refreshDestinations();}
     }
     function applyTargetState(s) {

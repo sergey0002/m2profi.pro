@@ -106,7 +106,11 @@ if [[ $action == check ]];then
     printf 'Этап: ветка получена за %d с\n' "$((SECONDS-fetch_started))"
 else
     [[ -n $branch && $branch != -* && $branch != ftp-snapshots/* ]] && g check-ref-format "refs/heads/$branch" || fail 'Недопустимая ветка.'
-    g fetch --progress --no-tags --prune "$url" '+refs/heads/*:refs/remotes/source/*'
+    if [[ -z $base && -n $head ]];then
+        g fetch --progress --no-tags --prune "$url" '+refs/heads/*:refs/remotes/source/*'
+    else
+        g fetch --progress --no-tags "$url" "+refs/heads/$branch:refs/remotes/source/$branch"
+    fi
     dst=$(g rev-parse --verify "refs/remotes/source/$branch^{commit}")
     if [[ -n $base_oid && ( $action == preview || $action == bind ) ]]; then [[ $base_oid =~ ^[a-fA-F0-9]{40}$ ]] && g merge-base --is-ancestor "$base_oid" "$dst" || fail 'База не принадлежит ветке.'; dst=$(g rev-parse "${base_oid}^{commit}"); fi
     if [[ -z $base && -n $head ]]; then [[ -n $(g branch -r --contains "$head") ]] || fail 'HEAD не входит в историю remote.'; base=$head;snap=$head;((readonly_run)) || save_state;fi
@@ -259,6 +263,11 @@ fi
 # Bind approval to both inputs and the exact candidate tree; recompute under the writer lock.
 pending=0
 if ((active)) && ! plumb merge-base --is-ancestor "$snap" "$dst";then pending=1;fi
+if [[ $action == deploy && $base == "$dst" && $snap == "$dst" && $tree == "$(plumb rev-parse "$dst^{tree}")" ]] && (( ! empty && ! pending ));then
+    if ((readonly_run));then read_consistent;fi
+    reply ok "Уже выложено: $branch @ $dst. Ручных правок нет; push и запись файлов не нужны."
+    exit
+fi
 if [[ $action == sync && ! -s $tmp/diff ]] && (( ! pending ));then
     [[ -z ${confirmed:-} ]] || fail 'Состояние изменилось. Повторите предпросмотр.'
     read_consistent;reply ok 'Отправлять в GitHub нечего.';exit
@@ -326,17 +335,46 @@ push_checked(){
     fi
     fail "$stage (код $rc). $reason $detail Файлы сайта не изменены."
 }
+# Update revision metadata without writing site files when both revisions have the same tree.
+if [[ $action == deploy && $base == "$snap" && ! -s $tmp/diff ]] && (( ! empty && ! pending )) && [[ $tree == "$(plumb rev-parse "$dst^{tree}")" ]];then
+    if [[ -n $head && $head != "$dst" ]];then
+        printf '{"desired":"%s","before":"%s"}\n' "$dst" "$snap" > "$tmp/pending"
+        mv -- "$tmp/pending" "$home/incomplete.json"
+        g -C "$live" fetch --no-tags "$repo" "$dst"
+        g -C "$live" update-ref --no-deref HEAD "$dst" "$head"
+        g -C "$live" read-tree "$dst";head=$dst
+    fi
+    base=$dst;snap=$dst;active=0;published=$branch;save_state;rm -f -- "$home/incomplete.json"
+    reply ok "Файлы уже совпадают. Обновлена отметка выкладки: $branch @ $dst. Push и запись файлов не выполнялись.";exit
+fi
+candidate=$snap;send_snapshot=0;send_branch=0
 if (( ! empty )) && [[ -s $tmp/diff ]];then
-    newsnap=$(g commit-tree "$tree" -p "$snap" -m "Server edits: $target"); ref=ftp-snapshots/$key/$newsnap
-    push_checked "$newsnap:refs/heads/$ref" "Не удалось отправить служебный снимок $ref" "Целевая ветка $branch не обновлялась.";snap=$newsnap;active=1;save_state
+    candidate=$(g commit-tree "$tree" -p "$snap" -m "Server edits: $target");send_snapshot=1
 fi
-ref=ftp-snapshots/$key/$snap
-if ((active)) && ! g merge-base --is-ancestor "$snap" "$dst";then
+ref=ftp-snapshots/$key/$candidate
+publish_snapshot(){
+    if ((send_snapshot));then
+        push_checked "$candidate:refs/heads/$ref" "Не удалось отправить служебный снимок $ref" "Целевая ветка $branch не обновлялась."
+        snap=$candidate;active=1;save_state;send_snapshot=0
+        printf 'Этап: FTP-снимок сохранён в Git: %s\n' "$ref"
+    fi
+}
+publish_branch(){
+    if ((send_branch));then
+        push_checked "$dst:refs/heads/$branch" "Не удалось обновить ветку $branch" "Служебный снимок сохранён: $ref."
+        printf 'Этап: Git-ветка %s обновлена; запись файлов сайта ещё не начата.\n' "$branch"
+    fi
+}
+if ((active || send_snapshot)) && ! g merge-base --is-ancestor "$candidate" "$dst";then
     g checkout --force --detach "$dst"
-    if ! g merge --no-edit --no-ff "$snap";then conflicts=$(g diff --name-only --diff-filter=U);g merge --abort || :;fail "Разрешите конфликт merge-коммитом в $branch с $ref ($snap). Сайт не изменён."$'\n'"$conflicts";fi
-    dst=$(g rev-parse HEAD);push_checked "$dst:refs/heads/$branch" "Не удалось обновить ветку $branch" "Служебный снимок сохранён: $ref."
+    if ! g merge --no-edit --no-ff "$candidate";then
+        conflicts=$(g diff --name-only --diff-filter=U);g merge --abort || :
+        publish_snapshot
+        fail "Разрешите конфликт merge-коммитом в $branch с $ref ($candidate). Сайт не изменён."$'\n'"$conflicts"
+    fi
+    dst=$(g rev-parse HEAD);send_branch=1
 fi
-if [[ $action == sync ]];then reply ok "Синхронизация завершена: $branch @ $dst";exit;fi
+if [[ $action == sync ]];then publish_snapshot;publish_branch;reply ok "Синхронизация завершена: $branch @ $dst";exit;fi
 # Prepare the exact objects outside the site before creating the interrupted-publication marker.
 validate_tree "$dst";mkdir "$tmp/stage";declare -a changed=() removed=()
 while IFS= read -r -d '' rec;do
@@ -355,6 +393,8 @@ done < "$tmp/tree"
 for n in "${!livevals[@]}";do [[ -n ${finalvals[$n]+present} ]] || removed+=("$n");done
 scan;[[ $tree == "$initial" ]] || fail 'Каталог изменился; публикация отменена.'
 if ((empty));then [[ -z $(find "$live" -mindepth 1 -maxdepth 1 -printf x -quit) ]] || fail 'Пустая цель изменилась.';fi
+publish_snapshot
+publish_branch
 printf '{"desired":"%s","before":"%s"}\n' "$dst" "$snap" > "$tmp/pending";mv -- "$tmp/pending" "$home/incomplete.json"
 for n in "${changed[@]}";do
     p=$live/$n;canonical -m "$p" || fail 'Путь изменился.'
