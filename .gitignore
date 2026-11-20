@@ -13,6 +13,8 @@
 !sites/sigma/**
 !sites/doc/
 !sites/doc/**
+!sites/dep/
+!sites/dep/**
 
 # Local developer docs (override whitelist !sites/em/**, !sites/sigma/**, !sites/doc/**)
 sites/em/.doc/

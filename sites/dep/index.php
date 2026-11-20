@@ -180,6 +180,11 @@ foreach ($dirs as $d) {
     }
 }
 $dirs = $filteredDirs;
+require_once __DIR__.'/control/api.php';
+$fcEnv=[];foreach ($lines as $line) { $pair=explode('=',trim($line),2);if(count($pair)===2) $fcEnv[trim($pair[0])]=trim($pair[1]); }
+try {$fc=fcConfig($fcEnv);}catch(Throwable $e){die(htmlspecialchars($e->getMessage()));}
+if (empty($_SESSION['fc_csrf'])) $_SESSION['fc_csrf']=bin2hex(random_bytes(24));
+
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -191,6 +196,7 @@ $dirs = $filteredDirs;
     <link href="accet/css/style.css" rel="stylesheet">
     <script>
         // Передаем токен проекта в JS
+        const fcCsrf = <?= json_encode($_SESSION['fc_csrf']) ?>;
         const currentProject = <?= json_encode($currentProject) ?>;
     </script>
 </head>
@@ -241,29 +247,28 @@ $dirs = $filteredDirs;
                     </div>
                 </div>
 
-                <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">Целевая директория</div>
-                    <div class="card-body">
-                        <?php if (empty($dirs)): ?>
-                            <p class="text-danger">Директории не настроены в конфиге!</p>
-                        <?php else: ?>
-                            <?php foreach ($dirs as $idx => $d): ?>
-                                <div class="form-check fs-5 mb-2">
-                                    <input class="form-check-input target-radio" type="radio" name="deploy_target" id="target_<?= $idx ?>"
-                                        value="<?= htmlspecialchars($d['name']) ?>" <?= $idx === 0 ? 'checked' : '' ?>>
-                                    <label class="form-check-label w-100 d-flex justify-content-between align-items-center"
-                                        for="target_<?= $idx ?>">
-                                        <span><?= htmlspecialchars($d['name']) ?></span>
-                                        <span class="badge <?= $d['type'] === 'prod' ? 'bg-danger' : 'bg-secondary' ?>">
-                                            <?= strtoupper($d['type']) ?>
-                                        </span>
-                                    </label>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </div>
-                </div>
+                <fieldset class="destinations">
+                    <legend class="dest-title">Целевая директория</legend>
+                    <div class="dest-meta"><span>Выберите каталог для выкладки</span><button type="button" id="dest_refresh">Обновить ветки</button></div>
+                    <?php if (!$dirs): ?><p class="text-muted">Нет доступных директорий.</p><?php endif; ?>
+                    <?php foreach ($dirs as $idx => $d): $prod=$d['type']==='prod'; ?>
+                    <label class="dest-row">
+                        <input class="target-radio" type="radio" name="deploy_target" id="target_<?= $idx ?>" data-guard="<?= isset($fc[$d['name']]) ? 1 : 0 ?>" value="<?= htmlspecialchars($d['name']) ?>" <?= $idx===0?'checked':'' ?>>
+                        <span class="dest-card">
+                            <span class="dest-folder" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
+                            <span class="dest-body"><strong><?= htmlspecialchars($d['name']) ?></strong><small>Ветка: <span class="dest-branch" aria-live="polite">проверка…</span></small></span>
+                            <span class="dest-env <?= $prod?'is-prod':'' ?>"><?= $prod?'PROD':'TEST' ?></span><span class="dest-dot" aria-hidden="true"></span>
+                        </span>
+                    </label>
+                    <?php endforeach; ?>
+                </fieldset>
 
+                <div id="fc_box" hidden class="mt-3 border rounded p-3">
+                    <button type="button" id="fc_bind" class="btn btn-outline-secondary" disabled>Привязать к Git</button>
+                    <button type="button" id="fc_check" class="btn btn-outline-primary" disabled>Контроль</button>
+                    <button type="button" id="fc_sync" class="btn btn-outline-primary" disabled>Синхронизация</button>
+                    <small class="d-block mt-2" id="fc_info" role="status"></small>
+                </div>
                 <button id="btn_deploy" class="btn btn-success btn-lg w-100 mt-4 py-3 fw-bold shadow" disabled>ЗАПУСТИТЬ
                     ДЕПЛОЙ</button>
             </div>

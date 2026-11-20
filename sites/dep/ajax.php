@@ -29,6 +29,8 @@ function loadEnv($file)
     return $env;
 }
 
+require_once __DIR__.'/control/api.php';
+if (!is_string($project) || !preg_match('/^[A-Za-z0-9_-]+$/D',$project)) {echo json_encode(['status'=>'error','message'=>'Некорректный проект']); exit;}
 $env = loadEnv(__DIR__ . "/projects/{$project}.env");
 
 // Проверка прав доступа к проекту
@@ -42,6 +44,16 @@ if (!empty($allowedUsersStr)) {
     }
 }
 
+try {
+    $fc=fcConfig($env); $target=$_POST['target'] ?? '';
+    if (!is_string($target) || !is_string($action)) throw new Exception('Некорректный запрос.');
+    if ($action==='directory_statuses') {echo json_encode(directoryStatuses($env,$fc,$user));exit;}
+    if (strpos($action,'fc_')===0 || ($action==='deploy' && isset($fc[trim($target)]))) {
+        $op=$action==='deploy' ? 'deploy' : substr($action,3);
+        if (!isset($fc[$target]) || !in_array($op,['status','branches','preview','bind','check','sync','deploy'],true)) throw new Exception('Режим недоступен для цели.');
+        echo json_encode(fcRun($op,$target,$fc[$target],$env,$user,$project));exit;
+    }
+} catch (Throwable $e) {echo json_encode(['status'=>'error','message'=>$e->getMessage()]);exit;}
 if ($action === 'get_branches') {
     $githubToken = $env['GITHUB_TOKEN'] ?? '';
     $repoUrl = $env['REPO_URL'] ?? '';
