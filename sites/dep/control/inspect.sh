@@ -44,7 +44,3 @@ inspect() (
     fi
     emit ok "$sha" "$branch" "$state" "$origin"
 )
-remote_branches() {
-    local url; url=$(printf '%s' "$1" | base64 -d) || return 2
-    git ls-remote --heads "$url" || return 3
-}

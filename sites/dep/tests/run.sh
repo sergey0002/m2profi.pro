@@ -3,10 +3,11 @@
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd); t=$(mktemp -d);trap 'rm -rf -- "$t"' EXIT
 export HOME=$t/home DEP_LOG_DIR=$t/logs PATH="$t/bin:$PATH" GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0
-export T=$t ROOT=$root; mkdir -p "$HOME" "$t/bin" "$t/site" "$t/panel/projects";cp "$root/ajax.php" "$root/deploy_remote.sh" "$t/panel/";cp -r "$root/control" "$t/panel/"
+export T=$t ROOT=$root; mkdir -p "$HOME" "$t/bin" "$t/site" "$t/panel/projects";cp "$root/index.php" "$root/ajax.php" "$root/deploy_remote.sh" "$root/get_branches.sh" "$t/panel/";cp -r "$root/control" "$t/panel/"
 cat > "$t/bin/ssh" <<'EOF'
 #!/bin/bash
-[[ ${!#} == 'bash -s' || ${LEGACY_FIXTURE:-} == 1 ]] || { echo 'unexpected remote command' >&2;exit 127; }
+[[ ${!#} == 'bash -s' ]] || { echo 'unexpected remote command' >&2;exit 127; }
+if [[ ${REQUIRE_PASSWORD:-} == 1 && ${FIXTURE_AUTH:-} != ok ]];then echo 'Permission denied (publickey,password).' >&2;exit 255;fi
 if [[ ${FAIL_SSH:-} == 1 ]];then printf 'Actual diagnostic: Host key verification failed\n' >&2;exit 255;fi
 # Deliberate split across writes, including a multiline secret.
 printf 'ordinary stderr before test\nsecret fixture: abcd' >&2;printf 'efgh234\n' >&2
@@ -33,3 +34,13 @@ FTP_WRITE_BRANCHES=test,test/*
 FTP_NEW_FILES=src/*
 EOF
 php "$root/tests/suite.php"
+# The journal stays beside index.php even when open_basedir allows ONLY public_html.
+web=$t/domain/public_html; mkdir -p "$web/sites/dep/control" "$web/sites/dep/projects"
+cp "$root/control/operations.php" "$web/sites/dep/control/"
+out=$(php -d display_errors=1 -d open_basedir="$web" -r '
+    $_SERVER["DOCUMENT_ROOT"]=$argv[1]; require $argv[1]."/sites/dep/control/operations.php";
+    opsInit("fixture");opsWrite("fixture","ok");opsWrite("fixture","ok");
+' "$web" 2>&1)
+log=$web/sites/dep/operations.log.php
+[[ -z $out && $(wc -l < "$log") == 3 && -z $(php "$log") && ! -e $t/domain/private ]]
+printf 'OK: guarded append-only log beside panel, no direct PHP output, no open_basedir warnings\n'

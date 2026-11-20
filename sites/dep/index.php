@@ -97,6 +97,7 @@ if (empty($_SESSION['user'])) {
     exit;
 }
 
+require_once __DIR__.'/control/project.php';
 $currentUser = $_SESSION['user'];
 
 // Сканируем папку проектов
@@ -110,28 +111,9 @@ if (is_dir($projectsDir)) {
             $projName = pathinfo($file, PATHINFO_FILENAME);
             $envPath = $projectsDir . $file;
 
-            // Парсим ALLOWED_USERS чтобы проверить доступ
-            $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            $allowedStr = '';
-            foreach ($lines as $line) {
-                if (strpos(trim($line), 'ALLOWED_USERS=') === 0) {
-                    $allowedStr = trim(substr(trim($line), 14));
-                    break;
-                }
-            }
-
-            $hasAccess = false;
-            if (empty($allowedStr)) {
-                $hasAccess = true; // Если пусто - доступен всем
-            } else {
-                $allowedArr = array_map('trim', explode(',', $allowedStr));
-                if (in_array($currentUser, $allowedArr)) {
-                    $hasAccess = true;
-                }
-            }
-
-            if ($hasAccess) {
-                $availableProjects[$projName] = $envPath;
+            try {$config=loadEnv($envPath);} catch(Throwable $e){continue;}
+            if (projectAllowed($config,$currentUser)) {
+                $availableProjects[$projName] = $config;
             }
         }
     }
@@ -148,48 +130,8 @@ if (!isset($availableProjects[$currentProject])) {
     $currentProject = array_key_first($availableProjects);
 }
 
-// Чтение конфигурации выбранного проекта для формирования радио-кнопок
-$envFile = $availableProjects[$currentProject];
-$dirs = [];
-$prodAllowedUsersStr = '';
-if (file_exists($envFile)) {
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        $line = trim($line);
-        if (strpos($line, 'PROD_ALLOWED_USERS=') === 0) {
-            $prodAllowedUsersStr = trim(substr($line, 19));
-        }
-        if (strpos($line, 'DIRS=') === 0) {
-            $dirsStr = substr($line, 5);
-            foreach (explode(',', $dirsStr) as $dirItem) {
-                if (!trim($dirItem))
-                    continue;
-                @list($name, $rest) = explode(':', $dirItem, 2);
-                @list($path, $type) = explode('|', $rest, 2);
-                if ($name && $type) {
-                    $dirs[] = ['name' => trim($name), 'type' => trim($type)];
-                }
-            }
-        }
-    }
-}
-
-// Фильтрация папок: если тип prod, проверять права
-$prodAllowedArr = array_map('trim', explode(',', $prodAllowedUsersStr));
-$filteredDirs = [];
-foreach ($dirs as $d) {
-    if ($d['type'] === 'prod') {
-        if (in_array($currentUser, $prodAllowedArr)) {
-            $filteredDirs[] = $d;
-        }
-    } else {
-        $filteredDirs[] = $d;
-    }
-}
-$dirs = $filteredDirs;
-require_once __DIR__.'/control/api.php';
-$fcEnv=[];foreach ($lines as $line) { $pair=explode('=',trim($line),2);if(count($pair)===2) $fcEnv[trim($pair[0])]=trim($pair[1]); }
-try {$fc=fcConfig($fcEnv);}catch(Throwable $e){opsWrite('open_project','error',['project'=>$currentProject,'reason'=>$e->getMessage()]);die(htmlspecialchars($e->getMessage()));}
+try {$dirs=array_values(visibleTargets($availableProjects[$currentProject],$currentUser));}
+catch(Throwable $e){opsWrite('open_project','error',['project'=>$currentProject,'reason'=>$e->getMessage()]);die(htmlspecialchars($e->getMessage()));}
 opsWrite('open_project','ok',['project'=>$currentProject]);
 function panelAsset($path) {
     $file=__DIR__.'/'.$path;
@@ -265,17 +207,17 @@ if (empty($_SESSION['fc_csrf'])) $_SESSION['fc_csrf']=bin2hex(random_bytes(24));
                     <?php if (!$dirs): ?><p class="text-muted">Нет доступных директорий.</p><?php endif; ?>
                     <?php foreach ($dirs as $idx => $d): $prod=$d['type']==='prod'; ?>
                     <label class="dest-row">
-                        <input class="target-radio" type="radio" name="deploy_target" id="target_<?= $idx ?>" data-guard="<?= isset($fc[$d['name']]) ? 1 : 0 ?>" value="<?= htmlspecialchars($d['name']) ?>" <?= $idx===0?'checked':'' ?>>
+                        <input class="target-radio" type="radio" name="deploy_target" id="target_<?= $idx ?>" data-guard="<?= $d['guard'] ? 1 : 0 ?>" value="<?= htmlspecialchars($d['name']) ?>" <?= $idx===0?'checked':'' ?>>
                         <span class="dest-card">
                             <span class="dest-folder" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
-                            <span class="dest-body"><strong><?= htmlspecialchars($d['name']) ?></strong><small>Контроль FTP: <?= isset($fc[$d['name']]) ? 'включён' : 'выключен' ?></small><small>Ветка: <span class="dest-branch" aria-live="polite">не проверена</span></small></span>
+                            <span class="dest-body"><strong><?= htmlspecialchars($d['name']) ?></strong><small>Контроль FTP: <?= $d['guard'] ? 'включён' : 'выключен' ?></small><small>Ветка: <span class="dest-branch" aria-live="polite">не проверена</span></small></span>
                             <span class="dest-env <?= $prod?'is-prod':'' ?>"><?= $prod?'PROD':'TEST' ?></span><span class="dest-dot" aria-hidden="true"></span>
                         </span>
                     </label>
                     <?php endforeach; ?>
                 </fieldset>
 
-                <div id="fc_box" <?= isset($dirs[0]) && isset($fc[$dirs[0]['name']]) ? '' : 'hidden' ?> class="mt-3 border rounded p-3">
+                <div id="fc_box" <?= !empty($dirs[0]['guard']) ? '' : 'hidden' ?> class="mt-3 border rounded p-3">
                     <button type="button" id="fc_bind" class="btn btn-outline-secondary" disabled>Привязать к Git</button>
                     <button type="button" id="fc_check" class="btn btn-outline-primary" disabled>Контроль</button>
                     <button type="button" id="fc_sync" class="btn btn-outline-primary" disabled>Синхронизация</button>

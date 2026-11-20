@@ -76,43 +76,6 @@ $(document).ready(function () {
     setInterval(()=>{if(!document.hidden && !$('#dest_refresh').prop('disabled')) refreshDestinations();},60000);
 
     /**
-     * Централизованная функция для вызова API
-     * @param {string} action - Действие (get_branches, deploy, etc)
-     * @param {object} data - Дополнительные данные
-     * @param {string} label - Текст для статус-бара
-     * @param {function} successCallback 
-     */
-    function callApi(action, data, label, successCallback) {
-        // Подготовка UI
-        toggleUiLock(true);
-        updateGlobalStatus(label, 'loading');
-
-        const postData = Object.assign({ action: action, project: currentProject }, data);
-
-        $.post('ajax.php', postData, function (res) {
-            if (res.status === 'ok') {
-                if (successCallback) successCallback(res);
-                updateGlobalStatus('Успешно завершено', 'success');
-            } else {
-                updateGlobalStatus('Ошибка: ' + res.message, 'error');
-                alert('Ошибка: ' + res.message);
-            }
-        }, 'json')
-            .fail(function (xhr, status, err) {
-                updateGlobalStatus('Критическая ошибка сервера', 'error');
-                console.error("API Fail:", status, err, xhr.responseText);
-                alert('Произошла системная ошибка. Проверьте консоль.');
-            })
-            .always(function () {
-                if(action==='deploy') {refreshDestinations(); if($('#status_text').text()==='В процессе...') $('#status_text').text('Не подтверждено').removeClass('bg-primary').addClass('bg-danger');}
-                // Разблокировка интерфейса через небольшую паузу для плавности
-                setTimeout(() => {
-                    toggleUiLock(false);
-                }, 500);
-            });
-    }
-
-    /**
      * Управление блокировкой элементов управления
      */
     function toggleUiLock(isLocked) {
@@ -150,17 +113,17 @@ $(document).ready(function () {
     let bound = null, busy = false;
     function rules() {
         $('#fc_box').prop('hidden', !guarded());
-        if (!guarded()) return;
         const hasBranch = !!$('#branch_select').val();
         $('#fc_bind').prop('disabled', busy || bound !== false || !hasBranch)
             .toggleClass('btn-success', bound === true).toggleClass('btn-outline-secondary', bound !== true)
             .text(bound === true ? 'Привязано к Git' : 'Привязать к Git');
         $('#fc_check').prop('disabled', busy || bound !== true);
-        $('#fc_sync,#btn_deploy').prop('disabled', busy || bound !== true || !hasBranch);
+        $('#fc_sync').prop('disabled', busy || bound !== true || !hasBranch);
+        $('#btn_deploy').prop('disabled', busy || !hasBranch || (guarded() && bound !== true));
     }
-    function fc(action, fields = {}) {
+    function request(action, fields = {}) {
         return $.post('ajax.php', Object.assign({project:currentProject,target:choice().val(),csrf:fcCsrf,
-            action:action === 'deploy' ? 'deploy' : 'fc_'+action,branch:$('#branch_select').val() || ''},fields),null,'json')
+            action,branch:$('#branch_select').val() || ''},fields),null,'json')
             .then(res => { if(res.status !== 'ok') throw Error(res.message); return res; });
     }
     function busyGuard(on) {
@@ -172,20 +135,20 @@ $(document).ready(function () {
         updateGlobalStatus(ok?'Завершено':'Операция не подтверждена',ok?'success':'error');
     }
     async function act(which) {
-        if(busy || !guarded()) return;
+        if(busy || (which!=='deploy' && !guarded())) return;
         busyGuard(true); $('#status_text').text('В процессе…');
         try {
             let r;
             if(which==='bind') {
                 const base=prompt('Базовая ревизия существующего сайта: укажите полный SHA или оставьте пустым для вершины выбранной ветки.', '');
                 if(base===null) {$('#status_text').text('Отменено');return;}
-                r=await fc('preview',{base_oid:base.trim()}); terminalLine('Предпросмотр',r.message);
+                r=await request('fc_preview',{base_oid:base.trim()}); terminalLine('Предпросмотр',r.message);
                 if(!confirm(r.message+'\nПодтвердить исходную ревизию и перечисленные отличия? Файлы сайта не изменятся.')) {$('#status_text').text('Отменено');return;}
                 if(r.missing && !confirm('Отдельное подтверждение: отсутствующие в каталоге отслеживаемые файлы из списка D будут считаться удалениями при синхронизации. Принять?')) {$('#status_text').text('Отменено');return;}
-                r=await fc('bind',{token:r.token,base_oid:base.trim(),accept_missing:r.missing?'1':'0'}); bound=true; $('#fc_info').text(r.message);
+                r=await request('fc_bind',{token:r.token,base_oid:base.trim(),accept_missing:r.missing?'1':'0'}); bound=true; $('#fc_info').text(r.message);
             } else {
-                if(which!=='check' && !confirm(choice().val()+' → '+$('#branch_select').val()+'\nОстановлены внешние записи (FTP, редактор, cron)? '+(which==='deploy'?'Подтвердить выкладку в окно обслуживания.':'Сохранить и объединить правки в выбранной ветке.'))) {$('#status_text').text('Отменено');return;}
-                r=await fc(which,{maintenance:'1'});
+                if(guarded() && which!=='check' && !confirm(choice().val()+' → '+$('#branch_select').val()+'\nОстановлены внешние записи (FTP, редактор, cron)? '+(which==='deploy'?'Подтвердить выкладку в окно обслуживания.':'Сохранить и объединить правки в выбранной ветке.'))) {$('#status_text').text('Отменено');return;}
+                r=await request(which==='deploy'?'deploy':'fc_'+which,guarded()?{maintenance:'1'}:{});
             }
             feedback(r.message,true);
         } catch(e) {feedback(e.message || 'Связь прервана; результат неизвестен.',false);}
@@ -194,35 +157,20 @@ $(document).ready(function () {
     async function loadTarget() {
         bound=null; rules();
         const select=$('#branch_select');select.empty();
-        if(guarded()) {
-            busyGuard(true); $('#fc_info').text('Проверка состояния…');
-            try {const s=await fc('status'); bound=s.bound; $('#fc_info').text(s.message);
-                const b=await fc('branches'); b.branches.forEach(n=>select.append(new Option(n,n)));
-                if(b.branches.length) select.prop('selectedIndex',0);
-            } catch(e) {feedback(e.message || 'Не удалось проверить хостинг.',false);$('#fc_info').text('Проверка не завершена.');}
-            finally {busyGuard(false);}
-        } else callApi('get_branches', {}, 'Загрузка списка веток...', function (res) {
-            res.data.forEach(b=>select.append(new Option(`${b.name} - ${b.hash} - ${b.date} (${b.author})`, b.name)));
-        });
+        busyGuard(true);
+        try {
+            if(guarded()) {
+                $('#fc_info').text('Проверка состояния…');
+                const s=await request('fc_status'); bound=s.bound; $('#fc_info').text(s.message);
+            }
+            const res=await request('get_branches');
+            res.data.forEach(b=>select.append(new Option(`${b.name} - ${b.hash} - ${b.date} (${b.author})`,b.name)));
+            if(res.data.length)select.prop('selectedIndex',0);
+        } catch(e) {feedback(e.message || 'Не удалось проверить хостинг.',false);}
+        finally {busyGuard(false);}
     }
-    let wasGuarded=guarded(); $('.target-radio').on('change',()=>{const previous=wasGuarded;wasGuarded=guarded();if(previous || wasGuarded) loadTarget();}); $('#branch_select').on('change',rules);
+    $('.target-radio').on('change',loadTarget); $('#branch_select').on('change',rules);
     $('#fc_bind').click(()=>act('bind')); $('#fc_check').click(()=>act('check')); $('#fc_sync').click(()=>act('sync'));
     loadTarget();
-    // 2. Действие по кнопке Деплой
-    $('#btn_deploy').click(function () {
-        if(guarded()) {act('deploy'); return;}
-        let branch = $('#branch_select').val();
-        let target = $('input[name="deploy_target"]:checked').val();
-
-        if (!branch || !target) {
-            alert('Выберите ветку и папку для деплоя!');
-            return;
-        }
-
-        $('#status_text').text('В процессе...').removeClass('bg-secondary bg-success bg-danger').addClass('bg-primary');
-        callApi('deploy', { branch: branch, target: target }, 'Выполняется деплой...', function (res) {
-            $('#status_text').text('Завершено').removeClass('bg-primary').addClass('bg-success');
-        });
-    });
-
+    $('#btn_deploy').click(()=>act('deploy'));
 });

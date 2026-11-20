@@ -28,27 +28,38 @@ function opsText($v,$limit=180) {
     return is_scalar($v)?substr(preg_replace('/[\r\n\t]+/',' ',opsRedact($v)),0,$limit):'-';
 }
 function opsSafeResult($r){foreach($r as $k=>$v){if(is_array($v))$r[$k]=opsSafeResult($v);elseif(is_string($v) && !in_array($k,['status','token'],true))$r[$k]=opsRedact($v);}return $r;}
-function opsDir() {
-    $web=realpath(($_SERVER['DOCUMENT_ROOT'] ?? '') ?: dirname(__DIR__));
-    $dir=getenv('DEP_LOG_DIR') ?: dirname($web ?: dirname(__DIR__)).'/dep-private-logs';
-    return $dir;
+// Single journal in the panel itself. PHP stops before parsing any journal data.
+function opsAppend($line) {
+    $path=dirname(__DIR__).'/operations.log.php';
+    $header="<?php http_response_code(404); exit; __halt_compiler();\n";
+    if (@is_link($path)) return false;
+    $mask=umask(0077);
+    try { $f=@fopen($path,'c+b'); } finally {umask($mask);}
+    if (!$f) return false;
+    try {
+        if (!flock($f,LOCK_EX)) return false;
+        $stat=fstat($f);
+        if (!$stat || ($stat['mode'] & 0170000)!==0100000) return false;
+        if ($stat['size']===0) {
+            if (fwrite($f,$header)!==strlen($header)) return false;
+        } elseif (fgets($f,strlen($header)+1)!==$header) return false;
+        return fseek($f,0,SEEK_END)===0 && fwrite($f,$line)===strlen($line) && fflush($f);
+    } finally { fclose($f); }
 }
 function opsWrite($action,$status,$more=[]) {
-    static $failed=false;
+    static $failed=false,$writing=false;
+    if ($failed || $writing) return;
+    $writing=true;
+    try {
     $base=['time'=>gmdate('Y-m-d\TH:i:s\Z'),'id'=>$GLOBALS['ops_id'],'user'=>$_SESSION['user'] ?? 'guest','action'=>$action,'status'=>$status];
     foreach (['project','target','branch'] as $k) if (isset($_POST[$k])) $base[$k]=$_POST[$k];
     $row=[]; foreach (array_merge($base,$more) as $k=>$v) $row[$k]=opsText($v,$k==='reason'?500:180);
     $line=json_encode($row,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE)."\n";
-    $dir=opsDir();$ok=false;$old=umask(0077);
-    try {
-        if ((is_dir($dir) || @mkdir($dir,0700,true) || is_dir($dir)) && ($real=realpath($dir))!==false) {
-            $web=realpath(($_SERVER['DOCUMENT_ROOT'] ?? '') ?: dirname(__DIR__));$path=$real.'/operations.log';
-            if ((!$web || strpos($real.DIRECTORY_SEPARATOR,rtrim($web,DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR)!==0) && !is_link($path)) {
-                $ok=@file_put_contents($path,$line,FILE_APPEND|LOCK_EX)===strlen($line);
-            }
-        }
-    } finally {umask($old);}
-    if (!$ok && !$failed) { $failed=true;error_log('DEP: cannot append operations.log outside document root; check DEP_LOG_DIR, permissions and free space.');if(!headers_sent()) header('X-Operations-Log: unavailable'); }
+    if (!opsAppend($line)) {
+        $failed=true;error_log('DEP: cannot append operations.log.php in panel directory; check write permissions, header and free space.');
+        if(!headers_sent()) header('X-Operations-Log: unavailable');
+    }
+    } finally { $writing=false; }
 }
 function opsReason($s) {
     // Older transports concatenate third-party replies/stderr. Keep classification, not that output.

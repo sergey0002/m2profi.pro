@@ -14,424 +14,27 @@ if (empty($_SESSION['user'])) {
 }
 $user = $_SESSION['user'];
 
-function loadEnv($file)
-{
-    $env = [];
-    if (file_exists($file)) {
-        $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-        foreach ($lines as $line) {
-            if (strpos(trim($line), '#') === 0)
-                continue;
-            @list($k, $v) = explode('=', $line, 2);
-            $k = trim((string) ($k ?? ''));
-            if ($k !== '') {
-                $env[$k] = trim((string) ($v ?? ''));
-            }
-        }
-    }
-    return $env;
-}
-
 require_once __DIR__.'/control/api.php';
-if (!is_string($project) || !preg_match('/^[A-Za-z0-9_-]+$/D',$project)) {echo opsReply(['status'=>'error','message'=>'Некорректный проект']); exit;}
-$env = loadEnv(__DIR__ . "/projects/{$project}.env");
-
-// Проверка прав доступа к проекту
-$allowedUsersStr = $env['ALLOWED_USERS'] ?? '';
-
-if (!empty($allowedUsersStr)) {
-    $allowedArr = array_map('trim', explode(',', $allowedUsersStr));
-    if (!in_array($user, $allowedArr)) {
-        echo opsReply(['status' => 'error', 'message' => 'У вас нет доступа к проекту: ' . $project]);
-        exit;
-    }
-}
-
+require_once __DIR__.'/control/branches.php';
 try {
-    $fc=fcConfig($env); $target=$_POST['target'] ?? '';
-    if (!is_string($target) || !is_string($action)) throw new Exception('Некорректный запрос.');
+    if(!is_string($project) || !preg_match('/^[A-Za-z0-9_-]+$/D',$project))throw new RuntimeException('Некорректный проект.');
+    $env=loadEnv(__DIR__.'/projects/'.$project.'.env');
+    if(!projectAllowed($env,$user))throw new RuntimeException('Нет доступа к проекту.');
+    $targets=visibleTargets($env,$user);$target=$_POST['target'] ?? '';
+    if(!is_string($action)||!is_string($target))throw new RuntimeException('Некорректный запрос.');
+    // Older read-only clients can still request the catalogue/log without a token.
+    if(!in_array($action,['get_branches','get_log'],true))panelCsrf();
     if ($action==='client_error') {
-        if (!is_string($_POST['csrf'] ?? null) || empty($_SESSION['fc_csrf']) || !hash_equals($_SESSION['fc_csrf'],$_POST['csrf'])) throw new Exception('Отказ CSRF.');
         $op=$_POST['operation'] ?? ''; $kind=$_POST['kind'] ?? '';
         if (!in_array($op,['directory_statuses','fc_status','fc_branches','fc_check','fc_preview','fc_bind','fc_sync','fc_deploy','get_branches','deploy','get_log'],true) || !in_array($kind,['timeout','network','http','json','missing_target'],true)) throw new Exception('Неизвестная диагностика.');
         opsWrite($op,'client_error',['reason'=>$kind,'http'=>(int)($_POST['http'] ?? 0)]);echo opsReply(['status'=>'ok']);exit;
     }
-    if ($action==='directory_statuses') {echo opsReply(directoryStatuses($env,$fc,$user));exit;}
-    if (strpos($action,'fc_')===0 || ($action==='deploy' && isset($fc[trim($target)]))) {
-        $op=$action==='deploy' ? 'deploy' : substr($action,3);
-        if (!isset($fc[$target]) || !in_array($op,['status','branches','preview','bind','check','sync','deploy'],true)) throw new Exception('Режим недоступен для цели.');
-        echo opsReply(fcRun($op,$target,$fc[$target],$env,$user,$project));exit;
+    if($action==='directory_statuses'){echo opsReply(directoryStatuses($env,$targets));exit;}
+    if($action==='get_branches' || $action==='fc_branches'){
+        $dir=$target!==''?($targets[$target] ?? null):reset($targets);
+        if(!$dir)throw new RuntimeException('Цель недоступна.');
+        echo opsReply(projectBranches($env,$dir));exit;
     }
-} catch (Throwable $e) {echo opsReply(['status'=>'error','message'=>$e->getMessage()]);exit;}
-if ($action === 'get_branches') {
-    $githubToken = $env['GITHUB_TOKEN'] ?? '';
-    $repoUrl = $env['REPO_URL'] ?? '';
-
-    if (empty($githubToken) || empty($repoUrl)) {
-        echo opsReply(['status' => 'error', 'message' => 'GITHUB_TOKEN или REPO_URL не задан']);
-        exit;
-    }
-
-    if (!preg_match('#github\.com/([^/]+)/([^/]+)#i', $repoUrl, $matches)) {
-        echo opsReply(['status' => 'error', 'message' => 'Неверный формат REPO_URL. Ожидается URL GitHub.']);
-        exit;
-    }
-
-    $owner = $matches[1];
-    $repo = preg_replace('/\.git$/i', '', $matches[2]);
-
-    function githubApiRequest($url, $token, $payload = null)
-    {
-        $ch = curl_init();
-        $headers = [
-            "Authorization: Bearer {$token}",
-            "Accept: application/vnd.github+json",
-            "User-Agent: PHP Deployment Script",
-        ];
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-        // На части хостингов IPv6 до api.github.com висит до таймаута
-        if (defined('CURL_IPRESOLVE_V4')) {
-            curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-        }
-
-        if ($payload !== null) {
-            $headers[] = 'Content-Type: application/json';
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        }
-
-        opsStep('GitHub GraphQL: запрос веток (HTTPS POST)');
-        $result = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-
-        return ['code' => $httpCode, 'data' => json_decode($result, true), 'error' => $error];
-    }
-
-    function firstDeployPath($dirsStr)
-    {
-        foreach (explode(',', (string) $dirsStr) as $dirItem) {
-            if (!trim($dirItem)) {
-                continue;
-            }
-            @list($name, $rest) = explode(':', $dirItem, 2);
-            @list($path, $type) = explode('|', (string) $rest, 2);
-            $path = trim((string) $path);
-            if ($path !== '') {
-                return $path;
-            }
-        }
-        return '';
-    }
-
-    function runSshCapture($env, $remoteBash)
-    {
-        $sshHost = $env['SSH_HOST'] ?? '';
-        $sshUser = $env['SSH_USER'] ?? '';
-        $sshPass = $env['SSH_PASS'] ?? '';
-        if ($sshHost === '' || $sshUser === '') {
-            return ['ok' => false, 'output' => '', 'error' => 'SSH_HOST/SSH_USER не заданы'];
-        }
-
-        $quoted = escapeshellarg($remoteBash);
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            $plink = __DIR__ . '/plink.exe';
-            if (file_exists($plink)) {
-                $cmd = "\"$plink\" -ssh -batch -pw \"$sshPass\" $sshUser@$sshHost bash -lc $quoted 2>&1";
-            } else {
-                $cmd = "ssh -o StrictHostKeyChecking=no $sshUser@$sshHost bash -lc $quoted 2>&1";
-            }
-        } else {
-            if (trim((string) shell_exec('which sshpass 2>/dev/null'))) {
-                $cmd = 'sshpass -p ' . escapeshellarg($sshPass)
-                    . ' ssh -o StrictHostKeyChecking=no '
-                    . escapeshellarg($sshUser . '@' . $sshHost)
-                    . ' bash -lc ' . $quoted . ' 2>&1';
-            } else {
-                $cmd = 'ssh -o StrictHostKeyChecking=no '
-                    . escapeshellarg($sshUser . '@' . $sshHost)
-                    . ' bash -lc ' . $quoted . ' 2>&1';
-            }
-        }
-
-        opsStep('$ ssh '.$sshUser.'@'.$sshHost.' bash -lc '.opsRedact($remoteBash));
-        $output = opsRedact((string) shell_exec($cmd));
-        opsFrame($output);
-        return ['ok' => $output !== '', 'output' => $output, 'error' => ''];
-    }
-
-    function parseBranchLines($output)
-    {
-        $branches = [];
-        foreach (preg_split('/\r\n|\r|\n/', trim($output)) as $line) {
-            $line = trim($line);
-            if ($line === '' || strpos($line, '|') === false) {
-                continue;
-            }
-            $parts = explode('|', $line);
-            if (count($parts) < 2) {
-                continue;
-            }
-            $name = trim($parts[0]);
-            if ($name === '' || $name === 'HEAD') {
-                continue;
-            }
-            $timestamp = isset($parts[4]) ? (int) $parts[4] : 0;
-            $iso = $parts[2] ?? '';
-            $date = 'N/A';
-            if ($timestamp > 0) {
-                $date = date('d.m.Y H:i:s', $timestamp);
-            } elseif ($iso !== '') {
-                $ts = strtotime($iso);
-                if ($ts) {
-                    $timestamp = $ts;
-                    $date = date('d.m.Y H:i:s', $ts);
-                }
-            }
-            $branches[] = [
-                'name' => $name,
-                'hash' => $parts[1] !== '' ? $parts[1] : $name,
-                'date' => $date,
-                'timestamp' => $timestamp,
-                'author' => isset($parts[3]) && $parts[3] !== '' ? $parts[3] : 'unknown',
-            ];
-        }
-
-        $uniq = [];
-        foreach ($branches as $b) {
-            if (!isset($uniq[$b['name']])) {
-                $uniq[$b['name']] = $b;
-            }
-        }
-        $branches = array_values($uniq);
-        usort($branches, function ($a, $b) {
-            return $b['timestamp'] <=> $a['timestamp'];
-        });
-        return $branches;
-    }
-
-    function getBranchesViaRemoteGit($env, $repoUrl, $token)
-    {
-        $path = firstDeployPath($env['DIRS'] ?? '');
-        if ($path === '') {
-            return ['status' => 'error', 'message' => 'Нет DIRS для fallback через SSH/git'];
-        }
-
-        // github.com (git) часто доступен, api.github.com — нет. Берём ветки с деплой-хоста.
-        $authUrl = preg_replace('#https://#', 'https://' . $token . '@', $repoUrl, 1);
-        $remoteBash = 'cd ' . escapeshellarg($path)
-            . ' && (git for-each-ref --sort=-committerdate refs/heads/ refs/remotes/origin/'
-            . ' --format="%(refname:short)|%(subject)|%(committerdate:iso-strict)|%(authorname)|%(committerdate:unix)"'
-            . ' | sed "s|^origin/||" | grep -v "^HEAD$" | awk -F"|" "!seen[\$1]++"'
-            . ' ; echo "__LSREMOTE__"'
-            . ' ; git ls-remote --heads ' . escapeshellarg($authUrl)
-            . ' | awk \'{print $2"|"$1"|||0"}\' | sed "s|refs/heads/||")';
-
-        $res = runSshCapture($env, $remoteBash);
-        if (!$res['ok']) {
-            return [
-                'status' => 'error',
-                'message' => 'api.github.com недоступен, SSH/git fallback пустой'
-                    . ($res['error'] ? (': ' . $res['error']) : ''),
-            ];
-        }
-
-        $parts = explode("__LSREMOTE__", $res['output'], 2);
-        $branches = parseBranchLines($parts[0] ?? '');
-        if (count($branches) === 0 && isset($parts[1])) {
-            $branches = parseBranchLines($parts[1]);
-        }
-        if (count($branches) === 0) {
-            return [
-                'status' => 'error',
-                'message' => 'Не удалось получить ветки через SSH/git. Вывод: '
-                    . substr(trim($res['output']), 0, 300),
-            ];
-        }
-
-        return ['status' => 'ok', 'data' => $branches, 'source' => 'ssh-git'];
-    }
-
-    $graphqlQuery = <<<'GQL'
-query ($owner: String!, $name: String!) {
-  repository(owner: $owner, name: $name) {
-    refs(refPrefix: "refs/heads/", first: 100, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
-      nodes {
-        name
-        target {
-          ... on Commit {
-            messageHeadline
-            committedDate
-            author { name }
-            oid
-          }
-        }
-      }
-    }
-  }
-}
-GQL;
-
-    $response = githubApiRequest('https://api.github.com/graphql', $githubToken, [
-        'query' => $graphqlQuery,
-        'variables' => ['owner' => $owner, 'name' => $repo],
-    ]);
-
-    // api.github.com с сервера часто timeout — fallback на git по SSH (как деплой)
-    if (!empty($response['error'])) {
-        opsWrite('get_branches','fallback',['reason'=>'GraphQL не вернул список веток','http'=>$response['code']]);
-        $fallback = getBranchesViaRemoteGit($env, $repoUrl, $githubToken);
-        if (($fallback['status'] ?? '') === 'ok') {
-            echo opsReply($fallback);
-            exit;
-        }
-        echo opsReply([
-            'status' => 'error',
-            'message' => 'Сетевая ошибка cURL: ' . $response['error']
-                . ' | Fallback: ' . ($fallback['message'] ?? 'недоступен'),
-        ]);
-        exit;
-    }
-
-    if ($response['code'] === 401 || $response['code'] === 403) {
-        $msg = $response['data']['message'] ?? 'Неизвестная ошибка';
-        echo opsReply(['status' => 'error', 'message' => "Ошибка доступа к API ({$response['code']}): {$msg}"]);
-        exit;
-    }
-
-    if ($response['code'] !== 200 || !empty($response['data']['errors']) || !is_array($response['data']['data']['repository']['refs']['nodes'] ?? null)) {
-        opsWrite('get_branches','fallback',['reason'=>'GraphQL не вернул список веток','http'=>$response['code']]);
-        $fallback = getBranchesViaRemoteGit($env, $repoUrl, $githubToken);
-        if (($fallback['status'] ?? '') === 'ok') {
-            echo opsReply($fallback);
-            exit;
-        }
-        if (!empty($response['data']['errors'])) {
-            $msg = $response['data']['errors'][0]['message'] ?? 'GraphQL error';
-            echo opsReply(['status' => 'error', 'message' => "GitHub GraphQL: {$msg}"]);
-            exit;
-        }
-        echo opsReply(['status' => 'error', 'message' => 'Ошибка GraphQL GitHub. Код: ' . $response['code']]);
-        exit;
-    }
-
-    $nodes = $response['data']['data']['repository']['refs']['nodes'];
-    $branches = [];
-    foreach ($nodes as $node) {
-        $commit = $node['target'] ?? [];
-        $timestamp = 0;
-        $date = 'N/A';
-        if (!empty($commit['committedDate'])) {
-            $timestamp = strtotime($commit['committedDate']);
-            $date = date('d.m.Y H:i:s', $timestamp);
-        }
-
-        $branches[] = [
-            'name' => $node['name'] ?? '',
-            'hash' => $commit['messageHeadline'] ?? ($commit['oid'] ?? ''),
-            'date' => $date,
-            'timestamp' => $timestamp,
-            'author' => $commit['author']['name'] ?? 'unknown',
-        ];
-    }
-
-    usort($branches, function ($a, $b) {
-        return $b['timestamp'] <=> $a['timestamp'];
-    });
-
-    echo opsReply(['status' => 'ok', 'data' => $branches, 'source' => 'graphql']);
-    exit;
-}
-
-if ($action === 'deploy') {
-    $branch = $_POST['branch'] ?? '';
-    $targetName = $_POST['target'] ?? '';
-
-    if (!$branch || !$targetName) {
-        echo opsReply(['status' => 'error', 'message' => 'Не указаны ветка или цель']);
-        exit;
-    }
-
-    $dirsStr = $env['DIRS'] ?? '';
-    $targetFolder = '';
-    $isProd = false;
-
-    foreach (explode(',', $dirsStr) as $dirItem) {
-        if (!trim($dirItem))
-            continue;
-        @list($name, $rest) = explode(':', $dirItem, 2);
-        @list($path, $type) = explode('|', $rest, 2);
-        if ($name === $targetName) {
-            $targetFolder = $path;
-            $isProd = (trim($type) === 'prod');
-            break;
-        }
-    }
-
-    if (!$targetFolder) {
-        echo opsReply(['status' => 'error', 'message' => 'Целевая папка не найдена']);
-        exit;
-    }
-
-    $prodAllowedUsersStr = $env['PROD_ALLOWED_USERS'] ?? '';
-    if ($isProd) {
-        $allowedUsers = array_map('trim', explode(',', $prodAllowedUsersStr));
-        if (!in_array($user, $allowedUsers)) {
-            echo opsReply(['status' => 'error', 'message' => 'У вас нет прав на деплой в PROD окружения']);
-            exit;
-        }
-    }
-
-    $logFile = __DIR__ . '/lastlog.log';
-    file_put_contents($logFile, "Начало деплоя. Ветка: $branch -> $targetName\n");
-
-    $sshHost = $env['SSH_HOST'] ?? '';
-    $sshUser = $env['SSH_USER'] ?? '';
-    $sshPass = $env['SSH_PASS'] ?? '';
-    $remoteScript = __DIR__ . '/deploy_remote.sh';
-
-    $remoteCommand = "bash -s " . escapeshellarg($targetFolder) . " " . escapeshellarg($branch) . " " . escapeshellarg($user) . " " . escapeshellarg($allowedUsersStr) . " " . ($isProd ? "1" : "0") . " " . escapeshellarg($prodAllowedUsersStr);
-
-    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-        $plink = __DIR__ . '/plink.exe';
-        if (file_exists($plink)) {
-            $cmd = "\"$plink\" -ssh -batch -pw \"$sshPass\" $sshUser@$sshHost $remoteCommand < \"$remoteScript\"";
-        } else {
-            $cmd = "ssh -o StrictHostKeyChecking=no $sshUser@$sshHost $remoteCommand < \"$remoteScript\"";
-        }
-    } else {
-        // Linux
-        if (trim(shell_exec("which sshpass"))) {
-            $cmd = "sshpass -p " . escapeshellarg($sshPass) . " ssh -o StrictHostKeyChecking=no $sshUser@$sshHost $remoteCommand < " . escapeshellarg($remoteScript);
-        } else {
-            $cmd = "ssh -o StrictHostKeyChecking=no $sshUser@$sshHost $remoteCommand < " . escapeshellarg($remoteScript);
-        }
-    }
-
-    // Синхронное выполнение для простоты (можно реализовать асинхронное)
-    session_write_close();
-    $capture=tmpfile();$reader=fopen(stream_get_meta_data($capture)['uri'],'rb');
-    opsStep('$ ssh '.$sshUser.'@'.$sshHost.' '.$remoteCommand.' < deploy_remote.sh');
-    $proc=proc_open($cmd,[['file',PHP_OS_FAMILY==='Windows'?'NUL':'/dev/null','r'],$capture,$capture],$pipes);
-    if (!is_resource($proc)) {echo opsReply(['status'=>'error','message'=>'Не удалось запустить SSH']);exit;}
-    do {opsDrain($reader);$st=proc_get_status($proc);if(!$st['running'])break;usleep(50000);}while(true);
-    $exitCode=$st['exitcode'];proc_close($proc);opsDrain($reader,[],true);fclose($reader);
-    rewind($capture);$compat=fopen($logFile,'ab');if($compat){fwrite($compat,opsRedact(stream_get_contents($capture)));fclose($compat);}fclose($capture);
-    opsStep('Завершение SSH: код '.$exitCode);
-    if ($exitCode!==0) {echo opsReply(['status'=>'error','message'=>'SSH/Git завершился с ошибкой. Код: '.$exitCode]);exit;}
-
-    echo opsReply(['status' => 'ok', 'message' => 'Деплой завершен']);
-    exit;
-}
-
 if ($action === 'get_log') {
     $log = '';
     if (file_exists(__DIR__ . '/lastlog.log')) {
@@ -441,4 +44,25 @@ if ($action === 'get_log') {
     exit;
 }
 
-echo opsReply(['status' => 'error', 'message' => 'Неизвестное действие']);
+    if(!isset($targets[$target]))throw new RuntimeException('Цель не найдена или недоступна.');
+    $dir=$targets[$target];
+    if($action==='deploy' || ($action==='fc_deploy' && $dir['guard'])){
+        $branch=$_POST['branch'] ?? '';
+        if(!is_string($branch) || $branch==='' || strlen($branch)>220 || $branch[0]==='-' || preg_match('/[\x00-\x20\x7f]/',$branch)) throw new RuntimeException('Некорректная ветка.');
+        $result=$dir['guard']?fcRun('deploy',$target,$dir,$env,$user,$project):standardDeploy($env,$dir,$user,$branch);
+    } elseif($dir['guard'] && in_array($action,['fc_status','fc_preview','fc_bind','fc_check','fc_sync'],true)) {
+        $result=fcRun(substr($action,3),$target,$dir,$env,$user,$project);
+    } else throw new RuntimeException('Действие недоступно для этой цели.');
+    echo opsReply($result);
+} catch(Throwable $e){echo opsReply(['status'=>'error','message'=>$e->getMessage()]);}
+
+// Ordinary targets still use the existing fetch/checkout/reset scenario, without sync or push.
+function standardDeploy($env,$dir,$user,$branch){
+    $args=[$dir['path'],$branch,$user,implode(',',fcList($env['ALLOWED_USERS'] ?? '')),$dir['type']==='prod'?'1':'0',implode(',',fcList($env['PROD_ALLOWED_USERS'] ?? ''))];
+    $body=@file_get_contents(__DIR__.'/deploy_remote.sh');if(!$body)throw new RuntimeException('Нет deploy_remote.sh.');
+    $script='set -- '.implode(' ',array_map('bashLiteral',$args))."\ngit check-ref-format --branch \"\$2\" >/dev/null || exit 2\n".$body."\n";
+    [$rc,$log]=projectSsh($env,$script,'terminal');
+    file_put_contents(__DIR__.'/lastlog.log',$log,LOCK_EX);
+    if($rc!==0)throw new RuntimeException('SSH/Git завершился с ошибкой. Код: '.$rc);
+    return ['status'=>'ok','message'=>'Деплой завершён'];
+}
