@@ -235,7 +235,13 @@ if (empty($_SESSION['fc_csrf'])) $_SESSION['fc_csrf']=bin2hex(random_bytes(24));
                         <span id="status_text" class="badge bg-secondary">Ожидание</span>
                     </div>
                     <div class="card-body p-0 d-flex flex-column">
+                        <div id="terminal_work" class="bg-dark text-light px-3 py-2 border-bottom border-secondary" hidden>
+                            <span id="terminal_work_label" class="small" role="status"></span>
+                            <span id="terminal_work_time" class="small float-end"></span>
+                            <progress id="terminal_work_bar" class="d-block w-100 mt-1" aria-labelledby="terminal_work_label" max="100"></progress>
+                        </div>
                         <pre id="log_box" class="bg-dark text-success p-3 m-0 flex-grow-1" style="height: 525px; overflow-y: auto; font-size: 0.85rem; border-radius: 0 0 calc(0.375rem - 1px) calc(0.375rem - 1px);">Здесь будут отображаться этапы выполнения...</pre>
+                        <div id="terminal_confirm" class="bg-dark px-3 pb-3 text-white" hidden></div>
                     </div>
                 </div>
             </div>

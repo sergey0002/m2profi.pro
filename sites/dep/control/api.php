@@ -10,7 +10,7 @@ function fcRun($action,$target,$dir,$env,$user,$project) {
         $e=loadEnv($f); if (($e['SSH_HOST'] ?? '')!==$host) continue;
         foreach(projectTargets($e) as $d) if(basename($f,'.env')!==$project || $d['name']!==$target)$other[]=$d['path'];
     }
-    $q=['action'=>$action,'target'=>$target,'user'=>$user,'path'=>$dir['path'],'repo'=>$repo,'other'=>$other,
+    $q=['action'=>$action,'target'=>$target,'user'=>$user,'path'=>$dir['path'],'repo'=>$repo,'other'=>$other,'ftp_guard'=>!empty($dir['guard']),
         'name'=>trim($env['GIT_COMMIT_NAME'] ?? '') ?: 'fromserver','email'=>trim($env['GIT_COMMIT_EMAIL'] ?? '') ?: 'from@server.ru',
         'accept_missing'=>($_POST['accept_missing'] ?? '')==='1',
         'branch'=>$_POST['branch'] ?? '','token'=>$_POST['token'] ?? '','base_oid'=>$_POST['base_oid'] ?? '', 'maintenance'=>($_POST['maintenance'] ?? '')==='1'];
@@ -24,6 +24,19 @@ function fcRun($action,$target,$dir,$env,$user,$project) {
         if($state==='busy' || $state==='incomplete')return ['status'=>'ok','state'=>$state,'bound'=>null,
             'message'=>$state==='busy'?($item['message'] ?? 'Каталог занят другой операцией.'):'Выкладка не завершена. Требуется ручная сверка.'];
         return ['status'=>'ok','state'=>$state,'bound'=>$item['bound'] ?? false,'message'=>!empty($item['bound'])?'Привязано к Git':'Не привязано'];
+    }
+    if(in_array($action,['sync','deploy'],true)) {
+        $confirmed=$_POST['confirmation'] ?? '';
+        $scope=implode('\n',[$project,$target,$user,$action,$q['branch']]);
+        $key=$_SESSION['fc_confirmation_key'] ?? ($_SESSION['fc_confirmation_key']=bin2hex(random_bytes(32)));
+        $sign=static function($raw)use($scope,$key){return hash_hmac('sha256',$scope."\n".$raw,$key);};
+        if($confirmed!=='') {
+            if(!is_string($confirmed) || !preg_match('/^([a-f0-9]{64})\.([a-f0-9]{64})$/D',$confirmed,$m) || !hash_equals($sign($m[1]),$m[2]))throw new RuntimeException('Подтверждение недействительно. Запустите предпросмотр заново.');
+            $q['confirmed']=$m[1];
+        }
+        $result=fcRemote('worker.sh',$q,$env);
+        if(isset($result['confirmation']))$result['confirmation'].='.'. $sign($result['confirmation']);
+        return $result;
     }
     return fcRemote('worker.sh',$q,$env);
 }
@@ -41,7 +54,10 @@ function fcRemote($file,$q,$env) {
             $script.="printf 'DEP_STEP target:%d\\n' $idx >&2\ninspect '".base64_encode($t['path'])."' '$key'\n";
         }
     } else {
-        $script=fcWorkerInput($q)."\nwork(){\n".$script."\n}\nwork </dev/null\n";
+        // Reuse the project token only for writes in FTP-control mode.
+        $pushToken=!empty($q['ftp_guard']) && in_array($q['action'],['sync','deploy'],true)?($env['GITHUB_TOKEN'] ?? ''):'';
+        if($pushToken!=='' && !preg_match('/^[A-Za-z0-9_]+$/D',$pushToken))throw new RuntimeException('Некорректный формат GITHUB_TOKEN.');
+        $script=fcWorkerInput($q)."push_token=".bashLiteral($pushToken)."\nwork(){\n".$script."\n}\nwork </dev/null\n";
     }
     [$rc,$raw]=projectSsh($env,$script,'protocol',$q['targets'] ?? []);
     if ($readOnly && $rc===0) return fcInspectResponse($q,$raw);
@@ -53,7 +69,9 @@ function fcRemote($file,$q,$env) {
             if($q['action']==='check' && $f[0]==='ok') {
                 if(!in_array($f[2],['clean','changed'],true))throw new Exception('Не получен результат сравнения. Обновите worker.sh.');
                 $r['changed']=$f[2]==='changed';
+                if(preg_match('/^([a-f0-9]{40}):([a-f0-9]{40})$/D',$f[3],$ids)){ $r['baseline']=$ids[1]; $r['selected']=$ids[2]; }
             }
+            if(in_array($q['action'],['sync','deploy'],true) && $f[0]==='ok' && preg_match('/^[a-f0-9]{64}$/D',$f[2]))$r['confirmation']=$f[2];
             if($q['action']==='preview' && $f[0]==='ok') {$r['token']=$f[2];$r['missing']=$f[3]==='1';}
         }
     }
@@ -69,6 +87,7 @@ function fcWorkerInput($q) {
     $text='';$args=['user'=>'user','live'=>'path','url'=>'repo','action'=>'action','branch'=>'branch','target'=>'target','name'=>'name','email'=>'email','token'=>'token','base_oid'=>'base_oid'];
     foreach($args as $var=>$field)$text.=$var.'='.bashLiteral($q[$field] ?? '')."\n";
     foreach(['other'] as $var) $text.=$var.'=('.implode(' ',array_map('bashLiteral',$q[$var] ?? [])).")\n";
+    $text.='confirmed='.bashLiteral($q['confirmed'] ?? '')."\n";
     foreach(['maintenance','accept_missing'] as $var)$text.=$var.'='.(!empty($q[$var])?'1':'0')."\n";
     return $text;
 }

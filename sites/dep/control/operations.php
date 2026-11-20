@@ -27,7 +27,7 @@ function opsRedact($text) {
 function opsText($v,$limit=180) {
     return is_scalar($v)?substr(preg_replace('/[\r\n\t]+/',' ',opsRedact($v)),0,$limit):'-';
 }
-function opsSafeResult($r){foreach($r as $k=>$v){if(is_array($v))$r[$k]=opsSafeResult($v);elseif(is_string($v) && !in_array($k,['status','token'],true))$r[$k]=opsRedact($v);}return $r;}
+function opsSafeResult($r){foreach($r as $k=>$v){if(is_array($v))$r[$k]=opsSafeResult($v);elseif(is_string($v) && !in_array($k,['status','token','confirmation'],true))$r[$k]=opsRedact($v);}return $r;}
 // Single journal in the panel itself. PHP stops before parsing any journal data.
 function opsAppend($line) {
     $path=dirname(__DIR__).'/operations.log.php';
@@ -72,7 +72,7 @@ function opsReply($r) {
     if (!$ok) $extra['reason']=opsReason($r['message'] ?? 'Ответ без сообщения');
     if($a==='fc_check' && isset($r['changed']))$extra['comparison']=$r['changed']?'changed':'clean';
     foreach (['run','source','state'] as $field) if(isset($r[$field])) $extra[$field]=$r[$field];
-    $state=$ok?'ok':'error';
+    $state=$ok?(isset($r['confirmation'])?'confirmation_required':'ok'):'error';
     if ($a==='directory_statuses' && $ok) {
         foreach ($r['targets'] ?? [] as $v) {
             $st=$v['state'] ?? 'unknown';$det=['target'=>$v['name'] ?? '-', 'state'=>$st];
@@ -85,7 +85,7 @@ function opsReply($r) {
         $extra['count']=count($r['targets'] ?? []);
     }
     $extra['ms']=round((microtime(true)-$GLOBALS['ops_time'])*1000);
-    opsFrame(($ok ? ($state==='partial'?'Завершено с замечаниями':'Готово') : 'Ошибка: '.$extra['reason']).' · '.$extra['ms'].' мс');
+    opsFrame(($ok ? ($state==='partial'?'Завершено с замечаниями':($state==='confirmation_required'?'Предпросмотр готов, push не выполнялся':'Готово')) : 'Ошибка: '.$extra['reason']).' · '.$extra['ms'].' мс');
     opsWrite($a,$state,$extra);$GLOBALS['ops_done']=true;
     return json_encode(opsSafeResult($r),JSON_INVALID_UTF8_SUBSTITUTE);
 }

@@ -30,3 +30,14 @@ body {
 
 .dest-body { min-width: 0; }
 .dest-path { overflow-wrap: anywhere; }
+
+/* Terminal colors are on a dark background; labels still identify each event. */
+#log_box .terminal-heading { color: #c2b5ff; }
+#log_box .terminal-command { color: #7dd3fc; }
+#log_box .terminal-progress { color: #a5d8ff; }
+#log_box .terminal-output { color: #e2e8f0; }
+#log_box .terminal-success { color: #86efac; }
+#log_box .terminal-warning { color: #fde68a; }
+#log_box .terminal-error { color: #fca5a5; }
+
+#log_box .terminal-result-warning { display: block; color: #fde68a; background: #392d17; border-left: 3px solid #fbbf24; padding: .5rem .75rem; margin: .5rem 0; font-weight: 600; }
