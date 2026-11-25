@@ -393,6 +393,11 @@ html, body {
 .mdl-dnd__item--close img {
   display: none;
 }
+@media (min-width: 768px) {
+  .mdl-dnd__item--close {
+    display: none;
+  }
+}
 .mdl-title {
   margin-bottom: 10px;
   font-family: var(--mainfont);
