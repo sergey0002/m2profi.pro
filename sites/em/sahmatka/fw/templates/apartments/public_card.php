@@ -277,6 +277,9 @@ html, body {
             align-items: flex-start;
     gap: 25px;
     margin-bottom: 32px;
+    /* отступ под кнопку закрытия fancybox (44px) в правом верхнем углу,
+       иначе она перекрывает кнопку печати */
+    padding-right: 44px;
   }
 }
 .mdl-head-group {
