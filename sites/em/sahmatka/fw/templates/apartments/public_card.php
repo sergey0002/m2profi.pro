@@ -393,9 +393,16 @@ html, body {
 .mdl-dnd__item--close img {
   display: none;
 }
-@media (min-width: 768px) {
+/* на широком iframe крестик даёт тулбар fancybox (правый верхний угол экрана) */
+@media (min-width: 980px) {
   .mdl-dnd__item--close {
     display: none;
+  }
+}
+/* планшетный диапазон iframe: тулбарный крестик ложится на шапку — отступаем */
+@media (min-width: 980px) and (max-width: 1023.98px) {
+  .mdl-head-group {
+    padding-right: 50px;
   }
 }
 .mdl-title {
