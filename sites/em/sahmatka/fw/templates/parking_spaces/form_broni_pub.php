@@ -122,9 +122,6 @@ $stat = $data['status'];
             align-items: flex-start;
     gap: 25px;
     margin-bottom: 32px;
-    /* отступ под кнопку закрытия fancybox (44px) в правом верхнем углу,
-       иначе она перекрывает кнопку печати */
-    padding-right: 44px;
   }
 }
 .mdl-head-group {
@@ -201,6 +198,43 @@ $stat = $data['status'];
   cursor: pointer;
   border-radius: 50%;
   border: 2px solid #E30613;
+}
+.mdl-dnd__item img {
+  display: block;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+/* кнопка закрытия — в одном ряду с печатью, тот же круглый дизайн */
+.mdl-dnd__item--close {
+  position: relative;
+  padding: 0;
+  background: transparent;
+}
+.mdl-dnd__item--close:before,
+.mdl-dnd__item--close:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 2px;
+  margin: -1px 0 0 -10px;
+  background: #E30613;
+  border-radius: 2px;
+}
+.mdl-dnd__item--close:before {
+  -webkit-transform: rotate(45deg);
+      -ms-transform: rotate(45deg);
+          transform: rotate(45deg);
+}
+.mdl-dnd__item--close:after {
+  -webkit-transform: rotate(-45deg);
+      -ms-transform: rotate(-45deg);
+          transform: rotate(-45deg);
+}
+.mdl-dnd__item--close img {
+  display: none;
 }
 .mdl-title {
   margin-bottom: 10px;
@@ -647,6 +681,9 @@ $stat = $data['status'];
             <a href="#" style="display:none" class="mdl-dnd__item" target="_blank" download>
               <img class="lazy" data-src="https://m2profi.pro/images/icons/pdf.svg"  src="https://m2profi.pro/images/icons/pdf.svg" alt="" />
             </a>
+            <div class="mdl-dnd__item mdl-dnd__item--close" id="closeCardButton" role="button" tabindex="0" aria-label="Закрыть">
+              <img class="lazy" data-src="https://m2profi.pro/images/icons/close.svg" src="https://m2profi.pro/images/icons/close.svg" alt="" />
+            </div>
           </div>
         </div>
         <div class="mdl-logo mdl-logo_mob">
@@ -818,6 +855,24 @@ document.getElementById('printButton').addEventListener('click', function(e) {
         setTimeout(() => document.body.classList.remove('print-mode'), 500);
     }
 });
+
+(function () {
+    var closeBtn = document.getElementById('closeCardButton');
+    if (!closeBtn) return;
+    function closeCard(e) {
+        if (e) e.preventDefault();
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage('close-fancybox', '*');
+        }
+        if (window.jQuery && jQuery.fancybox && jQuery.fancybox.getInstance()) {
+            jQuery.fancybox.getInstance().close();
+        }
+    }
+    closeBtn.addEventListener('click', closeCard);
+    closeBtn.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') closeCard(e);
+    });
+})();
 
  class Tabs {
     constructor(selector) {
