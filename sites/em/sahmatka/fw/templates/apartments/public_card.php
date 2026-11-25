@@ -24,6 +24,11 @@
   $nofurn_url = function_exists('em_pbplans_no_furniture_url')
       ? em_pbplans_no_furniture_url($data['data']['image_pb'] ?? '')
       : '';
+  // image_pb_plan может приходить как "0" — иначе браузер грузит /sahmatka/0 (404)
+  $plan_img = trim((string)($data['data']['image_pb_plan'] ?? ''));
+  if ($plan_img === '0' || $plan_img === '-') {
+      $plan_img = '';
+  }
    
   ?>
 
@@ -393,16 +398,13 @@ html, body {
 .mdl-dnd__item--close img {
   display: none;
 }
-/* на широком iframe крестик даёт тулбар fancybox (правый верхний угол экрана) */
-@media (min-width: 980px) {
+/* десктоп: крестик уходит в правый верхний угол модалки, как у fancybox-тулбара */
+@media (min-width: 768px) {
   .mdl-dnd__item--close {
-    display: none;
-  }
-}
-/* планшетный диапазон iframe: тулбарный крестик ложится на шапку — отступаем */
-@media (min-width: 980px) and (max-width: 1023.98px) {
-  .mdl-head-group {
-    padding-right: 50px;
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
   }
 }
 .mdl-title {
@@ -938,7 +940,7 @@ html, body {
     <div class="mdl-aside">
     <div class="mdl-head">
       <div class="mdl-logo-print">
-        <img src="images/logo.svg" alt="" />
+        <img src="/sahmatka/logo.svg" alt="" />
       </div>
       <div class="mdl-head-row no-print">
         <div class="mdl-head-group">
@@ -1061,7 +1063,7 @@ html, body {
           <?php if ($nofurn_url): ?>
           <div class="mdl-tabs__item" data-tabs-target="tab-nofurn">Без мебели</div>
           <?php endif; ?>
-          <div style="<? if(!$data['data']['image_pb_plan']){?>display:none;<?}?>" class="mdl-tabs__item" data-tabs-target="tab-2">На этаже</div>
+          <div style="<? if(!$plan_img){?>display:none;<?}?>" class="mdl-tabs__item" data-tabs-target="tab-2">На этаже</div>
           <div style="display:none;" class="mdl-tabs__item" data-tabs-target="tab-3">На карте</div>
         </div>
         <div class="mdl-logo">
@@ -1122,7 +1124,9 @@ html, body {
           <?php endif; ?>
           <div class="mdl-pln">
             <div class="mdl-pln__top"><?=$data['data']['homes_kvartal_title']?></div>
-            <img class="lazy" data-src="<?=$data['data']['image_pb_plan']?>" src="<?=$data['data']['image_pb_plan']?>" data-srcset="<?=$data['data']['image_pb_plan']?>" alt="" />
+            <?php if ($plan_img): ?>
+            <img class="lazy" data-src="<?=$plan_img?>" src="<?=$plan_img?>" data-srcset="<?=$plan_img?>" alt="" />
+            <?php endif; ?>
             <div class="mdl-pln__bottom"><?=$data['data']['adress']?>    </div>
           </div>
         </div>

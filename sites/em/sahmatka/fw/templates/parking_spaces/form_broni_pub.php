@@ -236,16 +236,13 @@ $stat = $data['status'];
 .mdl-dnd__item--close img {
   display: none;
 }
-/* на широком iframe крестик даёт тулбар fancybox (правый верхний угол экрана) */
-@media (min-width: 980px) {
+/* десктоп: крестик уходит в правый верхний угол модалки, как у fancybox-тулбара */
+@media (min-width: 768px) {
   .mdl-dnd__item--close {
-    display: none;
-  }
-}
-/* планшетный диапазон iframe: тулбарный крестик ложится на шапку — отступаем */
-@media (min-width: 980px) and (max-width: 1023.98px) {
-  .mdl-head-group {
-    padding-right: 50px;
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
   }
 }
 .mdl-title {
@@ -681,11 +678,11 @@ $stat = $data['status'];
   <div class="mdl-inner" id="printableArea">
     <div class="mdl-head">
       <div class="mdl-logo-print">
-        <img src="images/logo.svg" alt="" />
+        <img src="/sahmatka/logo.svg" alt="" />
       </div>
       <div class="mdl-head-row no-print">
         <div class="mdl-head-group">
-          <a href="#" class="mdl-back" data-fancybox-close>Назад к выбору  </a>
+          <a href="#" class="mdl-back" onclick="window.parent.postMessage('close-fancybox', '*'); return false;">Назад к выбору  </a>
           <div class="mdl-dnd">
             <div class="mdl-dnd__item" id="printButton">
               <img class="lazy" data-src="https://m2profi.pro/images/icons/print.svg" src="https://m2profi.pro/images/icons/print.svg" alt="" />
