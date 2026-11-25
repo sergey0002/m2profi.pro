@@ -337,22 +337,28 @@
 
       initFancybox: function (container) {
     const $ = window.jQuery;
+    // Крестик и печать живут внутри iframe (карточка m2profi),
+    // поэтому тулбар fancybox отключаем — иначе появляется второй крестик.
     $(container).find('a.iframe').fancybox({
-        type: 'iframe', // Принудительно указываем тип iframe
-        scrolling: 'yes', // Включаем скроллинг
-        maxWidth: 800,
-        maxHeight: 600,
-		
-        width: '90%',
-        height: '70%',
-       'iframe': {'scrolling': 'yes'},
-        helpers: {
-            overlay: { closeClick: false } // Отключаем закрытие по клику на оверлее
+        type: 'iframe',
+        baseClass: 'fancybox-apt-card',
+        buttons: false,
+        infobar: false,
+        arrows: false,
+        iframe: {
+            preload: true,
+            scrolling: 'auto',
+            css: {
+                width: '1250px',
+                height: '92vh',
+                maxWidth: '98vw',
+                maxHeight: '96vh'
+            }
         },
-        afterLoad: function () {
-            // Явно включаем скроллинг через CSS
-            $('.fancybox-content').css('overflow', 'auto');
-        }
+        margin: 0,
+        padding: 0,
+        closeClickOutside: true,
+        autoFocus: false
     });
 },
 		
